@@ -1,1 +1,1 @@
-# auto-design-robotics
+# auto-robotics-design
