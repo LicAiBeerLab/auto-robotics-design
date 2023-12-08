@@ -1,0 +1,15 @@
+name: auto-robotics-design
+channels:
+  - conda-forge
+dependencies:
+  - python = 3.11
+  - numpy = 1.26
+  - scipy = 1.11.4
+  - matplotlib = 3.8
+  - pip
+  - pip:
+    - mujoco == 3.0.1
+    - dm_control
+    - notebook
+    - mediapy
+    - tqdm
