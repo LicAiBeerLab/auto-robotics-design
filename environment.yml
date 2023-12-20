@@ -9,7 +9,9 @@ dependencies:
   - pip
   - pip:
     - mujoco == 3.0.1
+    - networkx
     - dm_control
+    - modern-robotics
     - notebook
     - mediapy
     - tqdm
