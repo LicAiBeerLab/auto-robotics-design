@@ -8,6 +8,8 @@ import modern_robotics as mr
 
 import networkx as nx
 
+from description.kinematics import JointPoint
+
 
 def forward_kinematics(G: nx.Graph):
     pass
