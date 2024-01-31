@@ -260,6 +260,7 @@ list_edges = list(
 )
 
 # %%
+
 for edge in list_edges:
     if edge[-1].active:
         w = 1
@@ -267,7 +268,9 @@ for edge in list_edges:
         w = 0.5
     # norm =
     kin_graph.add_edge(edge[0].name, edge[1].name, joint=edge[-1], weight=w)
-
+path_from_G = nx.shortest_path_length(kin_graph, source="G")
+for edge in kin_graph.edges():
+    kin_graph[edge[0]][edge[1]]["weight"] += np.round(1/path_from_G[edge[1]],3)
 # %%
 elarge = [(u, v) for (u, v, d) in kin_graph.edges(data=True) if d["weight"] > 0.5]
 esmall = [(u, v) for (u, v, d) in kin_graph.edges(data=True) if d["weight"] <= 0.5]
@@ -376,7 +379,7 @@ def define_link_frames(G, init_link, in_joint):
             ee_jj = ee_jj[0].r
             v_w = ee_jj - in_joint.r
         else:
-            ee_jj = np.zeros(3)
+            ee_jj = in_joint.r
             v_w = np.array([0, 0, 1])
     ez_l_w = H_w_L1 @ ez
     angle = np.arccos(np.inner(ez_l_w[:3], v_w) / la.norm(v_w) / la.norm(ez_l_w[:3]))
