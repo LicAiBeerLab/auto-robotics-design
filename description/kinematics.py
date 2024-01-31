@@ -1,4 +1,5 @@
 from dataclasses import dataclass,field
+from os import name
 
 import numpy as np
 import networkx as nx
@@ -14,11 +15,15 @@ class JointPoint:
     active: bool = False
     attach_ground: bool = False
     attach_endeffector: bool = False
+    name: str = ""
     instance_counter: int = 0
     
     def __post_init__(self):
         JointPoint.instance_counter += 1
         self.__instance_counter = JointPoint.instance_counter
+        if self.name=="":
+            self.name = "J" + str(self.__instance_counter)
+
     
     def reser_id_counter(self):
         JointPoint.instance_counter = 0
