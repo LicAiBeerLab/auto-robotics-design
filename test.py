@@ -57,6 +57,7 @@ def plot_link(L: Link, graph: nx.Graph):
         with_labels=False,
     )
 
+
 # %%
 # https://cad.onshape.com/documents/52eb11422c701d811548a6f5/w/655758bb668dff773a0e7c1a/e/77ff7f84e82d8fb31fe9c30b
 # abs_ground = np.array([0.065, 0, -0.015])
@@ -265,12 +266,14 @@ for edge in list_edges:
     if edge[-1].active:
         w = 1
     else:
-        w = 0.5
-    # norm =
+        w = 0.1
+    if "EE" in (edge[0].name, edge[1].name):
+        w = 0
     kin_graph.add_edge(edge[0].name, edge[1].name, joint=edge[-1], weight=w)
-path_from_G = nx.shortest_path_length(kin_graph, source="G")
+
+path_from_G = nx.shortest_path_length(kin_graph, source="EE")
 for edge in kin_graph.edges():
-    kin_graph[edge[0]][edge[1]]["weight"] += np.round(1/path_from_G[edge[1]],3)
+    kin_graph[edge[0]][edge[1]]["weight"] += np.round(path_from_G[edge[1]] * 0.1, 3)
 # %%
 elarge = [(u, v) for (u, v, d) in kin_graph.edges(data=True) if d["weight"] > 0.5]
 esmall = [(u, v) for (u, v, d) in kin_graph.edges(data=True) if d["weight"] <= 0.5]
@@ -341,7 +344,9 @@ def define_link_frames(G, init_link, in_joint):
 
     G.nodes()[link]["in"] = (in_joint, init_link)
     sorted_out_jj = sorted(
-        list(G.nodes()[link]["link"].joints & set(j2edge_main.keys()) - set([in_joint])),
+        list(
+            G.nodes()[link]["link"].joints & set(j2edge_main.keys()) - set([in_joint])
+        ),
         key=lambda x: la.norm(x.r - in_joint.r),
         reverse=True,
     )
@@ -368,14 +373,17 @@ def define_link_frames(G, init_link, in_joint):
                 map(lambda x: x[2]["joint"], kin_graph.edges(data=True))
             )
         else:
-            ee_jj = (graph.nodes() - set(j2edge_main.keys())) & G.nodes()[link]["link"].joints
+            ee_jj = (graph.nodes() - set(j2edge_main.keys())) & G.nodes()[link][
+                "link"
+            ].joints
         if ee_jj:
-            G.nodes()[link]["out"] = {j for j in ee_jj}
+            # G.nodes()[link]["out"] = {j for j in ee_jj}
             ee_jj = sorted(
-                    list(G.nodes()[link]["out"]),
-                    key=lambda x: la.norm(x.r - in_joint.r),
-                    reverse=True,
-                )
+                list(ee_jj),
+                key=lambda x: la.norm(x.r - in_joint.r),
+                reverse=True,
+            )
+            G.nodes()[link]["m_out"] = (ee_jj[0],)
             ee_jj = ee_jj[0].r
             v_w = ee_jj - in_joint.r
         else:
@@ -392,22 +400,33 @@ def define_link_frames(G, init_link, in_joint):
     H_w_L2 = H_w_L1 @ mr.RpToTrans(rot.as_matrix(), pos[:3])
     G.nodes()[link]["H_w_l"] = H_w_L2
     G.nodes()[link]["frame"] = (pos[:3], rot.as_quat())
-    G.nodes()[link]["frame_geom"] = (((mr.TransInv(H_w_L2) @ np.array([*ee_jj.tolist(), 1]))/2)[:3], np.array([0, 0, 0, 1]))
+    G.nodes()[link]["frame_geom"] = (
+        ((mr.TransInv(H_w_L2) @ np.array([*ee_jj.tolist(), 1])) / 2)[:3],
+        np.array([0, 0, 0, 1]),
+    )
 
     if link == "EE":
         return
-    for jj_out in G.nodes()[link]["out"]:
-        if jj_out in j2edge_main.keys():
-            define_link_frames(G, link, jj_out)
+    if G.nodes()[link].get("out", {}):
+        for jj_out in G.nodes()[link]["out"]:
+            if jj_out in j2edge_main.keys():
+                define_link_frames(G, link, jj_out)
     return
+
 
 # %%
 kin_graph.nodes()["G"]["frame"] = (np.array([0, 0, 0]), np.array([0, 0, 0, 1]))
 kin_graph.nodes()["G"]["frame_geom"] = (np.array([0, 0, 0]), np.array([0, 0, 0, 1]))
 kin_graph.nodes()["G"]["H_w_l"] = mr.RpToTrans(np.eye(3), np.zeros(3))
 kin_graph.nodes()["EE"]["frame_geom"] = (np.array([0, 0, 0]), np.array([0, 0, 0, 1]))
-kin_graph.nodes()["G"]["frame"]
-
+kin_graph.nodes()["G"]["m_out"] = (
+    span_tree[main_branch[0]][main_branch[1]]["joint"],
+    main_branch[1],
+)
+kin_graph.nodes()["G"]["out"] = {
+    span_tree[main_branch[0]][main_branch[1]]["joint"]:
+    main_branch[1]
+}
 # %%
 define_link_frames(kin_graph, "G", ground_joint)
 
@@ -432,7 +451,7 @@ nx.draw(
     node_size=150,
     with_labels=False,
 )
-for name in main_branch:
+for name in kin_graph.nodes():
     data = kin_graph.nodes(data=True)[name]
     frame = data.get("frame", np.zeros(3))
     geom_l = data.get("frame_geom", np.zeros(3))
@@ -458,4 +477,80 @@ plt.show()
 # %%
 
 
+def calculate_inertia(length):
+    Ixx = 1 / 12 * 1 * (0.001**2 * length**2)
+    Iyy = 1 / 12 * 1 * (0.001**2 * length**2)
+    Izz = 1 / 12 * 1 * (0.001**2 * 0.001**2)
+    return {"ixx":Ixx, "ixy":0, "ixz":0, "iyy":Iyy, "iyz":0, "izz":Izz}
 
+
+import odio_urdf as urdf
+
+mechanism = urdf.Robot()
+
+urdf_elements = []
+for link in kin_graph.nodes():
+    data_link = kin_graph.nodes()[link]
+    geom_frame = data_link["frame_geom"]
+    origin = [*geom_frame[0].tolist(), *R.from_quat(geom_frame[1]).as_euler("xyz")]
+    # print(data_link)
+    if link in ("EE", "G"):
+        length = 0.01
+    else:
+        length = la.norm(data_link["m_out"][0].r - data_link["in"][0].r)
+    inertia = calculate_inertia(length)
+    urdf_link = urdf.Link(
+        urdf.Inertial(
+            urdf.Origin(
+                xyz=geom_frame[0].tolist(),
+                rpy=R.from_quat(geom_frame[1]).as_euler("xyz").tolist(),
+            ),
+            urdf.Mass(1),
+            urdf.Inertia(**inertia),
+        ),
+        urdf.Visual(
+            urdf.Origin(
+                xyz=geom_frame[0].tolist(),
+                rpy=R.from_quat(geom_frame[1]).as_euler("xyz").tolist(),
+            ),
+            urdf.Geometry(urdf.Box([0.01, 0.01, length])),
+            urdf.Material("Grey"),
+        ),
+        urdf.Collision(
+            urdf.Origin(
+                xyz=geom_frame[0].tolist(),
+                rpy=R.from_quat(geom_frame[1]).as_euler("xyz").tolist(),
+            ),
+            urdf.Geometry(urdf.Box([0.01, 0.01, length])),
+            urdf.Material("Grey"),
+        ),
+        name=link,
+    )
+    urdf_elements.append(urdf_link)
+
+    if data_link.get("out", {}):
+        for out in data_link["out"].items():
+            data_child_link = kin_graph.nodes()[out[1]]
+            frame = data_child_link["frame"]
+            urdf_elements.append(
+                urdf.Joint(
+                    urdf.Parent(link=link),
+                    urdf.Child(link=out[1]),
+                    urdf.Origin(xyz=frame[0].tolist(),
+                                rpy=R.from_quat(frame[1]).as_euler("xyz").tolist()),
+                    urdf.Axis(out[0].w.tolist()),
+                    urdf.Limit(lower=-np.pi, 
+                            upper=np.pi, 
+                            effort=2, 
+                            velocity=10),
+                    urdf.Dynamics(damping=0.05),
+                    name = out[0].name,
+                    type = "revolute"
+                )
+            )
+
+my_robot = urdf.Robot(*urdf_elements)
+with open("test.urdf", "w") as f:
+    f.write(my_robot.urdf())
+# for joint
+# %%

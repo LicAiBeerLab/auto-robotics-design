@@ -1,21 +1,18 @@
 from dataclasses import dataclass,field
-from os import name
 
 import numpy as np
 import networkx as nx
 
-from dm_control import mjcf
 
 @dataclass
 class JointPoint:
     """Describe a point in global frame where a joint is attached"""
     r: np.ndarray = field(default_factory=np.zeros(3))
     w: np.ndarray = field(default_factory=np.zeros(3))
-    weld: bool = False
     active: bool = False
     attach_ground: bool = False
     attach_endeffector: bool = False
-    name: str = ""
+    name: str = ""  # noqa: F811
     instance_counter: int = 0
     
     def __post_init__(self):
@@ -35,9 +32,22 @@ class JointPoint:
         return hash(self) == hash(__value)
 
 @dataclass
-class LinkAttrib:
-    variable: bool = False
-    active: bool = False
+class Link:
+    name: str = ""
+    joints: set[JointPoint] = field(default_factory=set)
+    instance_counter: int = 0
+
+    def __post_init__(self):
+        Link.instance_counter += 1
+        self.instance_counter = Link.instance_counter
+        if self.name == "":
+            self.name = "L" + str(self.instance_counter)
+
+    def __hash__(self) -> int:
+        return hash((self.name, *self.joints))
+
+    def __eq__(self, __value: object) -> bool:
+        self.joints == __value.joints
 
 class KinematicStructure(nx.Graph):
     pass
