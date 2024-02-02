@@ -26,7 +26,7 @@ class JointPoint:
         JointPoint.instance_counter = 0
     
     def __hash__(self) -> int:
-        return hash((self.r[0], self.r[1], self.r[2], self.w[0], self.w[1], self.w[2], self.attach_ground, self.attach_endeffector, self.active, self.weld, self.__instance_counter))
+        return hash((self.r[0], self.r[1], self.r[2], self.w[0], self.w[1], self.w[2], self.attach_ground, self.attach_endeffector, self.active, self.__instance_counter))
     
     def __eq__(self, __value: object) -> bool:
         return hash(self) == hash(__value)
