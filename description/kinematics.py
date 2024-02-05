@@ -4,6 +4,14 @@ import numpy as np
 import networkx as nx
 
 
+def get_ground_joints(graph: nx.Graph):
+    joint_nodes = graph.nodes()
+    return filter(lambda n: n.attach_ground, joint_nodes)
+
+def get_endeffector_joints(graph: nx.Graph):
+    joint_nodes = graph.nodes()
+    return filter(lambda n: n.attach_endeffector, joint_nodes)
+
 @dataclass
 class JointPoint:
     """Describe a point in global frame where a joint is attached"""
@@ -51,6 +59,7 @@ class Link:
 
 class KinematicStructure(nx.Graph):
     pass
+
 
 if __name__ == "__main__":
     print("Kinematic description of the mechanism")
