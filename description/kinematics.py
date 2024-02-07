@@ -21,6 +21,7 @@ class JointPoint:
     attach_ground: bool = False
     attach_endeffector: bool = False
     name: str = ""  # noqa: F811
+    
     instance_counter: int = 0
     
     def __post_init__(self):
@@ -43,6 +44,12 @@ class JointPoint:
 class Link:
     name: str = ""
     joints: set[JointPoint] = field(default_factory=set)
+    in_joint: JointPoint = None
+    main_out_joint: JointPoint = None
+    out_joint: set[JointPoint] = field(default_factory=set)
+    constraint_joints: set[JointPoint] = field(default_factory=set)
+    frame: np.ndarray = field(default_factory=np.zeros(7))
+    inertial_frame: np.ndarray = field(default_factory=np.zeros(7))
     instance_counter: int = 0
 
     def __post_init__(self):
@@ -55,10 +62,8 @@ class Link:
         return hash((self.name, *self.joints))
 
     def __eq__(self, __value: object) -> bool:
-        self.joints == __value.joints
+        return self.joints == __value.joints
 
-class KinematicStructure(nx.Graph):
-    pass
 
 
 if __name__ == "__main__":

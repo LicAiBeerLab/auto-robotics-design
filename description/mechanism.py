@@ -142,7 +142,7 @@ def define_link_frames(
     main_branch=[],
     all_joints=set(),
     **kwargs
-):
+    ):
     if init_link == "G" and in_joint is None:
         kwargs = {}
         kwargs["ez"] = np.array([0, 0, 1, 0])
