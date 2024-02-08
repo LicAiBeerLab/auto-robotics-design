@@ -1,14 +1,47 @@
-from matplotlib import legend, scale
 import networkx as nx
 import numpy as np
 import numpy.linalg as la
 import matplotlib.pyplot as plt
 
 from description.kinematics import Link
-
+from trimesh import Trimesh
 from scipy.spatial.transform import Rotation as R
 import modern_robotics as mr
 
+from description.mechanism import KinematicGraph
+
+
+def trans2_xyz_rpy(trans: np.ndarray) -> tuple[list[float]]:
+    rot, pos = mr.TransToRp(trans)
+    return (pos.tolist(), R.from_matrix(rot).as_euler("xyz"))
+
+def trans2_xyz_quat(trans: np.ndarray) -> tuple[list[float]]:
+    rot, pos = mr.TransToRp(trans)
+    return (pos.tolist(), R.from_matrix(rot).as_quat("xyz"))
+
+def tensor_inertia_sphere(density, r):
+    mass = 4/3 * np.pi * r**3 * density
+    central_inertia =  2/5 * mass * r**2
+    
+    tensor_inertia = np.diag([central_inertia for __ in range(3)])
+    
+    return mass, tensor_inertia
+
+def tensor_inertia_box(density, x, y, z):
+    mass = x*y*z*density
+    inertia = lambda a1, a2:  1/12 * mass * (a1**2 + a2**2)
+    
+    inertia_xx = inertia(y, z)
+    inertia_yy = inertia(x, z)
+    inertia_zz = inertia(x, y)
+    
+    tensor_inertia = np.diag([inertia_xx, inertia_yy, inertia_zz])
+    
+    return mass, tensor_inertia
+
+def tensor_inertia_mesh(density, mesh: Trimesh):
+    mesh.density = density
+    return mesh.mass, mesh.moment_inertia
 
 def calc_weight_for_span(edge, graph: nx.Graph):
     length_to_EE = [nx.shortest_path_length(graph, source="EE", target=e) for e in edge[:2]]
@@ -54,13 +87,14 @@ def plot_link(L: Link, graph: nx.Graph, color):
         with_labels=False,
     )
 
-def draw_links(kinematic_graph: nx.Graph, JP_graph: nx.Graph):
+def draw_links(kinematic_graph: KinematicGraph, JP_graph: nx.Graph):
     links = kinematic_graph.nodes()
+    EE_joint = next(iter(kinematic_graph.EE.joints))
     colors = range(len(links))
     draw_joint_point(JP_graph) 
     for link, color in zip(links, colors):
-        sub_graph_l = JP_graph.subgraph(links[link]["link"].joints)
-        name_link = links[link]["link"].name
+        sub_graph_l = JP_graph.subgraph(set([j.jp for j in link.joints]))
+        name_link = link.name
         options = {
             "node_color": "orange",
             "edge_color": "orange",
@@ -75,7 +109,7 @@ def draw_links(kinematic_graph: nx.Graph, JP_graph: nx.Graph):
         pos = get_pos(sub_graph_l)
         list_pos = [p for p in pos.values()]
         if len(list_pos) == 1:
-            pos_name = np.array(list_pos).squeeze() + np.ones(2) * 0.2
+            pos_name = np.array(list_pos).squeeze() + np.ones(2) * 0.2 * la.norm(EE_joint.r)/5
         else:
             pos_name = np.mean([p for p in pos.values()], axis=0)
         nx.draw(sub_graph_l, pos, **options)
@@ -118,7 +152,7 @@ def draw_joint_point(graph: nx.Graph):
         node_size=150,
         with_labels=False,
     )
-    pos_labels = {g:np.array(p) + np.array([-0.2, 0.2]) for g, p in pos.items()}
+    pos_labels = {g:np.array(p) + np.array([-0.2, 0.2])*la.norm(EE_pos)/5 for g, p in pos.items()}
     nx.draw_networkx_labels(
         graph,
         pos_labels,
@@ -137,15 +171,16 @@ def draw_joint_point(graph: nx.Graph):
 
 
 def draw_kinematic_graph(graph: nx.Graph):
-    elarge = [(u, v) for (u, v, d) in graph.edges(data=True) if d["joint"].active]
-    esmall = [(u, v) for (u, v, d) in graph.edges(data=True) if not d["joint"].active]
-    pos = nx.spring_layout(graph, seed=7)
+    elarge = [(u, v) for (u, v, d) in graph.edges(data=True) if d["joint"].jp.active]
+    esmall = [(u, v) for (u, v, d) in graph.edges(data=True) if not d["joint"].jp.active]
+    labels = {l:l.name for l in graph.nodes()}
+    pos = nx.planar_layout(graph)
     nx.draw_networkx_nodes(graph, pos, node_size=700)
     nx.draw_networkx_edges(graph, pos, edgelist=elarge, width=6)
     nx.draw_networkx_edges(
         graph, pos, edgelist=esmall, width=6, alpha=0.5, edge_color="b", style="dashed"
     )
-    nx.draw_networkx_labels(graph, pos, font_size=20, font_family="sans-serif")
+    nx.draw_networkx_labels(graph, pos, labels, font_size=20, font_family="sans-serif")
 
     edge_labels = nx.get_edge_attributes(graph, "weight")
     nx.draw_networkx_edge_labels(graph, pos, edge_labels)

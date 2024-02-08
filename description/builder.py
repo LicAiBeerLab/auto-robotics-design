@@ -12,8 +12,7 @@ import modern_robotics as mr
 
 from description.kinematics import JointPoint, Link
 
-from description.utils import calculate_inertia
-from abc import abstractmethod
+# from description.utils import calculate_inertia
 
 
 def add_branch(G: nx.Graph, branch: List[JointPoint] | List[List[JointPoint]]):

@@ -1,6 +1,7 @@
 from collections import deque
 from itertools import combinations
 from copy import deepcopy
+from typing import Optional
 
 import numpy as np
 import numpy.linalg as la
@@ -12,12 +13,14 @@ import modern_robotics as mr
 import networkx as nx
 
 from description.kinematics import (
+    Joint,
     JointPoint,
     Link,
     get_ground_joints,
     get_endeffector_joints,
 )
-from description.utils import calc_weight_for_span
+
+# from description.utils import calc_weight_for_span
 
 
 def get_rot_matrix_by_vec(v_l, w):
@@ -38,100 +41,113 @@ def build_homogeneous_transformation(v_l, w, v_trans):
     return Hj, q_init
 
 
+class KinematicGraph(nx.Graph):
+    def __init__(self, incoming_graph_data=None, **attr):
+        super().__init__(incoming_graph_data, **attr)
+        self.EE: Optional[Link] = None
+        self.G: Optional[Link] = None
+        self.main_branch: list[Link] = None
+        self.kinematic_tree: nx.Graph = nx.Graph()
+
 def JointPoint2KinematicGraph(jp_graph: nx.Graph):
+    JP2Joint = {}
+    for jp in jp_graph.nodes():
+        JP2Joint[jp] = Joint(jp) 
+    
+    joint_graph: nx.Graph = nx.relabel_nodes(jp_graph, JP2Joint)
+    
+    ground_joints = set([JP2Joint[jp] for jp in get_ground_joints(jp_graph)])
+    ee_joints = set([JP2Joint[jp] for jp in get_endeffector_joints(jp_graph)])
+    
+    ground_link = Link(ground_joints, "G")
+    ee_link = Link(ee_joints, "EE")
 
-    ground_joints = set(get_ground_joints(jp_graph))
-    ee_joints = set(get_endeffector_joints(jp_graph))
-    ground_link = Link("G", ground_joints)
-    ee_link = Link("EE", ee_joints)
+    for joint in ground_joints:
+        joint.link_in = ground_link
+    for joint in ee_joints:
+        joint.link_out = ee_link
 
-    stack_joints: deque[JointPoint] = deque(maxlen=len(jp_graph.nodes()))
+    stack_joints: deque[Joint] = deque(maxlen=len(JP2Joint.values()))
 
     stack_joints += list(ground_joints)
-    j2link: dict[JointPoint, set[Link]] = {j: set() for j in jp_graph.nodes()}
-    for j in ground_joints:
-        j2link[j].add(ground_link)
-    for ee_j in ee_joints:
-        j2link[ee_j].add(ee_link)
+    # j2link: dict[JointPoint, set[Link]] = {j: set() for j in jp_graph.nodes()}
 
     exped_j = set()
     links: list[Link] = [ee_link, ground_link]
 
     while stack_joints:
-        curr_j = stack_joints.pop()
-        L = next(iter(j2link[curr_j]))
-        exped_j.add(curr_j)
-        L1 = jp_graph.subgraph(L.joints)
-        N = set(jp_graph.neighbors(curr_j)) - L.joints
+        current_joint = stack_joints.pop()
+        # current_joint = JP2Joint[curr_jp]
+        L = next(iter(current_joint.links))
+        exped_j.add(current_joint)
+        L1 = joint_graph.subgraph(L.joints)
+        N = set(joint_graph.neighbors(current_joint)) - L.joints
         nextN = {}
         lenNN = {}
         for n in N:
-            nextN[n] = set(jp_graph.neighbors(n))
+            nextN[n] = set(joint_graph.neighbors(n))
             lenNN[n] = len(nextN[n] & L.joints)
-            j2link[n]
         if len(L.joints) <= 2:
-            L2 = Link(joints=(N | set([curr_j])))
+            L2 = Link(joints=(N | set([current_joint])))
             for j in L2.joints:
-                j2link[j].add(L2)
+                j.links.add(L2)
         elif len(N) == 1:
             N = N.pop()
-            if lenNN[n] == 1:
-                L2 = Link(joints=set([N, curr_j]))
+            if lenNN[N] == 1:
+                L2 = Link(joints=set([N, current_joint]))
                 for j in L2.joints:
-                    j2link[j].add(L2)
+                    j.links.add(L2)
             else:
-                L1.joints.add(n)
-                j2link[n].add(L1)
+                L1.joints.add(N)
+                N.links.add(L1)
                 continue
         else:
             more_one_adj_L1 = set(filter(lambda n: lenNN[n] > 1, N))
             for n in more_one_adj_L1:
                 L1.joints.add(n)
-                j2link[n].add(L1)
+                n.links.add(L1)
             less_one_adj_L1 = N - more_one_adj_L1
             if len(less_one_adj_L1) > 1:
                 N = less_one_adj_L1
-                L2 = Link(joints=(N | set([curr_j])))
+                L2 = Link(joints=(N | set([current_joint])))
                 for j in L2.joints:
-                    j2link[j].add(L2)
+                    j.links.add(L2)
             else:
-                N = less_one_adj_L1.pop()
-                L2 = Link(joints=set([N, curr_j]))
-                j2link[N].add(L2)
+                N = list(less_one_adj_L1)[0]
+                L2 = Link(joints=set([N, current_joint]))
+                N.links.add(L2)
         links.append(L2)
         if isinstance(N, set):
-            intersting_joints = set(filter(lambda n: len(j2link[n]) < 2, N))
+            intersting_joints = set(filter(lambda n: len(n.links) < 2, N))
             stack_joints += list(intersting_joints)
         else:
-            intersting_joints = N if len(j2link[N]) < 2 else set()
+            intersting_joints = N if len(N.links) < 2 else set()
             stack_joints.append(N)
-        stack_joints = deque(filter(lambda j: len(j2link[j]) < 2, stack_joints))
+        stack_joints = deque(filter(lambda j: len(j.links) < 2, stack_joints))
 
-    kin_graph = nx.Graph()
-    for l in links:
-        kin_graph.add_node(l.name, link=l)
-    pairs = combinations(links, 2)
-
-    list_edges = filter(lambda x: len(x[0].joints & x[1].joints) > 0, pairs)
-    list_edges = list(
-        map(lambda x: x + tuple([(x[0].joints & x[1].joints).pop()]), list_edges)
-    )
-
-    for edge in list_edges:
-        kin_graph.add_edge(edge[0].name, edge[1].name, joint=edge[-1])
+    kin_graph = KinematicGraph()
+    kin_graph.EE = ee_link
+    kin_graph.G = ground_link
+    for joint in joint_graph.nodes():
+        connected_links = list(joint.links)
+        if len(connected_links) == 2:
+            kin_graph.add_edge(connected_links[0],
+                                connected_links[1],
+                                joint = joint)
+    
     return kin_graph
 
 
-def get_span_tree_n_main_branch(graph: nx.Graph, f_weight=calc_weight_for_span):
-    weighted_graph = deepcopy(graph)
-    for edge in weighted_graph.edges(data=True):
-        weighted_graph.add_weighted_edges_from(
-            [(edge[0], edge[1], calc_weight_for_span(edge, weighted_graph))]
-        )
-    span_tree = nx.maximum_spanning_tree(weighted_graph, algorithm="prim")
-    main_branch = nx.all_shortest_paths(span_tree, "G", "EE")
-    main_branch = sorted([path for path in main_branch], key=lambda x: len(x), reverse=True)[0]
-    return span_tree, main_branch
+# def get_span_tree_n_main_branch(graph: nx.Graph, f_weight=calc_weight_for_span):
+#     weighted_graph = deepcopy(graph)
+#     for edge in weighted_graph.edges(data=True):
+#         weighted_graph.add_weighted_edges_from(
+#             [(edge[0], edge[1], calc_weight_for_span(edge, weighted_graph))]
+#         )
+#     span_tree = nx.maximum_spanning_tree(weighted_graph, algorithm="prim")
+#     main_branch = nx.all_shortest_paths(span_tree, "G", "EE")
+#     main_branch = sorted([path for path in main_branch], key=lambda x: len(x), reverse=True)[0]
+#     return span_tree, main_branch
 
 
 def define_link_frames(

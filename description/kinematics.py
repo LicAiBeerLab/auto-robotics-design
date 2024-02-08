@@ -1,69 +1,284 @@
-from dataclasses import dataclass,field
+from abc import abstractmethod
+from copy import deepcopy
+from dataclasses import dataclass, field
+from typing import Optional
 
 import numpy as np
+from numpy.core.multiarray import zeros as zeros
+import numpy.linalg as la
+
 import networkx as nx
+from trimesh import Trimesh
+from trimesh.convex import convex_hull
 
-
-def get_ground_joints(graph: nx.Graph):
-    joint_nodes = graph.nodes()
-    return filter(lambda n: n.attach_ground, joint_nodes)
-
-def get_endeffector_joints(graph: nx.Graph):
-    joint_nodes = graph.nodes()
-    return filter(lambda n: n.attach_endeffector, joint_nodes)
 
 @dataclass
 class JointPoint:
     """Describe a point in global frame where a joint is attached"""
+
     r: np.ndarray = field(default_factory=np.zeros(3))
     w: np.ndarray = field(default_factory=np.zeros(3))
     active: bool = False
     attach_ground: bool = False
     attach_endeffector: bool = False
     name: str = ""  # noqa: F811
-    
+
     instance_counter: int = 0
-    
+
     def __post_init__(self):
         JointPoint.instance_counter += 1
         self.__instance_counter = JointPoint.instance_counter
-        if self.name=="":
+        if self.name == "":
             self.name = "J" + str(self.__instance_counter)
 
-    
     def reser_id_counter(self):
         JointPoint.instance_counter = 0
-    
+
     def __hash__(self) -> int:
-        return hash((self.r[0], self.r[1], self.r[2], self.w[0], self.w[1], self.w[2], self.attach_ground, self.attach_endeffector, self.active, self.__instance_counter))
-    
+        return hash(
+            (
+                self.r[0],
+                self.r[1],
+                self.r[2],
+                self.w[0],
+                self.w[1],
+                self.w[2],
+                self.attach_ground,
+                self.attach_endeffector,
+                self.active,
+                self.__instance_counter,
+            )
+        )
+
     def __eq__(self, __value: object) -> bool:
         return hash(self) == hash(__value)
 
-@dataclass
+
+def get_ground_joints(graph: nx.Graph):
+    joint_nodes = graph.nodes()
+    return filter(lambda n: n.attach_ground, joint_nodes)
+
+
+def get_endeffector_joints(graph: nx.Graph):
+    joint_nodes = graph.nodes()
+    return filter(lambda n: n.attach_endeffector, joint_nodes)
+
+
+def create_mesh_from_joints(jp_list: list[JointPoint], thickness) -> Trimesh:
+    vertices = []
+    for jp in jp_list:
+        v1 = deepcopy(jp.r)
+        v2 = deepcopy(jp.r)
+        v1[1] = thickness / 2
+        v2[1] = -thickness / 2
+        vertices += [v1, v2]
+
+    return convex_hull(vertices)
+
+
+class Geometry:
+
+    def __init__(
+        self,
+        density: float = 0,
+        size: list[float] | Trimesh = [],
+        mass: float = 0,
+        inertia: np.ndarray = np.zeros((3, 3)),
+    ) -> None:
+        self.shape: str = ""
+        self._size: list[float] | Trimesh = size
+        self._density: float = density
+        if mass == 0 and np.sum(inertia) == 0:
+            self.calculate_inertia()
+        else:
+            self.mass: float = mass
+            self.inertia = inertia
+
+    @property
+    def size(self):
+        return self.size
+
+    @size.setter
+    def size(self, values: list[float] | Trimesh):  # noqa: F811
+        self._size = values
+        self.calculate_inertia()
+
+    @property
+    def density(self):
+        return self.density
+
+    @density.setter
+    def density(self, values: float):  # noqa: F811
+        self._density = values
+        self.calculate_inertia()
+
+    @abstractmethod
+    def calculate_inertia(self) -> tuple[float, np.ndarray]:
+        return self.mass, self.inertia
+
+
+class Box(Geometry):
+    def __init__(
+        self,
+        density: float = 0,
+        size: list[float] | Trimesh = [],
+        mass: float = 0,
+        inertia: np.ndarray = np.zeros((3, 3)),
+    ) -> None:
+        super().__init__(density, size, mass, inertia)
+        self.shape = "box"
+
+    def calculate_inertia(self):
+        self.mass = np.multiply(self.size) * self.density
+        inertia = lambda a1, a2: 1 / 12 * self.mass * (a1**2 + a2**2)
+
+        inertia_xx = inertia(self.size[1:])
+        inertia_yy = inertia(self.size[1], self.size[2])
+        inertia_zz = inertia(self.size[:-1])
+
+        self.inertia = np.diag([inertia_xx, inertia_yy, inertia_zz])
+
+        return self.mass, self.inertia
+
+
+class Sphere(Geometry):
+    def __init__(
+        self,
+        density: float = 0,
+        size: list[float] = [],
+        mass: float = 0,
+        inertia: np.ndarray = np.zeros((3, 3)),
+    ) -> None:
+        super().__init__(density, size, mass, inertia)
+        self.shape = "sphere"
+
+    def calculate_inertia(self):
+        self.mass = 4 / 3 * np.pi * self.size[0] ** 3 * self.density
+        central_inertia = 2 / 5 * self.mass * self.size[0] ** 2
+
+        self.inertia = np.diag([central_inertia for __ in range(3)])
+
+        return self.mass, self.inertia
+
+
+class Mesh(Geometry):
+    def __init__(
+        self,
+        density: float = 0.0,
+        size: Trimesh = Trimesh(),
+        mass: float = 0.0,
+        inertia: np.ndarray = np.zeros((3, 3)),
+    ) -> None:
+        super().__init__(density, size, mass, inertia)
+        self._size.density = density
+        self.shape = "mesh"
+
+    def calculate_inertia(self):
+        self.mass = self._size.mass
+
+        self.inertia = self._size.moment_inertia
+
+        return self.mass, self.inertia
+
 class Link:
-    name: str = ""
-    joints: set[JointPoint] = field(default_factory=set)
-    in_joint: JointPoint = None
-    main_out_joint: JointPoint = None
-    out_joint: set[JointPoint] = field(default_factory=set)
-    constraint_joints: set[JointPoint] = field(default_factory=set)
-    frame: np.ndarray = field(default_factory=np.zeros(7))
-    inertial_frame: np.ndarray = field(default_factory=np.zeros(7))
     instance_counter: int = 0
 
-    def __post_init__(self):
+    def __init__(
+        self,
+        joints: set[JointPoint],
+        name: str = "",
+        geometry: Optional[Geometry] = None,
+        frame: np.ndarray = np.eye(4),
+        inertial_frame: np.ndarray = np.eye(4),
+        density: float = 0,
+        thickness: float = 0,
+    ) -> None:
+        self.joints: set[JointPoint] = joints
+        self.name: str = name
+        self.geometry = geometry
+
+        self.frame: np.ndarray = frame
+        self.inertial_frame: np.ndarray = inertial_frame
+
+        self.density: float = density
+        self.thickness: float = thickness
+        
         Link.instance_counter += 1
         self.instance_counter = Link.instance_counter
         if self.name == "":
             self.name = "L" + str(self.instance_counter)
 
+    def define_geometry(self):
+        num_joint = len(self.joints)
+        if num_joint == 1:
+            self.geometry = Sphere(self.density, [self.thickness])
+        elif num_joint == 2:
+            joint_list = list(self.joints)
+            vector = joint_list[1].r - joint_list[0].r
+            size =  [self.thickness, self.thickness, la.norm(vector)]
+            self.geometry = Box(self.density, size)
+        elif num_joint > 2:
+            mesh = create_mesh_from_joints(self.joints, self.thickness)
+            self.geometry = Mesh(self.density, mesh)
+        else:
+            raise Exception("Zero joints")
+
+    def str(self):
+        return {self.name: tuple(j.jp.name for j in self.joints)}
+        
     def __hash__(self) -> int:
         return hash((self.name, *self.joints))
 
     def __eq__(self, __value: object) -> bool:
         return self.joints == __value.joints
 
+
+class Joint:
+    def __init__(self, joint_point: JointPoint,
+                is_constraint: bool = False,
+                links: set[Link] = set({}),
+                frame: np.ndarray = np.eye(4) ) -> None:
+        self.jp = joint_point
+        self.is_constraint = is_constraint
+        self.links = deepcopy(links)
+        self._link_in = None
+        self._link_out = None
+        self.frame = frame
+    
+    @property
+    def link_in(self):
+        return self._link_in
+    
+    @link_in.setter
+    def link_in(self, value: Link):  # noqa: F811
+        self._link_in = value
+        self.links = self.links | set([value])
+        
+    @property
+    def link_out(self):
+        return self._link_out
+    
+    @link_out.setter
+    def link_out(self, value: Link):  # noqa: F811
+        self._link_out = value
+        self.links = self.links | set([value])
+
+    def str(self):
+        str_repr = {self.jp.name: tuple(l.name for l in self.links)}
+        if self.link_in:
+            str_repr["in"] =  self.link_in.name
+        if self.link_out:
+            str_repr["out"] =  self.link_out.name
+        return str_repr
+    
+    def __hash__(self) -> int:
+        return hash((
+            self.jp,
+            self.is_constraint,
+        ))
+    
+    def __eq__(self, __value: object) -> bool:
+        return hash(self) == hash(__value)
 
 
 if __name__ == "__main__":
