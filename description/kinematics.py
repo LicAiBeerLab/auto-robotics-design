@@ -54,16 +54,6 @@ class JointPoint:
         return hash(self) == hash(__value)
 
 
-def get_ground_joints(graph: nx.Graph):
-    joint_nodes = graph.nodes()
-    return filter(lambda n: n.attach_ground, joint_nodes)
-
-
-def get_endeffector_joints(graph: nx.Graph):
-    joint_nodes = graph.nodes()
-    return filter(lambda n: n.attach_endeffector, joint_nodes)
-
-
 def create_mesh_from_joints(jp_list: list[JointPoint], thickness) -> Trimesh:
     vertices = []
     for jp in jp_list:
@@ -197,8 +187,8 @@ class Link:
         self.name: str = name
         self.geometry = geometry
 
-        self.frame: np.ndarray = frame
-        self.inertial_frame: np.ndarray = inertial_frame
+        self.frame: np.ndarray = deepcopy(frame)
+        self.inertial_frame: np.ndarray = deepcopy(inertial_frame)
 
         self.density: float = density
         self.thickness: float = thickness
@@ -236,14 +226,14 @@ class Link:
 class Joint:
     def __init__(self, joint_point: JointPoint,
                 is_constraint: bool = False,
-                links: set[Link] = set({}),
+                links: set[Link] = set(),
                 frame: np.ndarray = np.eye(4) ) -> None:
         self.jp = joint_point
         self.is_constraint = is_constraint
         self.links = deepcopy(links)
         self._link_in = None
         self._link_out = None
-        self.frame = frame
+        self.frame = deepcopy(frame)
     
     @property
     def link_in(self):
@@ -281,18 +271,35 @@ class Joint:
         return hash(self) == hash(__value)
 
 
+def get_ground_joints(graph: nx.Graph):
+    if isinstance(list(graph.nodes())[0], JointPoint):
+        joint_nodes = graph.nodes()
+        return filter(lambda n: n.attach_ground, joint_nodes)
+    else:
+        joint_nodes = graph.nodes()
+        return filter(lambda n: n.jp.attach_ground, joint_nodes)
+
+
+def get_endeffector_joints(graph: nx.Graph):
+    if isinstance(list(graph.nodes())[0], JointPoint):
+        joint_nodes = graph.nodes()
+        return filter(lambda n: n.attach_endeffector, joint_nodes)
+    else:
+        joint_nodes = graph.nodes()
+        return filter(lambda n: n.jp.attach_endeffector, joint_nodes)
+
 if __name__ == "__main__":
     print("Kinematic description of the mechanism")
     # Define the joint points
     joint_points = [
-        JointPoint(pos=np.array([0, 0, 0]), weld=True, attach_ground=True),
-        JointPoint(pos=np.array([1, 0, 0]), weld=True),
-        JointPoint(pos=np.array([0, 1, 0])),
-        JointPoint(pos=np.array([0, 0, 1]), weld=True),
-        JointPoint(pos=np.array([1, 1, 0])),
-        JointPoint(pos=np.array([1, 0, 1]), weld=True),
-        JointPoint(pos=np.array([0, 1, 1])),
-        JointPoint(pos=np.array([1, 1, 1]), weld=True, attach_endeffector=True),
+        JointPoint(r=np.array([0, 0, 0]), attach_ground=True),
+        JointPoint(r=np.array([1, 0, 0])),
+        JointPoint(r=np.array([0, 1, 0])),
+        JointPoint(r=np.array([0, 0, 1])),
+        JointPoint(r=np.array([1, 1, 0])),
+        JointPoint(r=np.array([1, 0, 1])),
+        JointPoint(r=np.array([0, 1, 1])),
+        JointPoint(r=np.array([1, 1, 1]), attach_endeffector=True),
     ]
     print(joint_points[0] == joint_points[1])
     print(joint_points[0] == joint_points[0])

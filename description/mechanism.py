@@ -1,7 +1,10 @@
 from collections import deque
 from itertools import combinations
 from copy import deepcopy
+from shlex import join
 from typing import Optional
+from matplotlib import pyplot as plt
+from mediapy import set_ffmpeg
 
 import numpy as np
 import numpy.linalg as la
@@ -14,31 +17,16 @@ import networkx as nx
 
 from description.kinematics import (
     Joint,
-    JointPoint,
     Link,
     get_ground_joints,
     get_endeffector_joints,
 )
-
-# from description.utils import calc_weight_for_span
-
-
-def get_rot_matrix_by_vec(v_l, w):
-    ez = np.array([0, 0, 1])
-    ex = np.array([1, 0, 0])
-    angle = np.arccos(np.inner(ez, v_l) / la.norm(ez) / la.norm(v_l))
-    out = lambda q: R.from_rotvec(
-        w * (angle + np.sign(np.inner(ex, v_l)) * q),
-    )
-    return out, angle
-
-
-def build_homogeneous_transformation(v_l, w, v_trans):
-    Rj, q_init = get_rot_matrix_by_vec(v_l, w)
-    Hj = lambda q: np.r_[
-        np.c_[Rj(q), np.array([0, 0, la.norm(v_trans)])], np.array([[0, 0, 0, 1]])
-    ]
-    return Hj, q_init
+from description.utils import (
+    calc_weight_for_span,
+    draw_joint_point,
+    get_pos,
+    weight_by_dist_active,
+)
 
 
 class KinematicGraph(nx.Graph):
@@ -46,19 +34,164 @@ class KinematicGraph(nx.Graph):
         super().__init__(incoming_graph_data, **attr)
         self.EE: Optional[Link] = None
         self.G: Optional[Link] = None
-        self.main_branch: list[Link] = None
+        self.main_branch: nx.Graph = nx.Graph()
         self.kinematic_tree: nx.Graph = nx.Graph()
+        self.joint_graph: nx.Graph = nx.Graph()
+
+    def define_main_branch(self):
+        ground_joints = sorted(
+            list(get_ground_joints(self.joint_graph)),
+            key=lambda x: la.norm(x.jp.r),
+        )
+        main_G_j = ground_joints[0]
+        ee_joints = sorted(
+            list(get_endeffector_joints(self.joint_graph)),
+            key=lambda x: la.norm(x.jp.r - main_G_j.jp.r),
+        )
+        main_EE_j = ee_joints[0]
+        # draw_joint_point(self.joint_graph)
+        # plt.show()
+        j_in_m_branch = nx.shortest_path(
+            self.joint_graph, main_G_j, main_EE_j, weight=weight_by_dist_active
+        )
+        main_branch = [self.G]
+        for i in range(0, len(j_in_m_branch)):
+            main_branch.append(
+                (j_in_m_branch[i].links - set([main_branch[-1]])).pop()
+            )
+        self.main_branch = self.subgraph(main_branch)
+        return self.main_branch
+
+    def define_span_tree(self, main_branch=None):
+        if main_branch:
+            self.main_branch = self.subgraph(main_branch)
+        main_branch = self.main_branch
+
+        for edge in self.edges(data=True):
+            weight = calc_weight_for_span(edge, self)
+            self[edge[0]][edge[1]]["weight"] = weight
+
+        for m_edge in main_branch.edges():
+            self[m_edge[0]][m_edge[1]]["weight"] = (
+                self[m_edge[0]][m_edge[1]]["weight"] + 1000
+            )
+
+        self.kinematic_tree = nx.maximum_spanning_tree(self, algorithm="prim")
+        return self.kinematic_tree
+
+    @property
+    def joint2edge(self):
+        edges = self.edges(data=True)
+        j2edge = {j: set() for j in self.joint_graph.nodes()}
+        for data in edges:
+            j2edge[data[2]["joint"]] = set((data[0], data[1]))
+        return j2edge
+
+    # def get_next_link(self, joint: Joint, prev_link):
+    #     joint.link_in = prev_link
+    #     joint.link_out = (self.joint2edge[joint] - set([prev_link])).pop()
+    #     return joint.link_out
+    
+    def get_in_joint(self, prev_link, next_link):
+        in_joint: Joint = self[prev_link][next_link]["joint"]
+        in_joint.link_out = next_link
+        in_joint.link_in = prev_link
+        return in_joint
+    
+    def set_link_frame_by_joints(self,link, in_j, out_j):
+            ez = np.array([0,0,1])
+            v_w = out_j.jp.r - in_j.jp.r
+            angle = np.arccos(np.inner(ez, v_w) / 
+                            la.norm(v_w) / 
+                            la.norm(ez))
+            
+            axis = mr.VecToso3(ez) @ v_w
+            axis /= la.norm(axis)
+            
+            rot = R.from_rotvec(axis * angle)
+            pos = in_j.jp.r
+            
+            link.frame = mr.RpToTrans(rot.as_matrix(), 
+                                        pos)
+            link.inertial_frame[2,3] = la.norm(v_w)/2
+
+    def define_link_frames(self):
+        links = self.nodes() - set([self.G])
+        
+        path_from_G = nx.shortest_path(self.kinematic_tree, self.G)
+        path_main_branch: list = nx.shortest_path(self.kinematic_tree, self.G, self.EE)
+        
+        for link in links:
+            path_G_link = path_from_G[link]
+            prev_link = path_G_link[-2]
+            if len(link.joints) == 2:
+                close_j_to_G: Joint = self.get_in_joint(prev_link,link)
+                out_joint = (link.joints - set([close_j_to_G])).pop()
+                out_joint.link_in = link
+                self.set_link_frame_by_joints(link, close_j_to_G, out_joint)
+
+            elif len(link.joints) > 2:
+                if link in self.main_branch:
+                    num = path_main_branch.index(link)
+                    prev_link = path_main_branch[num-1]
+
+                in_joint = self.get_in_joint(prev_link,link)
+                out_joints = link.joints - set([in_joint])
+                j2edge = self.joint2edge
+                
+                joint_tree = set(filter(lambda j: tuple(j2edge[j]) in self.kinematic_tree.edges(),out_joints))
+                joint_main = set(filter(lambda j: tuple(j2edge[j]) in self.main_branch.edges(),joint_tree))
+                    
+                if joint_main:
+                    out_joint = joint_main.pop()
+                elif joint_tree:
+                    out_joint = sorted(list(joint_tree),
+                                    key=lambda out_j: la.norm(out_j.jp.r - in_joint.jp.r),
+                                    reverse=True)[0]
+                else:
+                    out_joint = sorted(list(out_joints),
+                                    key=lambda out_j: la.norm(out_j.jp.r - in_joint.jp.r),
+                                    reverse=True)[0]
+                self.set_link_frame_by_joints(link, in_joint, out_joint)
+                other_out_joint = out_joints - set([out_joint])
+                for j in other_out_joint:
+                    j.link_in = link
+            else:
+                in_joint = self.get_in_joint(prev_link,link)
+                link.frame[:3,3] = in_joint.jp.r
+        
+        for edges in self.kinematic_tree.edges(data=True):
+            joint: Joint = self[edges[0]][edges[1]]["joint"]
+            prev_link = joint.link_in
+            next_link = joint.link_out
+            joint.frame = mr.TransInv(prev_link.frame) @ next_link.frame
+            
+        for edges in self.edges() - self.kinematic_tree.edges():
+            
+            joint: Joint = self[edges[0]][edges[1]]["joint"]
+            prev_link = joint.link_in
+            next_link = joint.link_out
+            joint.is_constraint = True
+            print(joint.jp.name)
+            prev_in_joint = list(filter(lambda j: j.link_in and j.link_in == prev_link, prev_link.joints))[0]
+            
+            rot, __ = mr.TransToRp(prev_in_joint.frame)
+            pos = mr.TransInv(prev_link.frame) @ np.r_[joint.jp.r, 1]
+            
+            joint.frame = mr.RpToTrans(rot, pos[:3])
+        
+
 
 def JointPoint2KinematicGraph(jp_graph: nx.Graph):
     JP2Joint = {}
     for jp in jp_graph.nodes():
-        JP2Joint[jp] = Joint(jp) 
-    
+        JP2Joint[jp] = Joint(jp)
+
     joint_graph: nx.Graph = nx.relabel_nodes(jp_graph, JP2Joint)
-    
+
     ground_joints = set([JP2Joint[jp] for jp in get_ground_joints(jp_graph)])
     ee_joints = set([JP2Joint[jp] for jp in get_endeffector_joints(jp_graph)])
-    
+
     ground_link = Link(ground_joints, "G")
     ee_link = Link(ee_joints, "EE")
 
@@ -128,26 +261,13 @@ def JointPoint2KinematicGraph(jp_graph: nx.Graph):
     kin_graph = KinematicGraph()
     kin_graph.EE = ee_link
     kin_graph.G = ground_link
+    kin_graph.joint_graph = joint_graph
     for joint in joint_graph.nodes():
         connected_links = list(joint.links)
         if len(connected_links) == 2:
-            kin_graph.add_edge(connected_links[0],
-                                connected_links[1],
-                                joint = joint)
-    
+            kin_graph.add_edge(connected_links[0], connected_links[1], joint=joint)
+
     return kin_graph
-
-
-# def get_span_tree_n_main_branch(graph: nx.Graph, f_weight=calc_weight_for_span):
-#     weighted_graph = deepcopy(graph)
-#     for edge in weighted_graph.edges(data=True):
-#         weighted_graph.add_weighted_edges_from(
-#             [(edge[0], edge[1], calc_weight_for_span(edge, weighted_graph))]
-#         )
-#     span_tree = nx.maximum_spanning_tree(weighted_graph, algorithm="prim")
-#     main_branch = nx.all_shortest_paths(span_tree, "G", "EE")
-#     main_branch = sorted([path for path in main_branch], key=lambda x: len(x), reverse=True)[0]
-#     return span_tree, main_branch
 
 
 def define_link_frames(
@@ -158,7 +278,7 @@ def define_link_frames(
     main_branch=[],
     all_joints=set(),
     **kwargs
-    ):
+):
     if init_link == "G" and in_joint is None:
         kwargs = {}
         kwargs["ez"] = np.array([0, 0, 1, 0])
@@ -270,66 +390,3 @@ def define_link_frames(
                     graph, span_tree, link, jj_out, main_branch, all_joints, **kwargs
                 )
     return graph
-
-
-# class Mechanism:
-#     def __init__(self, graph: nx.Graph = nx.Graph(), main_branch: List[JointPoint] = []) -> None:
-#         self.graph_representation = graph
-#         self.main_branch = main_branch
-
-#     def define_generalized_coord(self, branches: List[List[JointPoint]]):
-#         ez = np.array([0,0,1])
-#         ex = np.array([1,0,0])
-#         if not self.main_branch:
-#             branch_g2ee = list(filter(lambda x: x[0].attach_ground and x[-1].attach_endeffector, branches))
-#             self.main_branch = branch_g2ee[0] if len(branch_g2ee) > 0 else raise Exception("No main branch found")
-#         for branch in branches:
-#             trans = np.zeros(3)
-#             v_w_prev = np.zeros(3)
-#             Hprev = np.eye(4)
-#             out = []
-#             for m in range(len(branch)-1):
-#                 v_w = branch[m+1].r - branch[m].r
-#                 v_l = Hprev @ np.c_[v_w, 0]
-#                 out.append(build_homogeneous_transformation(v_l[:3], branch[m].omg, trans))
-#                 trans = v_w
-#                 Hprev = mr.TransInv(out[-1][0](out[-1][1])) @ mr.TransInv(Hprev)
-
-# def add_branch(self, branch: List[JointPoint] | List[List[JointPoint]]):
-#     is_list  = [isinstance(br, List) for br in branch]
-#     if all(is_list):
-#         for b in branch:
-#             self.add_branch(b)
-#     else:
-#         for i in range(len(branch)-1):
-#             if isinstance(branch[i], List):
-#                 for b in branch[i]:
-#                     self.graph_representation.add_edge(b, branch[i+1])
-#             elif isinstance(branch[i+1], List):
-#                 for b in branch[i+1]:
-#                     self.graph_representation.add_edge(branch[i], b)
-#             else:
-#                 self.graph_representation.add_edge(branch[i], branch[i+1])
-
-# def add_branch_with_attrib(self, branch: List[Tuple(JointPoint, dict)] | List[List[Tuple[JointPoint,dict]]]):
-#     is_list  = [isinstance(br, List) for br in branch]
-#     if all(is_list):
-#         for b in branch:
-#             self.add_branch(b)
-#     else:
-#         for ed in branch:
-#                 self.graph_representation.add_edge(ed[0], ed[1], **ed[2])
-
-# def draw_mechanism(self):
-#     pos = {}
-#     for node in self.graph_representation:
-#         pos[node] = [node.pos[0],node.pos[2]]
-#     nx.draw(self.graph_representation,
-#             pos,
-#             node_color="w",
-#             linewidths=3.5,
-#             edgecolors="k",
-#             node_shape="o",
-#             node_size=150,
-#             with_labels=False)
-#     plt.axis("equal")

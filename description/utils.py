@@ -8,7 +8,7 @@ from trimesh import Trimesh
 from scipy.spatial.transform import Rotation as R
 import modern_robotics as mr
 
-from description.mechanism import KinematicGraph
+# from description.mechanism import KinematicGraph
 
 
 def trans2_xyz_rpy(trans: np.ndarray) -> tuple[list[float]]:
@@ -43,20 +43,25 @@ def tensor_inertia_mesh(density, mesh: Trimesh):
     mesh.density = density
     return mesh.mass, mesh.moment_inertia
 
+def weight_by_dist_active(e1, e2, d):
+    dist = la.norm(e1.jp.r - e2.jp.r)
+    w = dist * 2 if any([j.jp.active for j in [e1, e2]]) else dist
+    return np.round(1/w, 3)
+
 def calc_weight_for_span(edge, graph: nx.Graph):
-    length_to_EE = [nx.shortest_path_length(graph, source="EE", target=e) for e in edge[:2]]
+    length_to_EE = [nx.shortest_path_length(graph, graph.EE, target=e) for e in edge[:2]]
     edge_min_length = np.argmin(length_to_EE)
     min_length_to_EE = min(length_to_EE)
-    next_joints_link = graph.nodes()[edge[edge_min_length]]["link"].joints - set([edge[-1]["joint"]])
+    next_joints_link = edge[edge_min_length].joints - set([edge[-1]["joint"]])
     if next_joints_link:
-        length_next_j_to_j = max([la.norm(edge[-1]["joint"].r - next_j.r) for next_j in next_joints_link])
+        length_next_j_to_j = max([la.norm(edge[-1]["joint"].jp.r - next_j.jp.r) for next_j in next_joints_link])
     else:
         length_next_j_to_j = 0
-    if edge[-1]["joint"].active:
+    if edge[-1]["joint"].jp.active:
         weight = np.round(len(graph.nodes()) * 100 + min_length_to_EE * 10 + length_next_j_to_j/10, 3)
     else:
         weight = np.round(min_length_to_EE * 10 + length_next_j_to_j/10, 3)
-    print(edge[0], edge[1], weight)
+    print(edge[0].name, edge[1].name, weight)
     return weight
 
 
@@ -87,7 +92,7 @@ def plot_link(L: Link, graph: nx.Graph, color):
         with_labels=False,
     )
 
-def draw_links(kinematic_graph: KinematicGraph, JP_graph: nx.Graph):
+def draw_links(kinematic_graph, JP_graph: nx.Graph):
     links = kinematic_graph.nodes()
     EE_joint = next(iter(kinematic_graph.EE.joints))
     colors = range(len(links))
@@ -109,7 +114,7 @@ def draw_links(kinematic_graph: KinematicGraph, JP_graph: nx.Graph):
         pos = get_pos(sub_graph_l)
         list_pos = [p for p in pos.values()]
         if len(list_pos) == 1:
-            pos_name = np.array(list_pos).squeeze() + np.ones(2) * 0.2 * la.norm(EE_joint.r)/5
+            pos_name = np.array(list_pos).squeeze() + np.ones(2) * 0.2 * la.norm(EE_joint.jp.r)/5
         else:
             pos_name = np.mean([p for p in pos.values()], axis=0)
         nx.draw(sub_graph_l, pos, **options)
@@ -161,6 +166,16 @@ def draw_joint_point(graph: nx.Graph):
         font_family = "monospace"
 
     )
+    if nx.is_weighted(graph):
+        edge_labels = nx.get_edge_attributes(graph, "weight")
+        nx.draw_networkx_edge_labels(
+            graph,
+            pos,
+            edge_labels,
+            font_color = "c",
+            font_family = "monospace"
+
+        )
     plt.plot(G_pos[:,0], G_pos[:,1], "ok", label="Ground")
     plt.plot(EE_pos[:,0], EE_pos[:,1], "ob", label="EndEffector")
     plt.plot(active_j_pos[:,0], active_j_pos[:,1], "og",
@@ -182,7 +197,8 @@ def draw_kinematic_graph(graph: nx.Graph):
     )
     nx.draw_networkx_labels(graph, pos, labels, font_size=20, font_family="sans-serif")
 
-    edge_labels = nx.get_edge_attributes(graph, "weight")
+    # edge_labels = nx.get_edge_attributes(graph, "weight")
+    edge_labels = {(u, v):d["joint"].jp.name for (u, v, d) in graph.edges(data=True)}
     nx.draw_networkx_edge_labels(graph, pos, edge_labels)
     ax = plt.gca()
     ax.margins(0.08)
@@ -195,33 +211,51 @@ def draw_link_frames(kinematic_graph: nx.Graph):
     ez = np.array([0, 0, 1, 0])
     p = np.array([0, 0, 0, 1])
     H = np.eye(4)
-    max_length = np.max([la.norm(kinematic_graph.nodes()[n]["frame_geom"][0]) for n in  kinematic_graph.nodes()])
+    max_length = np.max([la.norm(n.inertial_frame[:3,3]) for n in  kinematic_graph.nodes()])
     scale = max_length/4
     plt.figure(figsize=(15,15))
-    for name in kinematic_graph.nodes():
-        data = kinematic_graph.nodes(data=True)[name]
-        frame = data.get("frame", np.zeros(3))
-        geom_l = data.get("frame_geom", np.zeros(3))
-        H_w_l = data.get("H_w_l", np.eye(4))
-        if frame:
-            H = H_w_l
-            ex_l = H @ ex
-            ez_l = H @ ez
-            p_l = H @ p
+    for link in kinematic_graph.nodes():
+        H_w_l = link.frame 
+        Hg = link.inertial_frame
+        H = H_w_l
+        ex_l = H @ ex
+        ez_l = H @ ez
+        p_l = H @ p
 
-            ex_g_l = (
-                H @ mr.RpToTrans(R.from_quat(geom_l[1]).as_matrix(), geom_l[0]) @ ex
-            )
-            ez_g_l = (
-                H @ mr.RpToTrans(R.from_quat(geom_l[1]).as_matrix(), geom_l[0]) @ ez
-            )
-            p_g_l = H @ mr.RpToTrans(R.from_quat(geom_l[1]).as_matrix(), geom_l[0]) @ p
+        ex_g_l = (
+            H @ Hg @ ex
+        )
+        ez_g_l = (
+            H @ Hg @ ez
+        )
+        p_g_l = H @ Hg @ p
 
-            plt.arrow(p_l[0], p_l[2], ex_l[0] * scale, ex_l[2] * scale, color="r")
-            plt.arrow(p_l[0], p_l[2], ez_l[0] * scale, ez_l[2] * scale, color="b")
-            plt.arrow(p_g_l[0], p_g_l[2], ex_g_l[0] * scale, ex_g_l[2] * scale, color="g")
-            plt.arrow(p_g_l[0], p_g_l[2], ez_g_l[0] * scale, ez_g_l[2] * scale, color="c")
+        plt.arrow(p_l[0], p_l[2], ex_l[0] * scale, ex_l[2] * scale, color="r")
+        plt.arrow(p_l[0], p_l[2], ez_l[0] * scale, ez_l[2] * scale, color="b")
+        plt.arrow(p_g_l[0], p_g_l[2], ex_g_l[0] * scale, ex_g_l[2] * scale, color="g")
+        plt.arrow(p_g_l[0], p_g_l[2], ez_g_l[0] * scale, ez_g_l[2] * scale, color="c")
 
+
+def draw_joint_frames(kinematic_graph: nx.Graph):
+    ex = np.array([1, 0, 0, 0])
+    ez = np.array([0, 0, 1, 0])
+    p = np.array([0, 0, 0, 1])
+    H = np.eye(4)
+    max_length = np.max([la.norm(n.inertial_frame[:3,3]) for n in  kinematic_graph.nodes()])
+    scale = max_length/4
+    plt.figure(figsize=(15,15))
+    for edges in kinematic_graph.edges(data=True):
+        joint = edges[2]["joint"]
+        H_l_j = joint.frame
+        H_w_l = joint.link_in.frame
+        H = H_w_l @ H_l_j
+        ex_l = H @ ex
+        ez_l = H @ ez
+        p_l = H @ p
+
+
+        plt.arrow(p_l[0], p_l[2], ex_l[0] * scale, ex_l[2] * scale, color="r")
+        plt.arrow(p_l[0], p_l[2], ez_l[0] * scale, ez_l[2] * scale, color="b")
 
 def calculate_inertia(length):
     Ixx = 1 / 12 * 1 * (0.001**2 * length**2)

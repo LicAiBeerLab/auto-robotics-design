@@ -125,9 +125,9 @@ add_branch(graph, [main_branch, add_branch_1, add_branch_2])
 # add_branch(graph, [main_branch, add_branch_1])
 
 # %%
-from description.utils import draw_joint_point, draw_link_frames
+from description.utils import draw_joint_frames, draw_joint_point, draw_link_frames
 
-draw_joint_point(graph) 
+# draw_joint_point(graph) 
 plt.show()
 
 # %%
@@ -135,38 +135,42 @@ from description.mechanism import JointPoint2KinematicGraph
 from description.utils import draw_links
 
 kinematic_graph = JointPoint2KinematicGraph(graph)
-draw_links(kinematic_graph, graph)
+# draw_links(kinematic_graph, graph)
 plt.show()
 
 # %%
-from description.utils import draw_kinematic_graph
+# from description.utils import draw_kinematic_graph
 
-draw_kinematic_graph(kinematic_graph)
+# draw_kinematic_graph(kinematic_graph)
 plt.show()
 
 # %%
-from description.mechanism import get_span_tree_n_main_branch
 
-kinematic_tree, main_branch = get_span_tree_n_main_branch(kinematic_graph)
-
-print(main_branch)
-draw_kinematic_graph(kinematic_tree)
+kinematic_graph.define_main_branch()
+kinematic_tree = kinematic_graph.define_span_tree()
+print([l.name for l in kinematic_graph.main_branch])
+# draw_kinematic_graph(kinematic_graph.main_branch)
+plt.show()
+# draw_kinematic_graph(kinematic_tree)
 plt.show()
 # %%
-from description.mechanism import define_link_frames
 
-define_link_frames(kinematic_graph, kinematic_tree, main_branch=main_branch, all_joints=graph.nodes())
+kinematic_graph.define_link_frames()
 
 draw_link_frames(kinematic_graph)
 draw_links(kinematic_graph, graph)
 plt.show()
 
-from description.builder import create_urdf
+draw_joint_frames(kinematic_graph)
+draw_links(kinematic_graph, graph)
+plt.show()
 
-urdf = create_urdf(kinematic_graph)
+# from description.builder import create_urdf
 
-with open("ThreeTriangles.urdf", "w") as f:
-    f.write(urdf.urdf())
+# urdf = create_urdf(kinematic_graph)
 
-for eq in (kinematic_graph.edges() - kinematic_tree.edges()):
-    print(f"Link 1: {eq[0]}, Link 2: {eq[1]}, Joint: {kinematic_graph.edges()[eq]['joint'].name}")
+# with open("ThreeTriangles.urdf", "w") as f:
+#     f.write(urdf.urdf())
+
+# for eq in (kinematic_graph.edges() - kinematic_tree.edges()):
+#     print(f"Link 1: {eq[0]}, Link 2: {eq[1]}, Joint: {kinematic_graph.edges()[eq]['joint'].name}")
