@@ -118,7 +118,7 @@ def draw_joint_point(graph: nx.Graph):
         node_size=150,
         with_labels=False,
     )
-    pos_labels = {g:np.array(p) + np.array([-0.2, 0.2]) for g, p in pos.items()}
+    pos_labels = {g:np.array(p) + np.array([-0.05, 0.05]) for g, p in pos.items()}
     nx.draw_networkx_labels(
         graph,
         pos_labels,
