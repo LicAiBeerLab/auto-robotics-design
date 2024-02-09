@@ -102,7 +102,10 @@ def sample_secondary_branch(graph, main_branch, length_range:Tuple[float] = (0.2
     i=0
     while not attach > 0:
         i+=1
-        attach = np.random.choice([True, False]) # randomly choose if the new joint is to be attached to main branch
+        if i<3:
+            attach = np.random.choice([True, False]) # randomly choose if the new joint is to be attached to main branch
+        else:
+            attach = True
         if attach:
             # the joint is to be attached to a body from the main branch
             if current_joint.attached != -1:
@@ -197,7 +200,7 @@ def sample_secondary_branch(graph, main_branch, length_range:Tuple[float] = (0.2
 
 def generate_graph():
     graph = nx.Graph()
-    main_branch, dof = build_main_branch()
+    main_branch, dof = build_main_branch(angle_range=(-pi/12, pi/12))
     add_branch(graph, main_branch)
     #dof = body_counter * 3 - 2 * joint_counter
     #print(dof)
