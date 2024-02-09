@@ -113,7 +113,10 @@ class KinematicGraph(nx.Graph):
             
             link.frame = mr.RpToTrans(rot.as_matrix(), 
                                         pos)
-            link.inertial_frame[2,3] = la.norm(v_w)/2
+            
+            pos_link_joints = [j.jp.r for j in link.joints]
+            mean_pos = np.mean(pos_link_joints, axis=0)
+            link.inertial_frame[:,3] = np.round(mr.TransInv(link.frame) @ np.r_[mean_pos, 1], 5)
 
     def define_link_frames(self):
         links = self.nodes() - set([self.G])
@@ -153,9 +156,14 @@ class KinematicGraph(nx.Graph):
                                     key=lambda out_j: la.norm(out_j.jp.r - in_joint.jp.r),
                                     reverse=True)[0]
                 self.set_link_frame_by_joints(link, in_joint, out_joint)
-                other_out_joint = out_joints - set([out_joint])
-                for j in other_out_joint:
-                    j.link_in = link
+                # out_joint.link_in = link
+                # other_out_joint = out_joints - set([out_joint])
+                for j in out_joints:
+                    if j.link_in is None:
+                        j.link_in = link
+                    elif j.link_out is None:
+                        j.link_out = link
+                        
             else:
                 in_joint = self.get_in_joint(prev_link,link)
                 link.frame[:3,3] = in_joint.jp.r

@@ -1,4 +1,5 @@
 from abc import abstractmethod
+import array
 from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Optional
@@ -8,6 +9,7 @@ from numpy.core.multiarray import zeros as zeros
 import numpy.linalg as la
 
 import networkx as nx
+import modern_robotics as mr
 from trimesh import Trimesh
 from trimesh.convex import convex_hull
 
@@ -54,11 +56,11 @@ class JointPoint:
         return hash(self) == hash(__value)
 
 
-def create_mesh_from_joints(jp_list: list[JointPoint], thickness) -> Trimesh:
+def create_mesh_from_joints(points: list[np.ndarray], thickness) -> Trimesh:
     vertices = []
-    for jp in jp_list:
-        v1 = deepcopy(jp.r)
-        v2 = deepcopy(jp.r)
+    for p in points:
+        v1 = deepcopy(p)
+        v2 = deepcopy(p)
         v1[1] = thickness / 2
         v2[1] = -thickness / 2
         vertices += [v1, v2]
@@ -86,7 +88,7 @@ class Geometry:
 
     @property
     def size(self):
-        return self.size
+        return self._size
 
     @size.setter
     def size(self, values: list[float] | Trimesh):  # noqa: F811
@@ -95,7 +97,7 @@ class Geometry:
 
     @property
     def density(self):
-        return self.density
+        return self._density
 
     @density.setter
     def density(self, values: float):  # noqa: F811
@@ -119,12 +121,12 @@ class Box(Geometry):
         self.shape = "box"
 
     def calculate_inertia(self):
-        self.mass = np.multiply(self.size) * self.density
+        self.mass = np.prod(self.size) * self.density
         inertia = lambda a1, a2: 1 / 12 * self.mass * (a1**2 + a2**2)
 
-        inertia_xx = inertia(self.size[1:])
+        inertia_xx = inertia(*self.size[1:])
         inertia_yy = inertia(self.size[1], self.size[2])
-        inertia_zz = inertia(self.size[:-1])
+        inertia_zz = inertia(*self.size[:-1])
 
         self.inertia = np.diag([inertia_xx, inertia_yy, inertia_zz])
 
@@ -187,29 +189,60 @@ class Link:
         self.name: str = name
         self.geometry = geometry
 
-        self.frame: np.ndarray = deepcopy(frame)
+        self._frame: np.ndarray = deepcopy(frame)
         self.inertial_frame: np.ndarray = deepcopy(inertial_frame)
 
-        self.density: float = density
-        self.thickness: float = thickness
-        
+        self._density: float = density
+        self._thickness: float = thickness
+        self.define_geometry()
+
         Link.instance_counter += 1
         self.instance_counter = Link.instance_counter
         if self.name == "":
             self.name = "L" + str(self.instance_counter)
+            
+    @property
+    def density(self):
+        return self._density
+    
+    @density.setter
+    def density(self, value: float):
+        self._density = value
+        self.define_geometry()
+
+    @property
+    def thickness(self):
+        return self._thickness
+    
+    @thickness.setter
+    def thickness(self, value: float):
+        self._thickness = value
+        self.define_geometry()
+
+    @property
+    def frame(self):
+        return self._frame
+    
+    @frame.setter
+    def frame(self, value: np.ndarray):
+        self._frame = value
+        self.define_geometry()
 
     def define_geometry(self):
         num_joint = len(self.joints)
-        if num_joint == 1:
-            self.geometry = Sphere(self.density, [self.thickness])
+        if num_joint == 1 or self.name == "G":
+            self.geometry = Sphere(self._density, [self._thickness])
         elif num_joint == 2:
             joint_list = list(self.joints)
-            vector = joint_list[1].r - joint_list[0].r
-            size =  [self.thickness, self.thickness, la.norm(vector)]
-            self.geometry = Box(self.density, size)
+            vector = joint_list[1].jp.r - joint_list[0].jp.r
+            size =  [self._thickness, self._thickness, la.norm(vector)]
+            self.geometry = Box(self._density, size)
         elif num_joint > 2:
-            mesh = create_mesh_from_joints(self.joints, self.thickness)
-            self.geometry = Mesh(self.density, mesh)
+            points = []
+            for j in self.joints:
+                points.append((mr.TransInv(self.frame) @ np.r_[j.jp.r, 1])[:3])
+            mesh = create_mesh_from_joints(points, self._thickness)
+            self.geometry = Mesh(self._density, mesh)
         else:
             raise Exception("Zero joints")
 
@@ -234,6 +267,8 @@ class Joint:
         self._link_in = None
         self._link_out = None
         self.frame = deepcopy(frame)
+        self.limits = deepcopy({})
+        self.damphing_friction = deepcopy((0,0))
     
     @property
     def link_in(self):

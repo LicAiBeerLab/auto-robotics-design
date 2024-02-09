@@ -56,7 +56,7 @@ graph = nx.Graph()
 
 # %% Three Triangles
 
-scale_factor = 4
+scale_factor = 1
 abs_ground = np.array([0.0, 0, 0.0]) / scale_factor
 main_J1 = np.array([1.011, 0, 1.075]) / scale_factor
 main_J2 = np.array([0.988, 0, 2.823]) / scale_factor
@@ -155,6 +155,20 @@ plt.show()
 plt.show()
 # %%
 
+thickness = 0.1
+density = 1410
+
+for n in kinematic_graph.nodes():
+    n.thickness = thickness
+    n.density = density
+
+for j in kinematic_graph.joint_graph.nodes():
+    j.limits["lower"] = -np.pi
+    j.limits["upper"] = np.pi
+    j.limits["effort"] = 1
+    j.limits["velocity"] = 10
+    j.damphing_friction = (0.05, 0)
+
 kinematic_graph.define_link_frames()
 
 draw_link_frames(kinematic_graph)
@@ -165,12 +179,16 @@ draw_joint_frames(kinematic_graph)
 draw_links(kinematic_graph, graph)
 plt.show()
 
-# from description.builder import create_urdf
+# %%
 
-# urdf = create_urdf(kinematic_graph)
+from description.builder import Builder, URDFLinkCreater
 
-# with open("ThreeTriangles.urdf", "w") as f:
-#     f.write(urdf.urdf())
+builder = Builder(URDFLinkCreater)
 
-# for eq in (kinematic_graph.edges() - kinematic_tree.edges()):
-#     print(f"Link 1: {eq[0]}, Link 2: {eq[1]}, Joint: {kinematic_graph.edges()[eq]['joint'].name}")
+robot, ative_joints, constraints = builder.create_kinematic_graph(kinematic_graph)
+
+with open("robot.urdf", "w") as f:
+    f.write(robot.urdf())
+
+print(f"Active joints: {ative_joints}")
+print(f"Constraints: {constraints}")
