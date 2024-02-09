@@ -49,8 +49,7 @@ class KinematicGraph(nx.Graph):
             key=lambda x: la.norm(x.jp.r - main_G_j.jp.r),
         )
         main_EE_j = ee_joints[0]
-        # draw_joint_point(self.joint_graph)
-        # plt.show()
+        
         j_in_m_branch = nx.shortest_path(
             self.joint_graph, main_G_j, main_EE_j, weight=weight_by_dist_active
         )
@@ -130,11 +129,14 @@ class KinematicGraph(nx.Graph):
             if len(link.joints) == 2:
                 close_j_to_G: Joint = self.get_in_joint(prev_link,link)
                 out_joint = (link.joints - set([close_j_to_G])).pop()
-                out_joint.link_in = link
+                if out_joint.link_in is None:
+                    out_joint.link_in = link
+                elif out_joint.link_out is None:
+                    out_joint.link_out = link
                 self.set_link_frame_by_joints(link, close_j_to_G, out_joint)
 
             elif len(link.joints) > 2:
-                if link in self.main_branch:
+                if link in path_main_branch:
                     num = path_main_branch.index(link)
                     prev_link = path_main_branch[num-1]
 
@@ -163,7 +165,6 @@ class KinematicGraph(nx.Graph):
                         j.link_in = link
                     elif j.link_out is None:
                         j.link_out = link
-                        
             else:
                 in_joint = self.get_in_joint(prev_link,link)
                 link.frame[:3,3] = in_joint.jp.r
@@ -180,7 +181,7 @@ class KinematicGraph(nx.Graph):
             prev_link = joint.link_in
             next_link = joint.link_out
             joint.is_constraint = True
-            print(joint.jp.name)
+            print(prev_link.name, joint.jp.name)#, next_link.name)
             prev_in_joint = list(filter(lambda j: j.link_in and j.link_in == prev_link, prev_link.joints))[0]
             
             rot, __ = mr.TransToRp(prev_in_joint.frame)

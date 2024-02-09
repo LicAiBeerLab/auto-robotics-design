@@ -85,7 +85,7 @@ class URDFLinkCreater:
             urdf_link = cls._create_box(link.geometry, link.name, origin, origin)
         elif link.geometry.shape == "sphere":
             origin = cls.trans_matrix2xyz_rpy(link.inertial_frame)
-            urdf_link = cls._create_box(link.geometry, link.name, origin, origin)
+            urdf_link = cls._create_sphere(link.geometry, link.name, origin, origin)
         else:
             pass
         return urdf_link
@@ -197,7 +197,8 @@ class URDFLinkCreater:
     def _create_box(cls, geometry: Box, name, origin, inertia_origin):
         color = np.r_[np.random.uniform(0, 1, 3), 0.7]
         urdf_material = urdf.Material(urdf.Color(rgba=color.tolist()))
-        
+        name_c = name + "_" + "collision"
+        name_v = name + "_" + "visul"
         urdf_geometry = urdf.Geometry(urdf.Box(geometry.size))
         urdf_inertia_origin = urdf.Origin(
             xyz=inertia_origin[0],
@@ -212,11 +213,12 @@ class URDFLinkCreater:
             urdf_origin,
             urdf_geometry,
             urdf_material,
+            # name = name_v
         )
         collision = urdf.Collision(
             urdf_origin,
             urdf_geometry,
-            urdf_material,
+            name = name_c
         )
         inertial = urdf.Inertial(
             urdf_inertia_origin,
@@ -236,6 +238,8 @@ class URDFLinkCreater:
         color = np.r_[np.random.uniform(0, 1, 3), 0.7]
         urdf_material = urdf.Material(urdf.Color(rgba=color.tolist()))
         
+        name_c = name + "_" + "collision"
+        name_v = name + "_" + "visul"
         urdf_geometry = urdf.Geometry(urdf.Sphere(geometry.size[0]))
         urdf_inertia_origin = urdf.Origin(
             xyz=inertia_origin[0],
@@ -250,11 +254,12 @@ class URDFLinkCreater:
             urdf_origin,
             urdf_geometry,
             urdf_material,
+            # name = name_v
         )
         collision = urdf.Collision(
             urdf_origin,
             urdf_geometry,
-            urdf_material,
+            name = name_c
         )
         inertial = urdf.Inertial(
             urdf_inertia_origin,
@@ -279,7 +284,9 @@ class URDFLinkCreater:
             rpy = origin_I[1]
         )
         visual_n_collision = []
-        for origin in body_origins:
+        for id, origin in enumerate(body_origins):
+            name_c = name + "_" + str(id) + "collision"
+            name_v = name + "_" + str(id) + "visual"
             urdf_geometry = urdf.Geometry(urdf.Box([thickness, thickness, origin[2]]))
             urdf_origin = urdf.Origin(
                 xyz=origin[0],
@@ -289,12 +296,13 @@ class URDFLinkCreater:
             urdf_origin,
             urdf_geometry,
             urdf_material,
+            # name = name_v
             )
             
             collision = urdf.Collision(
                 urdf_origin,
                 urdf_geometry,
-                urdf_material,
+                name = name_c
             )
             visual_n_collision += [visual, collision]
         inertial = urdf.Inertial(
@@ -319,7 +327,8 @@ class Builder:
     def create_kinematic_graph(self, kinematic_graph, name = "Robot"):
         
         links = kinematic_graph.nodes()
-        joints = kinematic_graph.joint_graph.nodes()
+        joints = dict(filter(lambda kv: len(kv[1]) >0 , kinematic_graph.joint2edge.items()))
+        
         
         urdf_links = []
         urdf_joints = []
@@ -396,7 +405,6 @@ def create_urdf(graph: nx.Graph):
                     rpy=R.from_quat(geom_frame[1]).as_euler("xyz").tolist(),
                 ),
                 urdf.Geometry(urdf.Box([0.1, 0.1, length])),
-                urdf.Material("Grey"),
             ),
             name=link,
         )
