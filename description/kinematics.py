@@ -299,7 +299,7 @@ class Joint:
     def __hash__(self) -> int:
         return hash((
             self.jp,
-            self.is_constraint,
+            # self.is_constraint,
         ))
     
     def __eq__(self, __value: object) -> bool:

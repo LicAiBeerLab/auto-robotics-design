@@ -240,14 +240,14 @@ def JointPoint2KinematicGraph(jp_graph: nx.Graph):
                 for j in L2.joints:
                     j.links.add(L2)
             else:
-                L1.joints.add(N)
-                N.links.add(L1)
+                L.joints.add(N)
+                N.links.add(L)
                 continue
         else:
             more_one_adj_L1 = set(filter(lambda n: lenNN[n] > 1, N))
             for n in more_one_adj_L1:
-                L1.joints.add(n)
-                n.links.add(L1)
+                L.joints.add(n)
+                n.links.add(L)
             less_one_adj_L1 = N - more_one_adj_L1
             if len(less_one_adj_L1) > 1:
                 N = less_one_adj_L1
