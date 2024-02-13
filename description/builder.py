@@ -76,8 +76,8 @@ class URDFLinkCreater:
                 pos = (j_p[1][:3] + j_p[0][:3])/2
                 length = la.norm(v_l)
                 body_origins.append((pos.tolist(), rot.as_euler("xyz").tolist(), length))
-            inertia = (link.frame,
-                    link.geometry.size.moment_inertia_frame(link.frame)
+            inertia = (link.inertial_frame,
+                    link.geometry.size.moment_inertia_frame(link.inertial_frame)
                 )
             urdf_link = cls._create_mesh(link.geometry, link.name, inertia, body_origins, link.thickness)
         elif link.geometry.shape == "box":
