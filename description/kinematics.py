@@ -2,6 +2,7 @@ from abc import abstractmethod
 import array
 from copy import deepcopy
 from dataclasses import dataclass, field
+from itertools import combinations
 from typing import Optional
 
 import numpy as np
@@ -12,6 +13,8 @@ import networkx as nx
 import modern_robotics as mr
 from trimesh import Trimesh
 from trimesh.convex import convex_hull
+
+from description.actuators import RevoluteUnit
 
 
 @dataclass
@@ -76,10 +79,12 @@ class Geometry:
         size: list[float] | Trimesh = [],
         mass: float = 0,
         inertia: np.ndarray = np.zeros((3, 3)),
+        color: list[float] = [0,0,0,0]
     ) -> None:
         self.shape: str = ""
         self._size: list[float] | Trimesh = size
         self._density: float = density
+        self.color = color
         if mass == 0 and np.sum(inertia) == 0:
             self.calculate_inertia()
         else:
@@ -107,6 +112,10 @@ class Geometry:
     @abstractmethod
     def calculate_inertia(self) -> tuple[float, np.ndarray]:
         return self.mass, self.inertia
+    
+    @abstractmethod
+    def get_thickness(self):
+        return 0
 
 
 class Box(Geometry):
@@ -116,8 +125,9 @@ class Box(Geometry):
         size: list[float] | Trimesh = [],
         mass: float = 0,
         inertia: np.ndarray = np.zeros((3, 3)),
+        color: list[float] = [0,0,0,0]
     ) -> None:
-        super().__init__(density, size, mass, inertia)
+        super().__init__(density, size, mass, inertia, color)
         self.shape = "box"
 
     def calculate_inertia(self):
@@ -131,6 +141,9 @@ class Box(Geometry):
         self.inertia = np.diag([inertia_xx, inertia_yy, inertia_zz])
 
         return self.mass, self.inertia
+    
+    def get_thickness(self):
+        return self.size[1]
 
 
 class Sphere(Geometry):
@@ -140,8 +153,9 @@ class Sphere(Geometry):
         size: list[float] = [],
         mass: float = 0,
         inertia: np.ndarray = np.zeros((3, 3)),
+        color: list[float] = [0,0,0,0]
     ) -> None:
-        super().__init__(density, size, mass, inertia)
+        super().__init__(density, size, mass, inertia, color)
         self.shape = "sphere"
 
     def calculate_inertia(self):
@@ -151,6 +165,9 @@ class Sphere(Geometry):
         self.inertia = np.diag([central_inertia for __ in range(3)])
 
         return self.mass, self.inertia
+    
+    def get_thickness(self):
+        return self.size[0]
 
 
 class Mesh(Geometry):
@@ -160,9 +177,12 @@ class Mesh(Geometry):
         size: Trimesh = Trimesh(),
         mass: float = 0.0,
         inertia: np.ndarray = np.zeros((3, 3)),
+        color: list[float] = [0,0,0,0]
     ) -> None:
-        super().__init__(density, size, mass, inertia)
-        self._size.density = density
+        super().__init__(density, size, mass, inertia, color)
+        num_points = len(self.size.vertices) / 2
+        
+        self._size.density = density / (num_points - 1)
         self.shape = "mesh"
 
     def calculate_inertia(self):
@@ -171,6 +191,10 @@ class Mesh(Geometry):
         self.inertia = self._size.moment_inertia
 
         return self.mass, self.inertia
+    
+    def get_thickness(self):
+        thickness = max(map(lambda x: x[0][1] - x[1][1], combinations(self.size.vertices,2)))
+        return thickness
 
 class Link:
     instance_counter: int = 0
@@ -182,18 +206,21 @@ class Link:
         geometry: Optional[Geometry] = None,
         frame: np.ndarray = np.eye(4),
         inertial_frame: np.ndarray = np.eye(4),
-        density: float = 0,
-        thickness: float = 0,
+        density: float = 2700,
+        thickness: float = 0.08,
     ) -> None:
         self.joints: set[JointPoint] = joints
         self.name: str = name
         self.geometry = geometry
 
         self._frame: np.ndarray = deepcopy(frame)
-        self.inertial_frame: np.ndarray = deepcopy(inertial_frame)
+        self._inertial_frame: np.ndarray = deepcopy(inertial_frame)
 
         self._density: float = density
-        self._thickness: float = thickness
+        
+        
+        
+        self._thickness: tuple[float] = thickness
         self.define_geometry()
 
         Link.instance_counter += 1
@@ -227,22 +254,46 @@ class Link:
     def frame(self, value: np.ndarray):
         self._frame = value
         self.define_geometry()
+        
+    @property
+    def inertial_frame(self):
+        return self._inertial_frame
+    
+    @inertial_frame.setter
+    def inertial_frame(self, value: np.ndarray):
+        self._inertial_frame = value
+        self.define_geometry()
 
     def define_geometry(self):
         num_joint = len(self.joints)
-        if num_joint == 1 or self.name == "G":
-            self.geometry = Sphere(self._density, [self._thickness])
+        color = (np.r_[np.random.uniform(0, 1, 3), 1]).tolist()
+        if self.name == "G":
+            size = [self._thickness * 2 for __ in range(3)]
+            self.geometry = Box(self._density, size, color=color)
+        elif num_joint == 1:
+            self.geometry = Sphere(self._density, [self._thickness/1.4], color=color)
         elif num_joint == 2:
             joint_list = list(self.joints)
             vector = joint_list[1].jp.r - joint_list[0].jp.r
-            size =  [self._thickness, self._thickness, la.norm(vector)]
-            self.geometry = Box(self._density, size)
+            length = la.norm(vector)
+            # thickness = min((length * self._thickness, self._thickness))
+            # thickness = max((thickness, 0.015))
+            print(length)
+            size =  [self._thickness, self._thickness, length - self._thickness]
+            self.geometry = Box(self._density, size, color=color)
         elif num_joint > 2:
             points = []
             for j in self.joints:
                 points.append((mr.TransInv(self.frame) @ np.r_[j.jp.r, 1])[:3])
+            pairs_p = combinations(points, 2)
+            max_length = np.mean(list(
+                map(lambda x: la.norm(x[0] - x[1]), pairs_p)
+            ))
+            print(max_length)
+            # thickness = min((max_length * self._thickness, self._thickness))
+            # thickness = max((thickness, 0.015))
             mesh = create_mesh_from_joints(points, self._thickness)
-            self.geometry = Mesh(self._density, mesh)
+            self.geometry = Mesh(self._density, mesh, color=color)
         else:
             raise Exception("Zero joints")
 
@@ -267,7 +318,8 @@ class Joint:
         self._link_in = None
         self._link_out = None
         self.frame = deepcopy(frame)
-        self.limits = deepcopy({})
+        self.pos_limits = (-np.pi, np.pi)
+        self.actuator = RevoluteUnit()
         self.damphing_friction = deepcopy((0,0))
     
     @property

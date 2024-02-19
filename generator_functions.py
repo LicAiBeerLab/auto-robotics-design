@@ -68,7 +68,7 @@ def find_connect_point(first_point: np.array, second_point: np.array, length_fac
     return pos
 
 
-def sample_secondary_branch(graph, main_branch, length_range:Tuple[float] = (0.2, 1.4), dof_reduction:int = 0,branch_id=0):
+def sample_secondary_branch(graph, main_branch, length_range:Tuple[float] = (0.3, 0.6), dof_reduction:int = 0,branch_id=0):
     local_joints = 0
     local_bodies = 0
     length_constrains = length_range
