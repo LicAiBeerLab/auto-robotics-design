@@ -14,7 +14,7 @@ import modern_robotics as mr
 from trimesh import Trimesh
 from trimesh.convex import convex_hull
 
-from description.actuators import RevoluteUnit
+from auto_robot_design.description.actuators import RevoluteUnit
 
 
 @dataclass

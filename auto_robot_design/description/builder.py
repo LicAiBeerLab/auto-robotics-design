@@ -13,11 +13,11 @@ from scipy.spatial.transform import Rotation as R
 import trimesh
 import modern_robotics as mr
 
-from description.actuators import RevoluteUnit
-from description.kinematics import Geometry, Joint, JointPoint, Link, Mesh, Sphere, Box
-from description.utils import tensor_inertia_sphere_by_mass
+from auto_robot_design.description.actuators import RevoluteUnit
+from auto_robot_design.description.kinematics import Geometry, Joint, JointPoint, Link, Mesh, Sphere, Box
+from auto_robot_design.description.utils import tensor_inertia_sphere_by_mass
 
-# from description.utils import calculate_inertia
+# from auto_robot_design.description.utils import calculate_inertia
 
 
 def add_branch(G: nx.Graph, branch: List[JointPoint] | List[List[JointPoint]]):
@@ -74,7 +74,10 @@ class URDFLinkCreater:
 
                 rot = R.from_rotvec(axis * angle)
                 pos = (j_p[1][:3] + j_p[0][:3]) / 2
-                length = la.norm(v_l) - link.geometry.get_thickness()
+                if la.norm(v_l) > link.geometry.get_thickness():
+                    length = la.norm(v_l) - link.geometry.get_thickness()
+                else:
+                    length = la.norm(v_l)
                 body_origins.append(
                     (pos.tolist(), rot.as_euler("xyz").tolist(), length)
                 )

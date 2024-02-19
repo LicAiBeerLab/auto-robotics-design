@@ -3,12 +3,12 @@ import numpy as np
 import numpy.linalg as la
 import matplotlib.pyplot as plt
 
-from description.kinematics import Link
+from auto_robot_design.description.kinematics import Link
 from trimesh import Trimesh
 from scipy.spatial.transform import Rotation as R
 import modern_robotics as mr
 
-# from description.mechanism import KinematicGraph
+# from auto_robot_design.description.mechanism import KinematicGraph
 
 
 def trans2_xyz_rpy(trans: np.ndarray) -> tuple[list[float]]:

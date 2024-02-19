@@ -15,13 +15,13 @@ import modern_robotics as mr
 
 import networkx as nx
 
-from description.kinematics import (
+from auto_robot_design.description.kinematics import (
     Joint,
     Link,
     get_ground_joints,
     get_endeffector_joints,
 )
-from description.utils import (
+from auto_robot_design.description.utils import (
     calc_weight_for_span,
     draw_joint_point,
     get_pos,

@@ -1,0 +1,399 @@
+<?xml version="1.0"?>
+<robot  name="Robot" >
+ <link  name="G" >
+  <visual >
+   <origin  xyz="0.0 0.0 0.0"  rpy="0.0 0.0 0.0" />
+   <geometry >
+    <box  size="0.08 0.08 0.08" />
+   </geometry>
+   <material  name="G_Material" >
+    <color  rgba="0.4635767949353661 0.5303853554431317 0.5782602221020643 1.0" />
+   </material>
+  </visual>
+  <collision  name="G_Collision" >
+   <origin  xyz="0.0 0.0 0.0"  rpy="0.0 0.0 0.0" />
+   <geometry >
+    <box  size="0.08 0.08 0.08" />
+   </geometry>
+  </collision>
+  <inertial >
+   <origin  xyz="0.0 0.0 0.0"  rpy="0.0 0.0 0.0" />
+   <mass  value="1.3824000000000003" />
+   <inertia  iyy="0.0014745600000000004"  ixx="0.0014745600000000004"  izz="0.0014745600000000004"  ixy="0.0"  ixz="0.0"  iyz="0.0" />
+  </inertial>
+ </link>
+ <link  name="L3" >
+  <visual >
+   <origin  xyz="0.005943617642210461 0.0 0.3038690603844638"  rpy="3.141592653589793 0.06512675271764534 3.141592653589793" />
+   <geometry >
+    <box  size="0.04 0.04 0.14265370559522436" />
+   </geometry>
+   <material  name="L3_Material" >
+    <color  rgba="0.9851078984464116 0.7204218086594748 0.4944865595912864 1.0" />
+   </material>
+  </visual>
+  <collision  name="L3_0_Collision" >
+   <origin  xyz="0.005943617642210461 0.0 0.3038690603844638"  rpy="3.141592653589793 0.06512675271764534 3.141592653589793" />
+   <geometry >
+    <box  size="0.04 0.04 0.14265370559522436" />
+   </geometry>
+  </collision>
+  <visual >
+   <origin  xyz="-3.147918948341396e-17 0.0 0.19750115024254924"  rpy="0.0 2.220446049250313e-16 0.0" />
+   <geometry >
+    <box  size="0.04 0.04 0.3550023004850985" />
+   </geometry>
+   <material  name="L3_Material" >
+    <color  rgba="0.9851078984464116 0.7204218086594748 0.4944865595912864 1.0" />
+   </material>
+  </visual>
+  <collision  name="L3_1_Collision" >
+   <origin  xyz="-3.147918948341396e-17 0.0 0.19750115024254924"  rpy="0.0 2.220446049250313e-16 0.0" />
+   <geometry >
+    <box  size="0.04 0.04 0.3550023004850985" />
+   </geometry>
+  </collision>
+  <visual >
+   <origin  xyz="0.005943617642210492 0.0 0.10636791014191457"  rpy="-3.141592653589793 -0.055819872694982564 3.141592653589793" />
+   <geometry >
+    <box  size="0.04 0.04 0.17306767843701878" />
+   </geometry>
+   <material  name="L3_Material" >
+    <color  rgba="0.9851078984464116 0.7204218086594748 0.4944865595912864 1.0" />
+   </material>
+  </visual>
+  <collision  name="L3_2_Collision" >
+   <origin  xyz="0.005943617642210492 0.0 0.10636791014191457"  rpy="-3.141592653589793 -0.055819872694982564 3.141592653589793" />
+   <geometry >
+    <box  size="0.04 0.04 0.17306767843701878" />
+   </geometry>
+  </collision>
+  <inertial >
+   <origin  xyz="0.00396 0.0 0.20258"  rpy="0.0 0.0 0.0" />
+   <mass  value="0.12677810266135625" />
+   <inertia  iyy="0.0008268292809323227"  ixx="0.0008427377742965327"  izz="1.789900067881942e-05"  ixy="7.5171507471343e-51"  ixz="-1.2755150548106077e-06"  iyz="0.0" />
+  </inertial>
+ </link>
+ <link  name="L6" >
+  <visual >
+   <origin  xyz="-0.0007016416420337207 0.0 0.3613562880060314"  rpy="3.141592653589793 0.04429253598207983 3.141592653589793" />
+   <geometry >
+    <box  size="0.04 0.04 -0.008307476834583424" />
+   </geometry>
+   <material  name="L6_Material" >
+    <color  rgba="0.2944306255017942 0.17547226215353084 0.4383372189066508 1.0" />
+   </material>
+  </visual>
+  <collision  name="L6_0_Collision" >
+   <origin  xyz="-0.0007016416420337207 0.0 0.3613562880060314"  rpy="3.141592653589793 0.04429253598207983 3.141592653589793" />
+   <geometry >
+    <box  size="0.04 0.04 -0.008307476834583424" />
+   </geometry>
+  </collision>
+  <visual >
+   <origin  xyz="-0.0007016416420286692 0.0 0.18859350415202025"  rpy="3.141592653589793 0.0037203741878473195 3.141592653589793" />
+   <geometry >
+    <box  size="0.04 0.04 0.33718961867650543" />
+   </geometry>
+   <material  name="L6_Material" >
+    <color  rgba="0.2944306255017942 0.17547226215353084 0.4383372189066508 1.0" />
+   </material>
+  </visual>
+  <collision  name="L6_1_Collision" >
+   <origin  xyz="-0.0007016416420286692 0.0 0.18859350415202025"  rpy="3.141592653589793 0.0037203741878473195 3.141592653589793" />
+   <geometry >
+    <box  size="0.04 0.04 0.33718961867650543" />
+   </geometry>
+  </collision>
+  <visual >
+   <origin  xyz="-5.051514762044462e-15 0.0 0.17276278385401123"  rpy="0.0 3.175237850427948e-14 0.0" />
+   <geometry >
+    <box  size="0.04 0.04 0.30552556770802236" />
+   </geometry>
+   <material  name="L6_Material" >
+    <color  rgba="0.2944306255017942 0.17547226215353084 0.4383372189066508 1.0" />
+   </material>
+  </visual>
+  <collision  name="L6_2_Collision" >
+   <origin  xyz="-5.051514762044462e-15 0.0 0.17276278385401123"  rpy="0.0 3.175237850427948e-14 0.0" />
+   <geometry >
+    <box  size="0.04 0.04 0.30552556770802236" />
+   </geometry>
+  </collision>
+  <inertial >
+   <origin  xyz="-0.00047 0.0 0.2409"  rpy="0.0 0.0 0.0" />
+   <mass  value="0.013091496841132533" />
+   <inertia  iyy="9.551859498546327e-05"  ixx="9.726269561934489e-05"  izz="1.7469651904203893e-06"  ixy="-2.3264454728053903e-24"  ixz="2.086384055509968e-07"  iyz="0.0" />
+  </inertial>
+ </link>
+ <link  name="EE" >
+  <visual >
+   <origin  xyz="0.0 0.0 0.0"  rpy="0.0 0.0 0.0" />
+   <geometry >
+    <sphere  radius="0.028571428571428574" />
+   </geometry>
+   <material  name="EE_Material" >
+    <color  rgba="0.6340190557065848 0.1770517687902704 0.5244006426398323 1.0" />
+   </material>
+  </visual>
+  <collision  name="EE_Collision" >
+   <origin  xyz="0.0 0.0 0.0"  rpy="0.0 0.0 0.0" />
+   <geometry >
+    <sphere  radius="0.028571428571428574" />
+   </geometry>
+  </collision>
+  <inertial >
+   <origin  xyz="0.0 0.0 0.0"  rpy="0.0 0.0 0.0" />
+   <mass  value="0.2637838729544783" />
+   <inertia  iyy="8.61335095361562e-05"  ixx="8.61335095361562e-05"  izz="8.61335095361562e-05"  ixy="0.0"  ixz="0.0"  iyz="0.0" />
+  </inertial>
+ </link>
+ <link  name="L4" >
+  <visual >
+   <origin  xyz="-0.0 0.0 0.19476"  rpy="0.0 0.0 0.0" />
+   <geometry >
+    <box  size="0.04 0.04 0.3495130086573358" />
+   </geometry>
+   <material  name="L4_Material" >
+    <color  rgba="0.6392964616141075 0.18049610535370353 0.11456833343742956 1.0" />
+   </material>
+  </visual>
+  <collision  name="L4_Collision" >
+   <origin  xyz="-0.0 0.0 0.19476"  rpy="0.0 0.0 0.0" />
+   <geometry >
+    <box  size="0.04 0.04 0.3495130086573358" />
+   </geometry>
+  </collision>
+  <inertial >
+   <origin  xyz="-0.0 0.0 0.19476"  rpy="0.0 0.0 0.0" />
+   <mass  value="1.5098961973996907" />
+   <inertia  iyy="0.015571980143468542"  ixx="0.015571980143468542"  izz="0.00040263898597325083"  ixy="0.0"  ixz="0.0"  iyz="0.0" />
+  </inertial>
+ </link>
+ <link  name="L5" >
+  <visual >
+   <origin  xyz="0.0 0.0 0.47072"  rpy="0.0 0.0 0.0" />
+   <geometry >
+    <box  size="0.04 0.04 0.9014390147491013" />
+   </geometry>
+   <material  name="L5_Material" >
+    <color  rgba="0.6937715577541456 0.7314644730712613 0.4265329929977979 1.0" />
+   </material>
+  </visual>
+  <collision  name="L5_Collision" >
+   <origin  xyz="0.0 0.0 0.47072"  rpy="0.0 0.0 0.0" />
+   <geometry >
+    <box  size="0.04 0.04 0.9014390147491013" />
+   </geometry>
+  </collision>
+  <inertial >
+   <origin  xyz="0.0 0.0 0.47072"  rpy="0.0 0.0 0.0" />
+   <mass  value="3.894216543716118" />
+   <inertia  iyy="0.26422009282983017"  ixx="0.26422009282983017"  izz="0.0010384577449909648"  ixy="0.0"  ixz="0.0"  iyz="0.0" />
+  </inertial>
+ </link>
+ <joint  type="revolute"  name="G0main" >
+  <parent  link="G" />
+  <child  link="L3" />
+  <origin  xyz="0.0 0.0 0.0"  rpy="3.141592653589793 0.2983891655602269 3.141592653589793" />
+  <axis  xyz="0 1 0" />
+  <limit  effort="5.3999999999999995"  upper="3.141592653589793"  velocity="17.907078125461823"  lower="-3.141592653589793" />
+  <dynamics  damping="0.05"  friction="0" />
+ </joint>
+ <joint  type="fixed"  name="G0main_G_WeldActuator" >
+  <parent  link="G" />
+  <child  link="G0main_GActuator" />
+  <origin  xyz="0.0 0.05975 0.0"  rpy="-1.5707963267948972 0.29838916556022665 -3.141592653589793" />
+ </joint>
+ <link  name="G0main_GActuator" >
+  <visual >
+   <geometry >
+    <cylinder  length="0.0395"  radius="0.034" />
+   </geometry>
+   <material  name="G0main_GActuator_Material" >
+    <color  rgba="0.4635767949353661 0.5303853554431317 0.5782602221020643 0.9" />
+   </material>
+  </visual>
+  <inertial >
+   <inertia  iyy="0.004339333333333334"  ixx="0.004339333333333334"  izz="0.006256"  ixy="0.0"  ixz="0.0"  iyz="0.0" />
+   <mass  value="0.1" />
+  </inertial>
+ </link>
+ <link  name="G0main_GUnit" >
+  <visual >
+   <geometry >
+    <cylinder  length="0.08"  radius="0.04" />
+   </geometry>
+   <material  name="G0main_GUnit_Material" >
+    <color  rgba="0.4635767949353661 0.5303853554431317 0.5782602221020643 0.9" />
+   </material>
+  </visual>
+  <inertial >
+   <inertia  iyy="0.0016666666666666666"  ixx="0.0016666666666666666"  izz="0.002"  ixy="0.0"  ixz="0.0"  iyz="0.0" />
+   <mass  value="0.1" />
+  </inertial>
+ </link>
+ <joint  type="fixed"  name="G0main_G_WeldUnit" >
+  <parent  link="G" />
+  <child  link="G0main_GUnit" />
+  <origin  xyz="0.0 0.0 0.0"  rpy="-1.5707963267948972 0.29838916556022665 -3.141592653589793" />
+ </joint>
+ <link  name="G0main_G" >
+  <visual >
+   <origin  xyz="0.0 0.0 0.0" />
+   <geometry >
+    <box  size="0.08 0.08 0.08" />
+   </geometry>
+   <material >
+    <color  rgba="0.4635767949353661 0.5303853554431317 0.5782602221020643 0.9" />
+   </material>
+  </visual>
+ </link>
+ <joint  type="revolute"  name="J0m" >
+  <parent  link="L3" />
+  <child  link="L6" />
+  <origin  xyz="-6.295837896682792e-17 0.0 0.3950023004850985"  rpy="0.0 0.2953707173551767 0.0" />
+  <axis  xyz="0 1 0" />
+  <limit  effort="600.0"  upper="3.141592653589793"  velocity="6.283185307179586"  lower="-3.141592653589793" />
+  <dynamics  damping="0.05"  friction="0" />
+ </joint>
+ <link  name="J0m_L3Unit" >
+  <visual >
+   <geometry >
+    <cylinder  length="0.04"  radius="0.02" />
+   </geometry>
+   <material  name="J0m_L3Unit_Material" >
+    <color  rgba="0.9851078984464116 0.7204218086594748 0.4944865595912864 0.9" />
+   </material>
+  </visual>
+  <inertial >
+   <inertia  iyy="0.0008333333333333333"  ixx="0.0008333333333333333"  izz="0.001"  ixy="0.0"  ixz="0.0"  iyz="0.0" />
+   <mass  value="0.1" />
+  </inertial>
+ </link>
+ <joint  type="fixed"  name="J0m_L3_WeldUnit" >
+  <parent  link="L3" />
+  <child  link="J0m_L3Unit" />
+  <origin  xyz="-6.295837896682792e-17 0.0 0.3950023004850985"  rpy="1.5707963267948966 0.29537071735517695 -1.1102230246251565e-16" />
+ </joint>
+ <joint  type="revolute"  name="Jee" >
+  <parent  link="L6" />
+  <child  link="EE" />
+  <origin  xyz="-1.0103029524088925e-14 0.0 0.3455255677080224"  rpy="3.141592653589793 -0.0030184482050499284 3.141592653589793" />
+  <axis  xyz="0 1 0" />
+  <limit  effort="600.0"  upper="3.141592653589793"  velocity="6.283185307179586"  lower="-3.141592653589793" />
+  <dynamics  damping="0.05"  friction="0" />
+ </joint>
+ <link  name="Jee_L6Unit" >
+  <visual >
+   <geometry >
+    <cylinder  length="0.04"  radius="0.02" />
+   </geometry>
+   <material  name="Jee_L6Unit_Material" >
+    <color  rgba="0.2944306255017942 0.17547226215353084 0.4383372189066508 0.9" />
+   </material>
+  </visual>
+  <inertial >
+   <inertia  iyy="0.0008333333333333333"  ixx="0.0008333333333333333"  izz="0.001"  ixy="0.0"  ixz="0.0"  iyz="0.0" />
+   <mass  value="0.1" />
+  </inertial>
+ </link>
+ <joint  type="fixed"  name="Jee_L6_WeldUnit" >
+  <parent  link="L6" />
+  <child  link="Jee_L6Unit" />
+  <origin  xyz="-1.0103029524088925e-14 0.0 0.3455255677080224"  rpy="-1.5707963267948966 -0.0030184482050497063 -3.141592653589793" />
+ </joint>
+ <joint  type="revolute"  name="J0_0" >
+  <parent  link="L3" />
+  <child  link="L4" />
+  <origin  xyz="0.011887235284420984 0.0 0.21273582028382915"  rpy="3.141592653589793 -0.14431597602384483 3.141592653589793" />
+  <axis  xyz="0 1 0" />
+  <limit  effort="600.0"  upper="3.141592653589793"  velocity="6.283185307179586"  lower="-3.141592653589793" />
+  <dynamics  damping="0.05"  friction="0" />
+ </joint>
+ <link  name="J0_0_L3Unit" >
+  <visual >
+   <geometry >
+    <cylinder  length="0.04"  radius="0.02" />
+   </geometry>
+   <material  name="J0_0_L3Unit_Material" >
+    <color  rgba="0.9851078984464116 0.7204218086594748 0.4944865595912864 0.9" />
+   </material>
+  </visual>
+  <inertial >
+   <inertia  iyy="0.0008333333333333333"  ixx="0.0008333333333333333"  izz="0.001"  ixy="0.0"  ixz="0.0"  iyz="0.0" />
+   <mass  value="0.1" />
+  </inertial>
+ </link>
+ <joint  type="fixed"  name="J0_0_L3_WeldUnit" >
+  <parent  link="L3" />
+  <child  link="J0_0_L3Unit" />
+  <origin  xyz="0.011887235284420984 0.0 0.21273582028382915"  rpy="-1.570796326794897 -0.14431597602384505 3.1415926535897927" />
+ </joint>
+ <joint  type="revolute"  name="J1_0" >
+  <parent  link="L4" />
+  <child  link="L5" />
+  <origin  xyz="-6.938893903907228e-18 0.0 0.38951300865733574"  rpy="3.141592653589793 -0.018478869246324248 3.141592653589793" />
+  <axis  xyz="0 1 0" />
+  <limit  effort="600.0"  upper="3.141592653589793"  velocity="6.283185307179586"  lower="-3.141592653589793" />
+  <dynamics  damping="0.05"  friction="0" />
+ </joint>
+ <link  name="J1_0_L4Unit" >
+  <visual >
+   <geometry >
+    <cylinder  length="0.04"  radius="0.02" />
+   </geometry>
+   <material  name="J1_0_L4Unit_Material" >
+    <color  rgba="0.6392964616141075 0.18049610535370353 0.11456833343742956 0.9" />
+   </material>
+  </visual>
+  <inertial >
+   <inertia  iyy="0.0008333333333333333"  ixx="0.0008333333333333333"  izz="0.001"  ixy="0.0"  ixz="0.0"  iyz="0.0" />
+   <mass  value="0.1" />
+  </inertial>
+ </link>
+ <joint  type="fixed"  name="J1_0_L4_WeldUnit" >
+  <parent  link="L4" />
+  <child  link="J1_0_L4Unit" />
+  <origin  xyz="-6.938893903907228e-18 0.0 0.38951300865733574"  rpy="-1.570796326794897 -0.018478869246324248 3.1415926535897927" />
+ </joint>
+ <link  name="J2_0_L6Pseudo" >
+  <visual >
+   <geometry >
+    <sphere  radius="0.028571428571428574" />
+   </geometry>
+   <material  name="J2_0_L6Pseudo_Material" >
+    <color  rgba="0.2944306255017942 0.17547226215353084 0.4383372189066508 0.5" />
+   </material>
+  </visual>
+  <inertial >
+   <mass  value="0.05" />
+  </inertial>
+ </link>
+ <joint  type="revolute"  name="J2_0_L6_revolute" >
+  <parent  link="L6" />
+  <child  link="J2_0_L6Pseudo" />
+  <origin  xyz="-0.0014032832840573384 0.0 0.37718700830404045"  rpy="0.0 0.0 0.0" />
+  <axis  xyz="0 1 0" />
+  <limit  effort="600.0"  upper="3.141592653589793"  velocity="6.283185307179586"  lower="-3.141592653589793" />
+  <dynamics  damping="0.05"  friction="0" />
+ </joint>
+ <joint  type="fixed"  name="J2_0_L6_Weld" >
+  <parent  link="L5" />
+  <child  link="J2_0_L5Pseudo" />
+  <origin  xyz="3.122502256758253e-16 0.0 0.9414390147491014"  rpy="0.0 0.13257587208500743 0.0" />
+ </joint>
+ <link  name="J2_0_L5Pseudo" >
+  <visual >
+   <geometry >
+    <sphere  radius="0.028571428571428574" />
+   </geometry>
+   <material  name="J2_0_L5Pseudo_Material" >
+    <color  rgba="0.6937715577541456 0.7314644730712613 0.4265329929977979 0.5" />
+   </material>
+  </visual>
+  <inertial >
+   <mass  value="0.05" />
+  </inertial>
+ </link>
+</robot>

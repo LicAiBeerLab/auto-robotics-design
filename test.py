@@ -1,62 +1,69 @@
 # %%
 from matplotlib.scale import scale_factory
 import numpy as np
+import numpy.linalg as la
 
 import matplotlib.pyplot as plt
 
 import networkx as nx
+from auto_robot_design.description.actuators import TMotor_AK60_6, TMotor_AK80_9
 
-from description.kinematics import JointPoint
+from auto_robot_design.description.kinematics import JointPoint
+from auto_robot_design.description.builder import add_branch
 
 graph = nx.Graph()
 
 # %%  # Cassie
 
-abs_ground = np.array([0.065, 0, -0.047])
-pos_toeA_joint = np.array([0.060, 0, -0.052]) - abs_ground
-pos_toeA_tarus_joint = np.array([-0.273, 0, -0.350]) - abs_ground
-pos_shin_joint = np.array([0.021, 0, -0.159]) - abs_ground
-pos_knee_spring = np.array([0.011, 0, -0.219]) - abs_ground
-pos_tarus_joint = np.array([-0.237, 0, -0.464]) - abs_ground
-pos_foot_joint = np.array([-0.080, 0, -0.753]) - abs_ground
-pos_molet_joint = np.array([-0.207, 0, -0.552]) - abs_ground
-pos_toeB_joint = np.array([-0.257, 0, -0.579]) - abs_ground
-pos_toeB_foot_joint = np.array([-0.118, 0, -0.776]) - abs_ground
+# abs_ground = np.array([0.065, 0, -0.047])
+# pos_toeA_joint = np.array([0.060, 0, -0.052]) - abs_ground
+# pos_toeA_tarus_joint = np.array([-0.273, 0, -0.350]) - abs_ground
+# pos_shin_joint = np.array([0.021, 0, -0.159]) - abs_ground
+# pos_knee_spring = np.array([0.011, 0, -0.219]) - abs_ground
+# pos_tarus_joint = np.array([-0.237, 0, -0.464]) - abs_ground
+# pos_foot_joint = np.array([-0.080, 0, -0.753]) - abs_ground
+# pos_molet_joint = np.array([-0.207, 0, -0.552]) - abs_ground
+# pos_toeB_joint = np.array([-0.257, 0, -0.579]) - abs_ground
+# pos_toeB_foot_joint = np.array([-0.118, 0, -0.776]) - abs_ground
 
-ground_joint = JointPoint(
-    r=np.zeros(3), w=np.array([0, 1, 0]), attach_ground=True, active=True
-)
-shin_joint = JointPoint(r=pos_shin_joint, w=np.array([0, 1, 0]), active=True)
-tarus_joint = JointPoint(r=pos_tarus_joint, w=np.array([0, 1, 0]))
-foot_joint = JointPoint(
-    r=pos_foot_joint, w=np.array([0, 1, 0]), attach_endeffector=True
-)
+# ground_joint = JointPoint(
+#     r=np.zeros(3), w=np.array([0, 1, 0]), attach_ground=True, active=True
+# )
+# shin_joint = JointPoint(r=pos_shin_joint, w=np.array([0, 1, 0]), active=True)
+# tarus_joint = JointPoint(r=pos_tarus_joint, w=np.array([0, 1, 0]))
+# foot_joint = JointPoint(
+#     r=pos_foot_joint, w=np.array([0, 1, 0]), attach_endeffector=True
+# )
 
-toeA_joint = JointPoint(r=pos_toeA_joint, w=np.array([0, 1, 0]))
-connect_toeA_tarus_joint = JointPoint(
-    r=pos_toeA_tarus_joint, w=np.array([0, 1, 0])
-)
+# toeA_joint = JointPoint(r=pos_toeA_joint, w=np.array([0, 1, 0]))
+# connect_toeA_tarus_joint = JointPoint(
+#     r=pos_toeA_tarus_joint, w=np.array([0, 1, 0])
+# )
 
-jts = [
-    ground_joint,
-    shin_joint,
-    tarus_joint,
-    foot_joint,
-    toeA_joint,
-    connect_toeA_tarus_joint,
-]
+# jts = [
+#     ground_joint,
+#     shin_joint,
+#     tarus_joint,
+#     foot_joint,
+#     toeA_joint,
+#     connect_toeA_tarus_joint,
+# ]
 
-main_branch = [ground_joint, shin_joint, tarus_joint, foot_joint]
-add_branch_1 = [
-    [ground_joint, shin_joint],
-    toeA_joint,
-    connect_toeA_tarus_joint,
-    [tarus_joint, foot_joint],
-]
+# main_branch = [ground_joint, shin_joint, tarus_joint, foot_joint]
+# add_branch_1 = [
+#     [ground_joint, shin_joint],
+#     toeA_joint,
+#     connect_toeA_tarus_joint,
+#     [tarus_joint, foot_joint],
+# ]
+
+# add_branch(graph, [main_branch, add_branch_1])
 
 # %% Three Triangles
 
-# scale_factor = 1
+# scale_factor = la.norm([1.011, 0, 1.075])+la.norm([0.988, 0, 2.823]) + la.norm([2.396, 0, 3.461])
+# scale_factor =  la.norm([2.396, 0, 3.461])
+
 # abs_ground = np.array([0.0, 0, 0.0]) / scale_factor
 # main_J1 = np.array([1.011, 0, 1.075]) / scale_factor
 # main_J2 = np.array([0.988, 0, 2.823]) / scale_factor
@@ -116,30 +123,24 @@ add_branch_1 = [
 #     JPb2_J2,
 #     [JPm_J2, JPm_J3]
 # ]
-
-
-# %%
-from description.builder import add_branch
-
 # add_branch(graph, [main_branch, add_branch_1, add_branch_2])
-add_branch(graph, [main_branch, add_branch_1])
 
 # %%
-from description.utils import draw_joint_frames, draw_joint_point, draw_link_frames
+from auto_robot_design.description.utils import draw_joint_frames, draw_joint_point, draw_link_frames
 
 # draw_joint_point(graph) 
 # plt.show()
 
 # %%
-from description.mechanism import JointPoint2KinematicGraph
-from description.utils import draw_links
+from auto_robot_design.description.mechanism import JointPoint2KinematicGraph
+from auto_robot_design.description.utils import draw_links
 
 kinematic_graph = JointPoint2KinematicGraph(graph)
 # draw_links(kinematic_graph, graph)
 plt.show()
 
 # %%
-from description.utils import draw_kinematic_graph
+from auto_robot_design.description.utils import draw_kinematic_graph
 
 # draw_kinematic_graph(kinematic_graph)
 # plt.show()
@@ -155,35 +156,35 @@ print([l.name for l in kinematic_graph.main_branch])
 # plt.show()
 # %%
 
-thickness = 0.01
-density = 1410
+thickness = 0.04
+# print(scale_factor)
+density = 2700 / 2.8
 
 for n in kinematic_graph.nodes():
     n.thickness = thickness
     n.density = density
 
 for j in kinematic_graph.joint_graph.nodes():
-    j.limits["lower"] = -np.pi
-    j.limits["upper"] = np.pi
-    j.limits["effort"] = 1
-    j.limits["velocity"] = 10
+    j.pos_limits = (-np.pi, np.pi)
+    if j.jp.active:
+        j.actuator = TMotor_AK80_9()
     j.damphing_friction = (0.05, 0)
-
 kinematic_graph.define_link_frames()
 
 # draw_link_frames(kinematic_graph)
 # draw_links(kinematic_graph, graph)
 # plt.show()
 
-# draw_joint_frames(kinematic_graph)
-# draw_links(kinematic_graph, graph)
-# plt.show()
+draw_joint_frames(kinematic_graph)
+draw_links(kinematic_graph, graph)
+plt.show()
 
 # %%
 
-from description.builder import Builder, URDFLinkCreater
+from auto_robot_design.description.builder import Builder, URDFLinkCreater, DetalizedURDFCreater
 
-builder = Builder(URDFLinkCreater)
+# builder = Builder(URDFLinkCreater)
+builder = Builder(DetalizedURDFCreater)
 
 robot, ative_joints, constraints = builder.create_kinematic_graph(kinematic_graph)
 
