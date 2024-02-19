@@ -27,6 +27,13 @@ def tensor_inertia_sphere(density, r):
     
     return mass, tensor_inertia
 
+def tensor_inertia_sphere_by_mass(mass, r):
+    central_inertia =  2/5 * mass * r**2
+    
+    tensor_inertia = np.diag([central_inertia for __ in range(3)])
+    
+    return tensor_inertia
+
 def tensor_inertia_box(density, x, y, z):
     mass = x*y*z*density
     inertia = lambda a1, a2:  1/12 * mass * (a1**2 + a2**2)

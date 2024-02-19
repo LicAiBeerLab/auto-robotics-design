@@ -15,6 +15,7 @@ import modern_robotics as mr
 
 from description.actuators import RevoluteUnit
 from description.kinematics import Geometry, Joint, JointPoint, Link, Mesh, Sphere, Box
+from description.utils import tensor_inertia_sphere_by_mass
 
 # from description.utils import calculate_inertia
 
@@ -330,17 +331,19 @@ class DetalizedURDFCreater(URDFLinkCreater):
             color2[3] = 0.5
 
             name_link_in = joint.jp.name + "_" + joint.link_in.name + "Pseudo"
+            rad_in = joint.link_in.geometry.get_thickness() / 1.4
             urdf_pseudo_link_in = urdf.Link(
                 urdf.Visual(
                     urdf.Geometry(
-                        urdf.Sphere(float(joint.link_in.geometry.get_thickness() / 1.4))
+                        urdf.Sphere(float(rad_in))
                     ),
                     urdf.Material(
                         urdf.Color(rgba=color1), name=name_link_in + "_Material"
                     ),
                     # name=name_link_in + "_Visual",
                 ),
-                urdf.Inertial(urdf.Mass(float(joint.actuator.mass / 2))),
+                urdf.Inertial(urdf.Mass(float(joint.actuator.mass / 2)),
+                              urdf.Inertia(**cls.convert_inertia(tensor_inertia_sphere_by_mass(joint.actuator.mass / 2, rad_in)))),
                 name=name_link_in,
             )
             urdf_joint_in = urdf.Joint(
@@ -366,17 +369,20 @@ class DetalizedURDFCreater(URDFLinkCreater):
             )
 
             name_link_out = joint.jp.name + "_" + joint.link_out.name + "Pseudo"
+            rad_out = joint.link_out.geometry.get_thickness() / 1.4
             urdf_pseudo_link_out = urdf.Link(
                 urdf.Visual(
                     urdf.Geometry(
-                        urdf.Sphere(float(joint.link_in.geometry.get_thickness() / 1.4))
+                        urdf.Sphere(float(rad_out))
                     ),
                     urdf.Material(
                         urdf.Color(rgba=color2), name=name_link_out + "_Material"
                     ),
                     # name=name_link_out + "_Visual",
                 ),
-                urdf.Inertial(urdf.Mass(float(joint.actuator.mass / 2))),
+                urdf.Inertial(
+                    urdf.Mass(float(joint.actuator.mass / 2)),
+                    urdf.Inertia(**cls.convert_inertia(tensor_inertia_sphere_by_mass(joint.actuator.mass / 2, rad_out)))),
                 name=name_link_out,
             )
 
@@ -535,17 +541,17 @@ class DetalizedURDFCreater(URDFLinkCreater):
 
             out["joint"].append(urdf_unit_link)
             out["joint"].append(urdf_joint_weld)
-        if joint.jp.attach_ground:
-            ground = list(filter(lambda l: l.name == "G", joint.links))[0]
-            urdf_ground_link = urdf.Link(
-                urdf.Visual(
-                    urdf.Origin(xyz=joint.jp.r.tolist()),
-                    urdf.Geometry(urdf.Box(ground.geometry.size)),
-                    urdf.Material(urdf.Color(rgba=ground.geometry.color)),
-                ),
-                name=joint.jp.name + "_G",
-            )
-            out["joint"].append(urdf_ground_link)
+        # if joint.jp.attach_ground:
+        #     ground = list(filter(lambda l: l.name == "G", joint.links))[0]
+        #     urdf_ground_link = urdf.Link(
+        #         urdf.Visual(
+        #             urdf.Origin(xyz=joint.jp.r.tolist()),
+        #             urdf.Geometry(urdf.Box(ground.geometry.size)),
+        #             urdf.Material(urdf.Color(rgba=ground.geometry.color)),
+        #         ),
+        #         name=joint.jp.name + "_G",
+        #     )
+        #     out["joint"].append(urdf_ground_link)
         return out
 
 

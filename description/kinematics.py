@@ -131,6 +131,7 @@ class Box(Geometry):
         self.shape = "box"
 
     def calculate_inertia(self):
+        
         self.mass = np.prod(self.size) * self.density
         inertia = lambda a1, a2: 1 / 12 * self.mass * (a1**2 + a2**2)
 
