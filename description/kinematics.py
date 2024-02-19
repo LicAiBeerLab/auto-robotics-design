@@ -280,7 +280,9 @@ class Link:
             # thickness = min((length * self._thickness, self._thickness))
             # thickness = max((thickness, 0.015))
             print(length)
-            size =  [self._thickness, self._thickness, length - self._thickness]
+            if length > self.thickness:
+                length = length - self._thickness
+            size =  [self._thickness, self._thickness, length]
             self.geometry = Box(self._density, size, color=color)
         elif num_joint > 2:
             points = []
