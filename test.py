@@ -74,7 +74,7 @@ graph = nx.Graph()
 # branch_2_J1 = np.array([-0.808, 0, 2.862]) / scale_factor
 # branch_2_J2 = np.array([0.849, 0, 3.814]) / scale_factor
 
-# print(main_J3)
+# # print(main_J3)
 
 # ground_joint = JointPoint(
 #     r=np.zeros(3), w=np.array([0, 1, 0]), attach_ground=True, active=True, name="Gabs"
@@ -149,7 +149,7 @@ from auto_robot_design.description.utils import draw_kinematic_graph
 
 kinematic_graph.define_main_branch()
 kinematic_tree = kinematic_graph.define_span_tree()
-print([l.name for l in kinematic_graph.main_branch])
+# print([l.name for l in kinematic_graph.main_branch])
 # draw_kinematic_graph(kinematic_graph.main_branch)
 # plt.show()
 # draw_kinematic_graph(kinematic_tree)
@@ -157,7 +157,7 @@ print([l.name for l in kinematic_graph.main_branch])
 # %%
 
 thickness = 0.04
-# print(scale_factor)
+# # print(scale_factor)
 density = 2700 / 2.8
 
 for n in kinematic_graph.nodes():
@@ -192,6 +192,6 @@ with open("robot.urdf", "w") as f:
     f.write(robot.urdf())
 
 if len(constraints) == 0:
-    print("sasambs")
-print(f"Active joints: {ative_joints}")
-print(f"Constraints: {constraints}")
+    # print("sasambs")
+# print(f"Active joints: {ative_joints}")
+# print(f"Constraints: {constraints}")

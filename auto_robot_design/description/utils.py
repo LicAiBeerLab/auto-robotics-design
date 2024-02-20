@@ -68,7 +68,7 @@ def calc_weight_for_span(edge, graph: nx.Graph):
         weight = np.round(len(graph.nodes()) * 100 + min_length_to_EE * 10 + length_next_j_to_j/10, 3)
     else:
         weight = np.round(min_length_to_EE * 10 + length_next_j_to_j/10, 3)
-    print(edge[0].name, edge[1].name, weight)
+    # print(edge[0].name, edge[1].name, weight)
     return weight
 
 

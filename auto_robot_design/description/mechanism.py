@@ -12,7 +12,7 @@ import numpy.linalg as la
 from scipy.spatial.transform import Rotation as R
 
 import modern_robotics as mr
-
+from modern_robotics import VecToso3
 import networkx as nx
 
 from auto_robot_design.description.kinematics import (
@@ -181,7 +181,7 @@ class KinematicGraph(nx.Graph):
             prev_link = joint.link_in
             next_link = joint.link_out
             joint.is_constraint = True
-            print(prev_link.name, joint.jp.name)#, next_link.name)
+            #(prev_link.name, joint.jp.name)#, next_link.name)
             prev_in_joint = list(filter(lambda j: j.link_in and j.link_in == prev_link, prev_link.joints))[0]
             
             rot, __ = mr.TransToRp(prev_in_joint.frame)

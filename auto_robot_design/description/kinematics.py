@@ -15,7 +15,7 @@ from trimesh import Trimesh
 from trimesh.convex import convex_hull
 
 from auto_robot_design.description.actuators import RevoluteUnit
-
+from typing import Union
 
 @dataclass
 class JointPoint:
@@ -76,7 +76,7 @@ class Geometry:
     def __init__(
         self,
         density: float = 0,
-        size: list[float] | Trimesh = [],
+        size: Union[list[float], Trimesh] = [],
         mass: float = 0,
         inertia: np.ndarray = np.zeros((3, 3)),
         color: list[float] = [0,0,0,0]
@@ -96,7 +96,7 @@ class Geometry:
         return self._size
 
     @size.setter
-    def size(self, values: list[float] | Trimesh):  # noqa: F811
+    def size(self, values: Union[list[float], Trimesh]):  # noqa: F811
         self._size = values
         self.calculate_inertia()
 
@@ -122,7 +122,7 @@ class Box(Geometry):
     def __init__(
         self,
         density: float = 0,
-        size: list[float] | Trimesh = [],
+        size: Union[list[float], Trimesh]  = [],
         mass: float = 0,
         inertia: np.ndarray = np.zeros((3, 3)),
         color: list[float] = [0,0,0,0]
@@ -279,7 +279,7 @@ class Link:
             length = la.norm(vector)
             # thickness = min((length * self._thickness, self._thickness))
             # thickness = max((thickness, 0.015))
-            print(length)
+            # print(length)
             if length > self.thickness:
                 length = length - self._thickness
             size =  [self._thickness, self._thickness, length]
@@ -292,7 +292,7 @@ class Link:
             max_length = np.mean(list(
                 map(lambda x: la.norm(x[0] - x[1]), pairs_p)
             ))
-            print(max_length)
+            # print(max_length)
             # thickness = min((max_length * self._thickness, self._thickness))
             # thickness = max((thickness, 0.015))
             mesh = create_mesh_from_joints(points, self._thickness)
@@ -379,7 +379,7 @@ def get_endeffector_joints(graph: nx.Graph):
         return filter(lambda n: n.jp.attach_endeffector, joint_nodes)
 
 if __name__ == "__main__":
-    print("Kinematic description of the mechanism")
+    # print("Kinematic description of the mechanism")
     # Define the joint points
     joint_points = [
         JointPoint(r=np.array([0, 0, 0]), attach_ground=True),
@@ -391,5 +391,5 @@ if __name__ == "__main__":
         JointPoint(r=np.array([0, 1, 1])),
         JointPoint(r=np.array([1, 1, 1]), attach_endeffector=True),
     ]
-    print(joint_points[0] == joint_points[1])
-    print(joint_points[0] == joint_points[0])
+    # print(joint_points[0] == joint_points[1])
+    # print(joint_points[0] == joint_points[0])
