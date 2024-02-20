@@ -8,7 +8,6 @@ from auto_robot_design.description.utils import draw_joint_point
 
 pi = np.pi
 
-
 def build_main_branch(
     n_link_options: Tuple[float] = (2, 3, 4),
     length_range: Tuple[float] = (0.2, 1.4),
