@@ -54,9 +54,10 @@ class KinematicGraph(nx.Graph):
             self.joint_graph, main_G_j, main_EE_j, weight=weight_by_dist_active
         )
         main_branch = [self.G]
+        # print([(j.jp.name, l.name) for j in j_in_m_branch for l in j.links])
         for i in range(0, len(j_in_m_branch)):
             main_branch.append(
-                (j_in_m_branch[i].links - set([main_branch[-1]])).pop()
+                (j_in_m_branch[i].links - set(main_branch)).pop()
             )
         self.main_branch = self.subgraph(main_branch)
         return self.main_branch
@@ -181,7 +182,7 @@ class KinematicGraph(nx.Graph):
             prev_link = joint.link_in
             next_link = joint.link_out
             joint.is_constraint = True
-            print(prev_link.name, joint.jp.name)#, next_link.name)
+            # print(prev_link.name, joint.jp.name)#, next_link.name)
             prev_in_joint = list(filter(lambda j: j.link_in and j.link_in == prev_link, prev_link.joints))[0]
             
             rot, __ = mr.TransToRp(prev_in_joint.frame)

@@ -183,7 +183,7 @@ class Mesh(Geometry):
         super().__init__(density, size, mass, inertia, color)
         num_points = len(self.size.vertices) / 2
         
-        self._size.density = density / (num_points - 1)
+        self.density = density / (num_points - 1)
         self.shape = "mesh"
 
     def calculate_inertia(self):
@@ -279,7 +279,7 @@ class Link:
             length = la.norm(vector)
             # thickness = min((length * self._thickness, self._thickness))
             # thickness = max((thickness, 0.015))
-            print(length)
+            # print(length)
             if length > self.thickness:
                 length = length - self._thickness
             size =  [self._thickness, self._thickness, length]
@@ -292,7 +292,7 @@ class Link:
             max_length = np.mean(list(
                 map(lambda x: la.norm(x[0] - x[1]), pairs_p)
             ))
-            print(max_length)
+            # print(max_length)
             # thickness = min((max_length * self._thickness, self._thickness))
             # thickness = max((thickness, 0.015))
             mesh = create_mesh_from_joints(points, self._thickness)
