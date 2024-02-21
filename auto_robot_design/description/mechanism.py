@@ -37,6 +37,7 @@ class KinematicGraph(nx.Graph):
         self.main_branch: nx.Graph = nx.Graph()
         self.kinematic_tree: nx.Graph = nx.Graph()
         self.joint_graph: nx.Graph = nx.Graph()
+        self.jps_graph: nx.Graph = nx.Graph()
 
     def define_main_branch(self):
         ground_joints = sorted(
@@ -196,7 +197,7 @@ def JointPoint2KinematicGraph(jp_graph: nx.Graph):
     JP2Joint = {}
     for jp in jp_graph.nodes():
         JP2Joint[jp] = Joint(jp)
-
+    jps_graph = deepcopy(jp_graph)
     joint_graph: nx.Graph = nx.relabel_nodes(jp_graph, JP2Joint)
 
     ground_joints = set([JP2Joint[jp] for jp in get_ground_joints(jp_graph)])
@@ -272,6 +273,7 @@ def JointPoint2KinematicGraph(jp_graph: nx.Graph):
     kin_graph.EE = ee_link
     kin_graph.G = ground_link
     kin_graph.joint_graph = joint_graph
+    kin_graph.jps_graph = jps_graph
     for joint in joint_graph.nodes():
         connected_links = list(joint.links)
         if len(connected_links) == 2:
