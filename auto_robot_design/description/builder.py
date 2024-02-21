@@ -3,6 +3,7 @@ from itertools import combinations
 from math import isclose
 from shlex import join
 from turtle import st
+from typing import Union
 from pyparsing import List, Tuple
 
 import odio_urdf as urdf
@@ -20,7 +21,7 @@ from auto_robot_design.description.utils import tensor_inertia_sphere_by_mass
 # from auto_robot_design.description.utils import calculate_inertia
 
 
-def add_branch(G: nx.Graph, branch: List[JointPoint] | List[List[JointPoint]]):
+def add_branch(G: nx.Graph, branch: Union [List[JointPoint], List[List[JointPoint]]]):
     is_list = [isinstance(br, List) for br in branch]
     if all(is_list):
         for b in branch:
@@ -39,7 +40,7 @@ def add_branch(G: nx.Graph, branch: List[JointPoint] | List[List[JointPoint]]):
 
 def add_branch_with_attrib(
     G: nx.Graph,
-    branch: List[Tuple[JointPoint, dict]] | List[List[Tuple[JointPoint, dict]]],
+    branch: Union[List[Tuple[JointPoint, dict]], List[List[Tuple[JointPoint, dict]]]],
 ):
     is_list = [isinstance(br, List) for br in branch]
     if all(is_list):

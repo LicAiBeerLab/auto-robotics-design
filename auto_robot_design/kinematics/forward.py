@@ -53,5 +53,5 @@ if __name__=="__main__":
     add_branch_2 = [[tarus_joint,foot_joint], molet_joint, toeB_joint, toeB_foot_joint, foot_joint]
     for j0 in main_branch:
         j1 = next(main_branch)
-        print(j0,j1)
+        # print(j0,j1)
         # cassie_graph.add_edge()
