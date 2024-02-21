@@ -202,10 +202,42 @@ def get_constrain_space(constrain_dict:dict):
     space = np.array(space)
     return space
 
+from copy import deepcopy
+import networkx
+def get_changed_graph(graph, constrain_dict, change_vector):
+    new_graph:networkx.Graph = deepcopy(graph)
+    vector_dict = {}
+    i = 0 
+    for key in constrain_dict:
+        if constrain_dict[key]['optim']:
+            vector = np.zeros(3)
+            if constrain_dict[key].get('x_range'):
+                vector[0] = change_vector[i]
+                i+=1
+            if constrain_dict[key].get('z_range'):
+                vector[2] = change_vector[i]
+                i+=1
+            vector_dict[key] = vector
+    
+    for node in new_graph.nodes:
+        if node.name in vector_dict:
+            node.r = node.r + vector_dict[node.name]
+    
+    return new_graph
+
+
+
 if __name__ == '__main__':
     gen = TwoLinkGenerator()
     graph, constrain_dict = gen.get_standard_set()[0]
     space = get_constrain_space(constrain_dict)
-    
+    random_vector = np.zeros(len(space))
+    for i, r in enumerate(space):
+        random_vector[i] = np.random.uniform(low=r[0], high = r[1])
+
+
+    get_changed_graph(graph, constrain_dict, random_vector)
+    draw_joint_point(graph)
+    pass
 
 
