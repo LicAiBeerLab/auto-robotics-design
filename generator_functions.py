@@ -8,7 +8,6 @@ from auto_robot_design.description.utils import draw_joint_point
 
 pi = np.pi
 
-
 def build_main_branch(
     n_link_options: Tuple[float] = (2, 3, 4),
     length_range: Tuple[float] = (0.2, 1.4),
@@ -303,7 +302,7 @@ def generate_graph():
     main_branch, dof = build_main_branch(angle_range=(-pi / 12, pi / 12))
     add_branch(graph, main_branch)
     # dof = body_counter * 3 - 2 * joint_counter
-    # print(dof)
+    # # print(dof)
     zero_reduction = True
     b_idx = 0
     while dof > 2 or zero_reduction:
@@ -334,4 +333,4 @@ if __name__ == "__main__":
     if graph:
         draw_joint_point(graph)
     else:
-        print("Fail!")
+        # print("Fail!")
