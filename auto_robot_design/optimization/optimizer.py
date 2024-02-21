@@ -1,3 +1,5 @@
+import os
+import time
 import numpy as np
 import networkx as nx
 
@@ -10,7 +12,7 @@ def create_dict_jp_limit(joints, limit):
     return jp2limits
 
 class Optimizer:
-    def __init__(self, graph: nx.Graph, jp2limits, weights, **params_optimizer) -> None:
+    def __init__(self, graph: nx.Graph, jp2limits, weights, name, **params_optimizer) -> None:
         self.graph = graph
         self.jp2limits = jp2limits
         self.params_optimizer = params_optimizer
@@ -18,6 +20,9 @@ class Optimizer:
         self.initial_xopt, __, __, __ = self.convert_joints2x_opt()
         self.weights = weights
         self.history = {}
+        self.cmaes_learning_data = []
+        date = "_" + time.strftime("%Y-%m-%d_%H-%M-%S")
+        self.name_experiment = name + date
     def convert_joints2x_opt(self):
         x_opt = []
         upper_bounds = []
@@ -53,7 +58,7 @@ class Optimizer:
                 solutions.append((x, fval))
                 self.history[x] = (costs, fval)
             optimizer_CMA.tell(solutions)
-            
+            self.cmaes_learning_data.append(optimizer_CMA.result)
             if optimizer_CMA.should_stop():
                 popsize = optimizer_CMA.population_size * 2
                 self.params_optimizer['population_size'] = popsize
@@ -66,3 +71,27 @@ class Optimizer:
     
     def calc_fval(self, costs):
         return np.sum(costs @ self.weights)
+    
+    
+    def save(self, path = "./results"):
+        pass
+
+    def _prepare_path(self, folder_name: str):
+        """Create a folder for saving results.
+
+        Args:
+            folder_name (str): The name of the folder where the results will be saved.
+
+        Returns:
+            str: The path to the folder.
+        """
+        folders = ["results", self.name_experiment, folder_name]
+        path = "./"
+        for folder in folders:
+            path = os.path.join(path, folder)
+            if not os.path.exists(path):
+                os.mkdir(path)
+        path = os.path.abspath(path)
+        print(f"Dara data will be in {path}")
+        
+        return path
