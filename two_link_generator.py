@@ -50,7 +50,7 @@ class TwoLinkGenerator():
         branch.append(knee_joint)
         graph_dict["TL_knee"] = knee_joint
         ee = JointPoint(
-            r=np.array([0,0,-1]),
+            r=np.array([0,0,-nominal_length]),
             w=np.array([0, 1, 0]),
             attach_endeffector=True,
             name="TL_ee"
