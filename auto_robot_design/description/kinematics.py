@@ -2,7 +2,7 @@ from abc import abstractmethod
 import array
 from copy import deepcopy
 from dataclasses import dataclass, field
-from itertools import combinations
+from itertools import combinations, product
 from typing import Optional
 
 import numpy as np
@@ -56,16 +56,25 @@ class JointPoint:
         return hash(self) == hash(__value)
 
 
-def create_mesh_from_joints(points: list[np.ndarray], thickness) -> Trimesh:
-    vertices = []
-    for p in points:
-        v1 = deepcopy(p)
-        v2 = deepcopy(p)
-        v1[1] = thickness / 2
-        v2[1] = -thickness / 2
-        vertices += [v1, v2]
-
-    return convex_hull(vertices)
+def create_mesh_from_joints(joints, thickness, frame = np.eye(4)) -> Trimesh:
+    points = {}
+    for j in joints:
+        points[j] = ((mr.TransInv(frame) @ np.r_[j.jp.r, 1])[:3], j.jp.w)
+    pairs_p = combinations(points.keys(), 2)
+    mesh = Trimesh()
+    for p1, p2 in pairs_p:
+        link_points = []
+        vector = points[p2][0] - points[p1][0]
+        vector = vector / la.norm(vector) if la.norm(vector) != 0 else vector
+        ort_vector = np.cross(points[p1][1], vector)
+        ort_vector = ort_vector / la.norm(ort_vector) if la.norm(ort_vector) != 0 else ort_vector
+        variants = product((ort_vector, -ort_vector), (1, -1))
+        for v in variants:
+            link_points.append(points[p1][0] + (v[0] - v[1] * p1.jp.w) * thickness / 2)
+            link_points.append(points[p2][0] + (v[0] - v[1] * p2.jp.w) * thickness / 2)
+        mesh = mesh.union(convex_hull(link_points))
+        
+    return mesh
 
 
 class Geometry:
@@ -180,11 +189,13 @@ class Mesh(Geometry):
         super().__init__(density, size, mass, inertia, color)
         num_points = len(self.size.vertices) / 2
         
-        self.density = density / (num_points - 1)
+        self.density = density
+        # self.density = density / (num_points - 1)
         self.shape = "mesh"
 
     def calculate_inertia(self):
         self.mass = self._size.mass
+        self._size.density = self.density
 
         self.inertia = self._size.moment_inertia
 
@@ -282,17 +293,10 @@ class Link:
             size =  [self._thickness, self._thickness, length]
             self.geometry = Box(self._density, size, color=color)
         elif num_joint > 2:
-            points = []
-            for j in self.joints:
-                points.append((mr.TransInv(self.frame) @ np.r_[j.jp.r, 1])[:3])
-            pairs_p = combinations(points, 2)
-            max_length = np.mean(list(
-                map(lambda x: la.norm(x[0] - x[1]), pairs_p)
-            ))
             # print(max_length)
             # thickness = min((max_length * self._thickness, self._thickness))
             # thickness = max((thickness, 0.015))
-            mesh = create_mesh_from_joints(points, self._thickness)
+            mesh = create_mesh_from_joints(self.joints, self._thickness)
             self.geometry = Mesh(self._density, mesh, color=color)
         else:
             raise Exception("Zero joints")

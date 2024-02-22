@@ -107,7 +107,11 @@ class KinematicGraph(nx.Graph):
                             la.norm(ez))
             
             axis = mr.VecToso3(ez) @ v_w
-            axis /= la.norm(axis)
+            if np.sum(axis) == 0 and angle in (0.0, np.pi):
+                axis = in_j.jp.w
+            else:
+                axis /= la.norm(axis)
+            
             
             rot = R.from_rotvec(axis * angle)
             pos = in_j.jp.r

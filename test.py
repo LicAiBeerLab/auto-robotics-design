@@ -10,6 +10,7 @@ from auto_robot_design.description.actuators import TMotor_AK60_6, TMotor_AK80_9
 
 from auto_robot_design.description.kinematics import JointPoint
 from auto_robot_design.description.builder import add_branch
+from two_link_generator import TwoLinkGenerator
 
 graph = nx.Graph()
 
@@ -62,98 +63,109 @@ graph = nx.Graph()
 # %% Three Triangles
 
 # scale_factor = la.norm([1.011, 0, 1.075])+la.norm([0.988, 0, 2.823]) + la.norm([2.396, 0, 3.461])
-# scale_factor =  la.norm([2.396, 0, 3.461])
+scale_factor =  la.norm([2.396, 0, 3.461])
 
-# abs_ground = np.array([0.0, 0, 0.0]) / scale_factor
-# main_J1 = np.array([1.011, 0, 1.075]) / scale_factor
-# main_J2 = np.array([0.988, 0, 2.823]) / scale_factor
-# main_J3 = np.array([2.396, 0, 3.461]) / scale_factor
-# ground_2 = np.array([-1.602, 0, 0.0]) / scale_factor
-# branch_1_J1 = np.array([-1.216, 0, 1.317]) / scale_factor
-# branch_1_J2 = np.array([0.134, 0, 1.849]) / scale_factor
-# branch_2_J1 = np.array([-0.808, 0, 2.862]) / scale_factor
-# branch_2_J2 = np.array([0.849, 0, 3.814]) / scale_factor
+abs_ground = np.array([0.0, 0, 0.0]) / scale_factor
+main_J1 = np.array([1.011, 0, 1.075]) / scale_factor
+main_J2 = np.array([0.988, 0, 2.823]) / scale_factor
+main_J3 = np.array([2.396, 0, 3.461]) / scale_factor
+ground_2 = np.array([-1.602, 0, 0.0]) / scale_factor
+branch_1_J1 = np.array([-1.216, 0, 1.317]) / scale_factor
+branch_1_J2 = np.array([0.134, 0, 1.849]) / scale_factor
+branch_2_J1 = np.array([-0.808, 0, 2.862]) / scale_factor
+branch_2_J2 = np.array([0.849, 0, 3.814]) / scale_factor
 
-# # print(main_J3)
+# print(main_J3)
 
-# ground_joint = JointPoint(
-#     r=np.zeros(3), w=np.array([0, 1, 0]), attach_ground=True, active=True, name="Gabs"
-# )
-# JPm_J1 = JointPoint(r=main_J1, w=np.array([0, 1, 0]), active=True, name="J1m")
-# JPm_J2 = JointPoint(main_J2, w=np.array([0, 1, 0]), name="J2m", attach_endeffector=True)
-# JPm_J3 = JointPoint(
-#     r=main_J3, w=np.array([0, 1, 0]), name="J3m", attach_endeffector=True
-# )
-
-
-# ground_joint_2 = JointPoint(
-#     r=ground_2, w=np.array([0, 1, 0]), attach_ground=True, name="G2"
-# )
-# JPb1_J1 = JointPoint(r=branch_1_J1, w=np.array([0, 1, 0]), name="J1b1")
-# JPb1_J2 = JointPoint(r=branch_1_J2, w=np.array([0, 1, 0]), name="J2b1")
-
-# JPb2_J1 = JointPoint(r=branch_2_J1, w=np.array([0, 1, 0]), name="J1b2")
-# JPb2_J2 = JointPoint(
-#     r=branch_2_J2, w=np.array([0, 1, 0]), name="J2b2", attach_endeffector=True
-# )
+ground_joint = JointPoint(
+    r=np.zeros(3), w=np.array([0, 1, 0]), attach_ground=True, active=True, name="Gabs"
+)
+JPm_J1 = JointPoint(r=main_J1, w=np.array([0, 1, 0]), active=True, name="J1m")
+JPm_J2 = JointPoint(main_J2, w=np.array([0, 1, 0]), name="J2m", attach_endeffector=True)
+JPm_J3 = JointPoint(
+    r=main_J3, w=np.array([0, 1, 0]), name="J3m", attach_endeffector=True
+)
 
 
-# jts = [
-#     ground_joint,
-#     JPm_J1,
-#     JPm_J2,
-#     JPm_J3,
-#     ground_joint_2,
-#     JPb1_J1,
-#     JPb1_J2,
-#     JPb2_J1,
-#     JPb2_J2,
-# ]
+ground_joint_2 = JointPoint(
+    r=ground_2, w=np.array([0, 1, 0]), attach_ground=True, name="G2"
+)
+JPb1_J1 = JointPoint(r=branch_1_J1, w=np.array([0, 1, 0]), name="J1b1")
+JPb1_J2 = JointPoint(r=branch_1_J2, w=np.array([0, 1, 0]), name="J2b1")
 
-# main_branch = [ground_joint, JPm_J1, JPm_J2, JPm_J3]
-# add_branch_1 = [
-#     ground_joint_2,
-#     JPb1_J1,
-#     JPb1_J2,
-#     [JPm_J1, JPm_J2]
-# ]
-# add_branch_2 = [
-#     [JPb1_J1, JPb1_J2],
-#     JPb2_J1,
-#     JPb2_J2,
-#     [JPm_J2, JPm_J3]
-# ]
-# add_branch(graph, [main_branch, add_branch_1, add_branch_2])
+JPb2_J1 = JointPoint(r=branch_2_J1, w=np.array([0, 1, 0]), name="J1b2")
+JPb2_J2 = JointPoint(
+    r=branch_2_J2, w=np.array([0, 1, 0]), name="J2b2", attach_endeffector=True
+)
+
+
+jts = [
+    ground_joint,
+    JPm_J1,
+    JPm_J2,
+    JPm_J3,
+    ground_joint_2,
+    JPb1_J1,
+    JPb1_J2,
+    JPb2_J1,
+    JPb2_J2,
+]
+
+main_branch = [ground_joint, JPm_J1, JPm_J2, JPm_J3]
+add_branch_1 = [
+    ground_joint_2,
+    JPb1_J1,
+    JPb1_J2,
+    [JPm_J1, JPm_J2]
+]
+add_branch_2 = [
+    [JPb1_J1, JPb1_J2],
+    JPb2_J1,
+    JPb2_J2,
+    [JPm_J2, JPm_J3]
+]
+add_branch(graph, [main_branch, add_branch_1, add_branch_2])
+
+# gen = TwoLinkGenerator()
+# graph, constrain_dict = gen.get_standard_set()[0]
+
+draw_joints = False
+draw_links_repr = False
 
 # %%
 from auto_robot_design.description.utils import draw_joint_frames, draw_joint_point, draw_link_frames
 
-# draw_joint_point(graph) 
-# plt.show()
+if draw_joints:
+    draw_joint_point(graph) 
+    plt.show()
 
 # %%
 from auto_robot_design.description.mechanism import JointPoint2KinematicGraph
 from auto_robot_design.description.utils import draw_links
 
 kinematic_graph = JointPoint2KinematicGraph(graph)
-# draw_links(kinematic_graph, graph)
-plt.show()
+if draw_joints:
+    draw_links(kinematic_graph, graph)
+    plt.show()
 
 # %%
 from auto_robot_design.description.utils import draw_kinematic_graph
 
-# draw_kinematic_graph(kinematic_graph)
-# plt.show()
+if draw_links_repr:
+    draw_kinematic_graph(kinematic_graph)
+    plt.show()
 
 # %%
 
 kinematic_graph.define_main_branch()
 kinematic_tree = kinematic_graph.define_span_tree()
-# print([l.name for l in kinematic_graph.main_branch])
-# draw_kinematic_graph(kinematic_graph.main_branch)
-# plt.show()
-# draw_kinematic_graph(kinematic_tree)
-# plt.show()
+
+if draw_links_repr:
+    print([l.name for l in kinematic_graph.main_branch])
+    draw_kinematic_graph(kinematic_graph.main_branch)
+    plt.show()
+    draw_kinematic_graph(kinematic_tree)
+    plt.show()
 # %%
 
 thickness = 0.04
@@ -171,13 +183,14 @@ for j in kinematic_graph.joint_graph.nodes():
     j.damphing_friction = (0.05, 0)
 kinematic_graph.define_link_frames()
 
-# draw_link_frames(kinematic_graph)
-# draw_links(kinematic_graph, graph)
-# plt.show()
+if draw_joints:
+    draw_link_frames(kinematic_graph)
+    draw_links(kinematic_graph, graph)
+    plt.show()
 
-draw_joint_frames(kinematic_graph)
-draw_links(kinematic_graph, graph)
-plt.show()
+    draw_joint_frames(kinematic_graph)
+    draw_links(kinematic_graph, graph)
+    plt.show()
 
 # %%
 
@@ -191,7 +204,7 @@ robot, ative_joints, constraints = builder.create_kinematic_graph(kinematic_grap
 with open("robot.urdf", "w") as f:
     f.write(robot.urdf())
 
-if len(constraints) == 0:
+# if len(constraints) == 0:
     # print("sasambs")
 # print(f"Active joints: {ative_joints}")
 # print(f"Constraints: {constraints}")
