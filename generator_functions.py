@@ -302,7 +302,7 @@ def generate_graph():
     main_branch, dof = build_main_branch(angle_range=(-pi / 12, pi / 12))
     add_branch(graph, main_branch)
     # dof = body_counter * 3 - 2 * joint_counter
-    # print(dof)
+    # # print(dof)
     zero_reduction = True
     b_idx = 0
     while dof > 2 or zero_reduction:
@@ -333,4 +333,4 @@ if __name__ == "__main__":
     if graph:
         draw_joint_point(graph)
     else:
-        print("Fail!")
+        # print("Fail!")

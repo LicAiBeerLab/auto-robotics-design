@@ -1,17 +1,17 @@
-name: auto-robotics-design
+name: auto-robotics-design2
 channels:
   - conda-forge
 dependencies:
-  - python = 3.11
-  - numpy = 1.26
-  - scipy = 1.11.4
-  - matplotlib = 3.8
+  - python = 3.10
+  - numpy
+  - scipy  
+  - matplotlib 
   - pip
   - pip:
-    - mujoco == 3.0.1
     - networkx
-    - dm_control
     - modern-robotics
     - notebook
     - mediapy
     - tqdm
+    - trimesh
+    - git+https://github.com/hauptmech/odio_urdf.git

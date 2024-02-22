@@ -12,7 +12,7 @@ import numpy.linalg as la
 from scipy.spatial.transform import Rotation as R
 
 import modern_robotics as mr
-
+from modern_robotics import VecToso3
 import networkx as nx
 
 from auto_robot_design.description.kinematics import (
