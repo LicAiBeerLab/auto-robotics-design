@@ -5,7 +5,7 @@ import networkx as nx
 
 from cmaes import CMA
 
-from pinokla.criterion_agregator import calc_traj_error, calc_traj_error_with_visualization
+from auto_robot_design.pinokla.criterion_agregator import calc_traj_error, calc_traj_error_with_visualization
 
 from auto_robot_design.pino_adapter.pino_adapter import get_pino_description
 from auto_robot_design.description.actuators import TMotor_AK80_9

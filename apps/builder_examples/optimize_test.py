@@ -9,7 +9,7 @@ from auto_robot_design.description.actuators import TMotor_AK60_6, TMotor_AK80_9
 
 from auto_robot_design.description.kinematics import JointPoint
 from auto_robot_design.description.builder import add_branch
-from two_link_generator import TwoLinkGenerator
+from auto_robot_design.generator.two_link_generator import TwoLinkGenerator
 
 
 gen = TwoLinkGenerator()
