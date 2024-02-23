@@ -9,7 +9,7 @@ from cmaes import CMA
 
 import pinocchio as pin
 
-from pinokla.criterion_agregator import calc_traj_error, calc_traj_error_with_visualization
+from auto_robot_design.pinokla.criterion_agregator import calc_traj_error, calc_traj_error_with_visualization
 from pinokla.loader_tools import build_model_with_extensions
 
 from auto_robot_design.pino_adapter.pino_adapter import get_pino_description
