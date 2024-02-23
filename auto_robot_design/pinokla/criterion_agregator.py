@@ -4,7 +4,6 @@ from hashlib import sha256
 import time
 from typing import NamedTuple
 import odio_urdf
-from auto_robot_design.pinokla.closed_loop_kinematics import ForwardK, ForwardK1, closedLoopProximalMount
 from auto_robot_design.pinokla.default_traj import convert_x_y_to_6d_traj, convert_x_y_to_6d_traj_xz, get_simple_spline
 from auto_robot_design.pinokla.loader_tools import build_model_with_extensions, Robot, completeRobotLoader, completeRobotLoaderFromStr
 from auto_robot_design.pinokla.calc_criterion import calc_IMF_along_traj, calc_foot_inertia_along_traj, calc_force_ell_along_trj_trans, calc_manipulability_along_trj, calc_manipulability_along_trj_trans, folow_traj_by_proximal_inv_k, kinematic_simulation, search_workspace, set_end_effector

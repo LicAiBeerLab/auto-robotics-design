@@ -5,9 +5,7 @@ import numpy.linalg as la
 import matplotlib.pyplot as plt
 
 import networkx as nx
-from auto_robot_design.description.actuators import TMotor_AK60_6, TMotor_AK80_9
-
-from auto_robot_design.description.kinematics import JointPoint
+from auto_robot_design.optimization.optimizer import jps_graph2urdf
 from auto_robot_design.description.builder import Builder, DetalizedURDFCreater, add_branch
 from auto_robot_design.description.mechanism import JointPoint2KinematicGraph
 from auto_robot_design.generator.two_link_generator import TwoLinkGenerator
@@ -21,12 +19,8 @@ graphs_and_cons = gen.get_standard_set()
 builder = Builder(DetalizedURDFCreater)
 urdf_motors_cons_list = []
 for graph_i, constarin_i in graphs_and_cons:
-    kinematic_graph = JointPoint2KinematicGraph(graph_i)
-    robot, ative_joints, constraints = builder.create_kinematic_graph(
-        kinematic_graph)
-    pino_j_des, pino_cons_des = pino_adapter.get_pino_description(
-        ative_joints, constraints)
-    urdf_motors_cons_tuple = (robot.urdf(), pino_j_des, pino_cons_des)
+    urdf_robot, ative_joints, constraints = jps_graph2urdf(graph_i)
+    urdf_motors_cons_tuple = (urdf_robot, ative_joints, constraints)
     urdf_motors_cons_list.append(urdf_motors_cons_tuple)
     # draw_joint_point(graph_i)
     # plt.show()
