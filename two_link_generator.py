@@ -46,7 +46,7 @@ class TwoLinkGenerator():
         )
         graph_dict = {"TL_ground": ground_joint}
         constrain_dict = {ground_joint.name: {'optim': False,
-                                              'x_range': {-0.2, 0.2}, 'z_range': {-0.2, 0.2}}}
+                                              'x_range': (-0.2, 0.2), 'z_range': (-0.2, 0.2)}}
         branch = [ground_joint]
         # if variant not in (1,2,3): raise Exception("wrong variant!")
         # knee_joint_pos = np.array([right_shift, 0, -variant * 0.25])
