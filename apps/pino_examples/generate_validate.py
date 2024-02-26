@@ -5,10 +5,8 @@ import numpy.linalg as la
 import matplotlib.pyplot as plt
 
 import networkx as nx
-from auto_robot_design.description.actuators import TMotor_AK60_6, TMotor_AK80_9
 
-from auto_robot_design.description.kinematics import JointPoint
-from auto_robot_design.description.builder import Builder, DetalizedURDFCreater, add_branch
+from auto_robot_design.description.builder import Builder, DetalizedURDFCreater, add_branch, jps_graph2urdf
 from auto_robot_design.description.mechanism import JointPoint2KinematicGraph
 from auto_robot_design.generator.two_link_generator import TwoLinkGenerator
 from auto_robot_design.description.utils import draw_joint_frames, draw_joint_point, draw_link_frames

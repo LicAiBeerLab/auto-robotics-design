@@ -4,7 +4,6 @@ from hashlib import sha256
 import time
 from typing import NamedTuple
 import odio_urdf
-from auto_robot_design.pinokla.closed_loop_kinematics import ForwardK, ForwardK1, closedLoopProximalMount
 from auto_robot_design.pinokla.default_traj import convert_x_y_to_6d_traj, convert_x_y_to_6d_traj_xz, get_simple_spline
 from auto_robot_design.pinokla.loader_tools import build_model_with_extensions, Robot, completeRobotLoader, completeRobotLoaderFromStr
 from auto_robot_design.pinokla.calc_criterion import calc_IMF_along_traj, calc_foot_inertia_along_traj, calc_force_ell_along_trj_trans, calc_manipulability_along_trj, calc_manipulability_along_trj_trans, folow_traj_by_proximal_inv_k, kinematic_simulation, search_workspace, set_end_effector
@@ -128,6 +127,30 @@ def calc_traj_error(urdf_str: str,
     res = sum(np.linalg.norm(pos_errors, axis=1)) / traj_6d.shape[0]
     return res
 
+def calc_traj_error_with_visualization(urdf_str: str,
+                                       joint_des: dict,
+                                        loop_des: dict):
+    cmp_cfg = ComputeConfg(False, False, False, False)
+    x_traj, y_traj = get_simple_spline()
+    traj_6d = convert_x_y_to_6d_traj_xz(x_traj, y_traj)
+
+    robo = build_model_with_extensions(urdf_str, joint_des, loop_des)
+    viz = MeshcatVisualizer(robo.model, robo.visual_model, robo.visual_model)
+    viz.viewer = meshcat.Visualizer().open()
+    viz.clean()
+    viz.loadViewerModel()
+    plt.show()
+    poses_3d, q_array, constraint_errors = folow_traj_by_proximal_inv_k(
+        robo.model, robo.data, robo.constraint_models, robo.constraint_data, "EE", traj_6d, viz)
+    pos_errors = traj_6d[:, :3] - poses_3d
+    plt.figure()
+    plt.scatter(poses_3d[:, 0], poses_3d[:,2],   marker = "d")
+    plt.scatter(traj_6d[:, 0], traj_6d[:,2],   marker = ".")
+    plt.title("Traj")
+ 
+    plt.show()
+    res = sum(np.linalg.norm(pos_errors, axis=1)) / traj_6d.shape[0]
+    return res
 
 def calc_criterion_on_workspace_simple_input(
         urdf_str: str,

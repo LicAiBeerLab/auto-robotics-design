@@ -1,0 +1,578 @@
+<?xml version="1.0"?>
+<robot  name="Robot" >
+ <link  name="G" >
+  <visual >
+   <origin  rpy="0.0 0.0 0.0"  xyz="0.0 0.0 0.0" />
+   <geometry >
+    <box  size="0.08 0.08 0.08" />
+   </geometry>
+   <material  name="G_Material" >
+    <color  rgba="0.9223691772363326 0.2848757357348535 0.9494860424765409 1.0" />
+   </material>
+  </visual>
+  <collision  name="G_Collision" >
+   <origin  rpy="0.0 0.0 0.0"  xyz="0.0 0.0 0.0" />
+   <geometry >
+    <box  size="0.08 0.08 0.08" />
+   </geometry>
+  </collision>
+  <inertial >
+   <origin  rpy="0.0 0.0 0.0"  xyz="0.0 0.0 0.0" />
+   <mass  value="0.4937142857142858" />
+   <inertia  iyy="0.0005266285714285715"  iyz="0.0"  ixx="0.0005266285714285715"  ixy="0.0"  ixz="0.0"  izz="0.0005266285714285715" />
+  </inertial>
+ </link>
+ <link  name="L4411" >
+  <visual >
+   <origin  rpy="0.0 0.035072854684332855 0.0"  xyz="0.004477741413357842 0.0 0.12761736311897556" />
+   <geometry >
+    <box  size="0.03999999910593033 0.03999999910593033 0.21539179040661732" />
+   </geometry>
+   <material  name="L4411_Material" >
+    <color  rgba="0.1035849832252459 0.42423163126167585 0.04983455150299154 1.0" />
+   </material>
+  </visual>
+  <collision  name="L4411_0_Collision" >
+   <origin  rpy="0.0 0.035072854684332855 0.0"  xyz="0.004477741413357842 0.0 0.12761736311897556" />
+   <geometry >
+    <box  size="0.03999999910593033 0.03999999910593033 0.21539179040661732" />
+   </geometry>
+  </collision>
+  <visual >
+   <origin  rpy="0.0 0.0 0.0"  xyz="-1.3877787807814457e-17 0.0 0.28867513459481287" />
+   <geometry >
+    <box  size="0.03999999910593033 0.03999999910593033 0.5373502700836954" />
+   </geometry>
+   <material  name="L4411_Material" >
+    <color  rgba="0.1035849832252459 0.42423163126167585 0.04983455150299154 1.0" />
+   </material>
+  </visual>
+  <collision  name="L4411_1_Collision" >
+   <origin  rpy="0.0 0.0 0.0"  xyz="-1.3877787807814457e-17 0.0 0.28867513459481287" />
+   <geometry >
+    <box  size="0.03999999910593033 0.03999999910593033 0.5373502700836954" />
+   </geometry>
+  </collision>
+  <visual >
+   <origin  rpy="0.0 -0.0277949223337437 0.0"  xyz="0.004477741413357828 0.0 0.4162924977137884" />
+   <geometry >
+    <box  size="0.03999999910593033 0.03999999910593033 0.28224001033379104" />
+   </geometry>
+   <material  name="L4411_Material" >
+    <color  rgba="0.1035849832252459 0.42423163126167585 0.04983455150299154 1.0" />
+   </material>
+  </visual>
+  <collision  name="L4411_2_Collision" >
+   <origin  rpy="0.0 -0.0277949223337437 0.0"  xyz="0.004477741413357828 0.0 0.4162924977137884" />
+   <geometry >
+    <box  size="0.03999999910593033 0.03999999910593033 0.28224001033379104" />
+   </geometry>
+  </collision>
+  <inertial >
+   <origin  rpy="0.0 0.0 0.0"  xyz="0.00299 0.0 0.27753" />
+   <mass  value="0.9908498424831981" />
+   <inertia  iyy="0.3213664821562122"  iyz="-4.6116179417668355e-20"  ixx="0.29572211892598627"  ixy="2.176049573599396e-19"  ixz="0.08384371106712271"  izz="0.02590858984307628" />
+  </inertial>
+ </link>
+ <link  name="L4412" >
+  <visual >
+   <origin  rpy="0.0 0.0 0.0"  xyz="2.7755575615628914e-17 0.0 0.28867513459481287" />
+   <geometry >
+    <box  size="0.03999999910593033 0.03999999910593033 0.5373502700836954" />
+   </geometry>
+   <material  name="L4412_Material" >
+    <color  rgba="0.2093543655096074 0.5780114191403481 0.09815420277582132 1.0" />
+   </material>
+  </visual>
+  <collision  name="L4412_0_Collision" >
+   <origin  rpy="0.0 0.0 0.0"  xyz="2.7755575615628914e-17 0.0 0.28867513459481287" />
+   <geometry >
+    <box  size="0.03999999910593033 0.03999999910593033 0.5373502700836954" />
+   </geometry>
+  </collision>
+  <visual >
+   <origin  rpy="3.141592653589793 0.00911101190014696 3.141592653589793"  xyz="0.0022249185436651886 0.0 0.33315599046276845" />
+   <geometry >
+    <box  size="0.03999999910593033 0.03999999910593033 0.44840882974734086" />
+   </geometry>
+   <material  name="L4412_Material" >
+    <color  rgba="0.2093543655096074 0.5780114191403481 0.09815420277582132 1.0" />
+   </material>
+  </visual>
+  <collision  name="L4412_1_Collision" >
+   <origin  rpy="3.141592653589793 0.00911101190014696 3.141592653589793"  xyz="0.0022249185436651886 0.0 0.33315599046276845" />
+   <geometry >
+    <box  size="0.03999999910593033 0.03999999910593033 0.44840882974734086" />
+   </geometry>
+  </collision>
+  <visual >
+   <origin  rpy="0.0 0.04997803485604968 0.0"  xyz="0.002224918543665161 0.0 0.04448085586795561" />
+   <geometry >
+    <box  size="0.03999999910593033 0.03999999910593033 0.04907293283799495" />
+   </geometry>
+   <material  name="L4412_Material" >
+    <color  rgba="0.2093543655096074 0.5780114191403481 0.09815420277582132 1.0" />
+   </material>
+  </visual>
+  <collision  name="L4412_2_Collision" >
+   <origin  rpy="0.0 0.04997803485604968 0.0"  xyz="0.002224918543665161 0.0 0.04448085586795561" />
+   <geometry >
+    <box  size="0.03999999910593033 0.03999999910593033 0.04907293283799495" />
+   </geometry>
+  </collision>
+  <inertial >
+   <origin  rpy="0.0 0.0 0.0"  xyz="0.00148 0.0 0.2221" />
+   <mass  value="0.940693294812623" />
+   <inertia  iyy="0.9275700726171535"  iyz="-6.046907708095072e-20"  ixx="0.9017885920244411"  ixy="-1.5014627027736477e-19"  ixz="0.11980997992325852"  izz="0.026032332126781917" />
+  </inertial>
+ </link>
+ <link  name="EE" >
+  <visual >
+   <origin  rpy="0.0 0.0 0.0"  xyz="0.0 0.0 0.0" />
+   <geometry >
+    <sphere  radius="0.028571428571428574" />
+   </geometry>
+   <material  name="EE_Material" >
+    <color  rgba="0.004372847966634175 0.5231488986650454 0.0580994150375147 1.0" />
+   </material>
+  </visual>
+  <collision  name="EE_Collision" >
+   <origin  rpy="0.0 0.0 0.0"  xyz="0.0 0.0 0.0" />
+   <geometry >
+    <sphere  radius="0.028571428571428574" />
+   </geometry>
+  </collision>
+  <inertial >
+   <origin  rpy="0.0 0.0 0.0"  xyz="0.0 0.0 0.0" />
+   <mass  value="0.09420852605517083" />
+   <inertia  iyy="3.0761967691484357e-05"  iyz="0.0"  ixx="3.0761967691484357e-05"  ixy="0.0"  ixz="0.0"  izz="3.0761967691484357e-05" />
+  </inertial>
+ </link>
+ <link  name="L4414" >
+  <visual >
+   <origin  rpy="0.0 0.0 0.0"  xyz="0.0 0.0 0.11301" />
+   <geometry >
+    <box  size="0.04 0.04 0.18601798342127765" />
+   </geometry>
+   <material  name="L4414_Material" >
+    <color  rgba="0.3227220159395485 0.44893804742399823 0.8622062372188565 1.0" />
+   </material>
+  </visual>
+  <collision  name="L4414_Collision" >
+   <origin  rpy="0.0 0.0 0.0"  xyz="0.0 0.0 0.11301" />
+   <geometry >
+    <box  size="0.04 0.04 0.18601798342127765" />
+   </geometry>
+  </collision>
+  <inertial >
+   <origin  rpy="0.0 0.0 0.0"  xyz="0.0 0.0 0.11301" />
+   <mass  value="0.2869991744213998" />
+   <inertia  iyy="0.0008658451822199843"  iyz="0.0"  ixx="0.0008658451822199843"  ixy="0.0"  ixz="0.0"  izz="7.653311317903995e-05" />
+  </inertial>
+ </link>
+ <link  name="L4413" >
+  <visual >
+   <origin  rpy="3.141592653589793 0.02324605577165406 3.141592653589793"  xyz="-0.0031294073391981703 0.0 0.1345967531370239" />
+   <geometry >
+    <box  size="0.03999999910593033 0.03999999910593033 0.22926625682171897" />
+   </geometry>
+   <material  name="L4413_Material" >
+    <color  rgba="0.28305287027583437 0.8938670313898764 0.6508395222179674 1.0" />
+   </material>
+  </visual>
+  <collision  name="L4413_0_Collision" >
+   <origin  rpy="3.141592653589793 0.02324605577165406 3.141592653589793"  xyz="-0.0031294073391981703 0.0 0.1345967531370239" />
+   <geometry >
+    <box  size="0.03999999910593033 0.03999999910593033 0.22926625682171897" />
+   </geometry>
+  </collision>
+  <visual >
+   <origin  rpy="0.0 0.024424200192840306 0.0"  xyz="-0.0031294073391980592 0.0 0.3972953485414217" />
+   <geometry >
+    <box  size="0.03999999910593033 0.03999999910593033 0.21628012250001682" />
+   </geometry>
+   <material  name="L4413_Material" >
+    <color  rgba="0.28305287027583437 0.8938670313898764 0.6508395222179674 1.0" />
+   </material>
+  </visual>
+  <collision  name="L4413_1_Collision" >
+   <origin  rpy="0.0 0.024424200192840306 0.0"  xyz="-0.0031294073391980592 0.0 0.3972953485414217" />
+   <geometry >
+    <box  size="0.03999999910593033 0.03999999910593033 0.21628012250001682" />
+   </geometry>
+  </collision>
+  <visual >
+   <origin  rpy="0.0 0.0 0.0"  xyz="1.1102230246251565e-16 0.0 0.26269859540439777" />
+   <geometry >
+    <box  size="0.03999999910593033 0.03999999910593033 0.4853971917028652" />
+   </geometry>
+   <material  name="L4413_Material" >
+    <color  rgba="0.28305287027583437 0.8938670313898764 0.6508395222179674 1.0" />
+   </material>
+  </visual>
+  <collision  name="L4413_2_Collision" >
+   <origin  rpy="0.0 0.0 0.0"  xyz="1.1102230246251565e-16 0.0 0.26269859540439777" />
+   <geometry >
+    <box  size="0.03999999910593033 0.03999999910593033 0.4853971917028652" />
+   </geometry>
+  </collision>
+  <inertial >
+   <origin  rpy="0.0 0.0 0.0"  xyz="-0.00209 0.0 0.26486" />
+   <mass  value="0.8743199175045991" />
+   <inertia  iyy="0.40511207420757617"  iyz="-2.815494754389841e-19"  ixx="0.3924110537910397"  ixy="-6.32685022123516e-20"  ixz="0.037897682759646084"  izz="0.01293417238411505" />
+  </inertial>
+ </link>
+ <link  name="L4415" >
+  <visual >
+   <origin  rpy="0.0 0.0 0.0"  xyz="-0.0 0.0 0.05831" />
+   <geometry >
+    <box  size="0.04 0.04 0.07661789187736198" />
+   </geometry>
+   <material  name="L4415_Material" >
+    <color  rgba="0.9589104484253423 0.17957973491358115 0.08175136133361638 1.0" />
+   </material>
+  </visual>
+  <collision  name="L4415_Collision" >
+   <origin  rpy="0.0 0.0 0.0"  xyz="-0.0 0.0 0.05831" />
+   <geometry >
+    <box  size="0.04 0.04 0.07661789187736198" />
+   </geometry>
+  </collision>
+  <inertial >
+   <origin  rpy="0.0 0.0 0.0"  xyz="-0.0 0.0 0.05831" />
+   <mass  value="0.1182104617536442" />
+   <inertia  iyy="7.358898105832093e-05"  iyz="0.0"  ixx="7.358898105832093e-05"  ixy="0.0"  ixz="0.0"  izz="3.152278980097179e-05" />
+  </inertial>
+ </link>
+ <link  name="L4416" >
+  <visual >
+   <origin  rpy="0.0 0.0 0.0"  xyz="0.0 0.0 0.04736" />
+   <geometry >
+    <box  size="0.04 0.04 0.05472751620321848" />
+   </geometry>
+   <material  name="L4416_Material" >
+    <color  rgba="0.5011330456506692 0.8103434373824091 0.6484594447397842 1.0" />
+   </material>
+  </visual>
+  <collision  name="L4416_Collision" >
+   <origin  rpy="0.0 0.0 0.0"  xyz="0.0 0.0 0.04736" />
+   <geometry >
+    <box  size="0.04 0.04 0.05472751620321848" />
+   </geometry>
+  </collision>
+  <inertial >
+   <origin  rpy="0.0 0.0 0.0"  xyz="0.0 0.0 0.04736" />
+   <mass  value="0.08443673928496567" />
+   <inertia  iyy="3.233294563658881e-05"  iyz="0.0"  ixx="3.233294563658881e-05"  ixy="0.0"  ixz="0.0"  izz="2.2516463809324178e-05" />
+  </inertial>
+ </link>
+ <joint  type="revolute"  name="TL_ground" >
+  <parent  link="G" />
+  <child  link="L4411" />
+  <origin  rpy="3.141592653589793 0.5235987755982991 3.141592653589793"  xyz="0.0 0.0 0.0" />
+  <axis  xyz="0 1 0" />
+  <limit  effort="10.799999999999999"  velocity="29.845130209103036"  lower="-3.141592653589793"  upper="3.141592653589793" />
+  <dynamics  damping="0.05"  friction="0" />
+ </joint>
+ <joint  type="fixed"  name="TL_ground_G_WeldActuator" >
+  <parent  link="G" />
+  <child  link="TL_ground_GActuator" />
+  <origin  rpy="-1.5707963267948966 0.5235987755982991 -3.141592653589793"  xyz="0.0 0.05925 0.0" />
+ </joint>
+ <link  name="TL_ground_GActuator" >
+  <visual >
+   <geometry >
+    <cylinder  length="0.0385"  radius="0.0425" />
+   </geometry>
+   <material  name="TL_ground_GActuator_Material" >
+    <color  rgba="0.9223691772363326 0.2848757357348535 0.9494860424765409 0.9" />
+   </material>
+  </visual>
+  <inertial >
+   <inertia  iyy="0.006709166666666667"  iyz="0.0"  ixx="0.006709166666666667"  ixy="0.0"  ixz="0.0"  izz="0.010306250000000001" />
+   <mass  value="0.1" />
+  </inertial>
+ </link>
+ <link  name="TL_ground_GUnit" >
+  <visual >
+   <geometry >
+    <cylinder  length="0.08"  radius="0.04" />
+   </geometry>
+   <material  name="TL_ground_GUnit_Material" >
+    <color  rgba="0.9223691772363326 0.2848757357348535 0.9494860424765409 0.9" />
+   </material>
+  </visual>
+  <inertial >
+   <inertia  iyy="0.0016666666666666666"  iyz="0.0"  ixx="0.0016666666666666666"  ixy="0.0"  ixz="0.0"  izz="0.002" />
+   <mass  value="0.1" />
+  </inertial>
+ </link>
+ <joint  type="fixed"  name="TL_ground_G_WeldUnit" >
+  <parent  link="G" />
+  <child  link="TL_ground_GUnit" />
+  <origin  rpy="-1.5707963267948966 0.5235987755982991 -3.141592653589793"  xyz="0.0 0.0 0.0" />
+ </joint>
+ <joint  type="revolute"  name="TL_knee" >
+  <parent  link="L4411" />
+  <child  link="L4412" />
+  <origin  rpy="0.0 1.0471975511965979 0.0"  xyz="-2.7755575615628914e-17 0.0 0.5773502691896257" />
+  <axis  xyz="0 1 0" />
+  <limit  effort="600.0"  velocity="6.283185307179586"  lower="-3.141592653589793"  upper="3.141592653589793" />
+  <dynamics  damping="0.05"  friction="0" />
+ </joint>
+ <link  name="TL_knee_L4411Unit" >
+  <visual >
+   <geometry >
+    <cylinder  length="0.03999999910593033"  radius="0.019999999552965164" />
+   </geometry>
+   <material  name="TL_knee_L4411Unit_Material" >
+    <color  rgba="0.1035849832252459 0.42423163126167585 0.04983455150299154 0.9" />
+   </material>
+  </visual>
+  <inertial >
+   <inertia  iyy="0.0008333333147068819"  iyz="0.0"  ixx="0.0008333333147068819"  ixy="0.0"  ixz="0.0"  izz="0.0009999999776482583" />
+   <mass  value="0.1" />
+  </inertial>
+ </link>
+ <joint  type="fixed"  name="TL_knee_L4411_WeldUnit" >
+  <parent  link="L4411" />
+  <child  link="TL_knee_L4411Unit" />
+  <origin  rpy="1.5707963267948961 1.0471975511965979 -2.220446049250313e-16"  xyz="-2.7755575615628914e-17 0.0 0.5773502691896257" />
+ </joint>
+ <joint  type="revolute"  name="TL_ee" >
+  <parent  link="L4412" />
+  <child  link="EE" />
+  <origin  rpy="3.141592653589793 0.5235987755982991 3.141592653589793"  xyz="5.551115123125783e-17 0.0 0.5773502691896257" />
+  <axis  xyz="0 1 0" />
+  <limit  effort="600.0"  velocity="6.283185307179586"  lower="-3.141592653589793"  upper="3.141592653589793" />
+  <dynamics  damping="0.05"  friction="0" />
+ </joint>
+ <link  name="TL_ee_L4412Unit" >
+  <visual >
+   <geometry >
+    <cylinder  length="0.03999999910593033"  radius="0.019999999552965164" />
+   </geometry>
+   <material  name="TL_ee_L4412Unit_Material" >
+    <color  rgba="0.2093543655096074 0.5780114191403481 0.09815420277582132 0.9" />
+   </material>
+  </visual>
+  <inertial >
+   <inertia  iyy="0.0008333333147068819"  iyz="0.0"  ixx="0.0008333333147068819"  ixy="0.0"  ixz="0.0"  izz="0.0009999999776482583" />
+   <mass  value="0.1" />
+  </inertial>
+ </link>
+ <joint  type="fixed"  name="TL_ee_L4412_WeldUnit" >
+  <parent  link="L4412" />
+  <child  link="TL_ee_L4412Unit" />
+  <origin  rpy="-1.5707963267948966 0.5235987755982991 -3.141592653589793"  xyz="5.551115123125783e-17 0.0 0.5773502691896257" />
+ </joint>
+ <joint  type="revolute"  name="FL_branch_ground" >
+  <parent  link="G" />
+  <child  link="L4414" />
+  <origin  rpy="3.141592653589793 0.24270792727437418 3.141592653589793"  xyz="-0.2034435925467171 0.0 -0.0027784057769210083" />
+  <axis  xyz="0 1 0" />
+  <limit  effort="10.799999999999999"  velocity="29.845130209103036"  lower="-3.141592653589793"  upper="3.141592653589793" />
+  <dynamics  damping="0.05"  friction="0" />
+ </joint>
+ <joint  type="fixed"  name="FL_branch_ground_G_WeldActuator" >
+  <parent  link="G" />
+  <child  link="FL_branch_ground_GActuator" />
+  <origin  rpy="-1.570796326794897 0.24270792727437418 3.1415926535897927"  xyz="-0.2034435925467171 0.05925 -0.0027784057769210083" />
+ </joint>
+ <link  name="FL_branch_ground_GActuator" >
+  <visual >
+   <geometry >
+    <cylinder  length="0.0385"  radius="0.0425" />
+   </geometry>
+   <material  name="FL_branch_ground_GActuator_Material" >
+    <color  rgba="0.9223691772363326 0.2848757357348535 0.9494860424765409 0.9" />
+   </material>
+  </visual>
+  <inertial >
+   <inertia  iyy="0.006709166666666667"  iyz="0.0"  ixx="0.006709166666666667"  ixy="0.0"  ixz="0.0"  izz="0.010306250000000001" />
+   <mass  value="0.1" />
+  </inertial>
+ </link>
+ <link  name="FL_branch_ground_GUnit" >
+  <visual >
+   <geometry >
+    <cylinder  length="0.08"  radius="0.04" />
+   </geometry>
+   <material  name="FL_branch_ground_GUnit_Material" >
+    <color  rgba="0.9223691772363326 0.2848757357348535 0.9494860424765409 0.9" />
+   </material>
+  </visual>
+  <inertial >
+   <inertia  iyy="0.0016666666666666666"  iyz="0.0"  ixx="0.0016666666666666666"  ixy="0.0"  ixz="0.0"  izz="0.002" />
+   <mass  value="0.1" />
+  </inertial>
+ </link>
+ <joint  type="fixed"  name="FL_branch_ground_G_WeldUnit" >
+  <parent  link="G" />
+  <child  link="FL_branch_ground_GUnit" />
+  <origin  rpy="-1.570796326794897 0.24270792727437418 3.1415926535897927"  xyz="-0.2034435925467171 0.0 -0.0027784057769210083" />
+ </joint>
+ <joint  type="revolute"  name="FL_branch_j0" >
+  <parent  link="L4414" />
+  <child  link="L4413" />
+  <origin  rpy="0.0 -0.5922629381678485 0.0"  xyz="5.551115123125783e-17 0.0 0.22601798342127757" />
+  <axis  xyz="0 1 0" />
+  <limit  effort="600.0"  velocity="6.283185307179586"  lower="-3.141592653589793"  upper="3.141592653589793" />
+  <dynamics  damping="0.05"  friction="0" />
+ </joint>
+ <link  name="FL_branch_j0_L4414Unit" >
+  <visual >
+   <geometry >
+    <cylinder  length="0.04"  radius="0.02" />
+   </geometry>
+   <material  name="FL_branch_j0_L4414Unit_Material" >
+    <color  rgba="0.3227220159395485 0.44893804742399823 0.8622062372188565 0.9" />
+   </material>
+  </visual>
+  <inertial >
+   <inertia  iyy="0.0008333333333333333"  iyz="0.0"  ixx="0.0008333333333333333"  ixy="0.0"  ixz="0.0"  izz="0.001" />
+   <mass  value="0.1" />
+  </inertial>
+ </link>
+ <joint  type="fixed"  name="FL_branch_j0_L4414_WeldUnit" >
+  <parent  link="L4414" />
+  <child  link="FL_branch_j0_L4414Unit" />
+  <origin  rpy="1.5707963267948961 -0.5922629381678486 2.220446049250313e-16"  xyz="5.551115123125783e-17 0.0 0.22601798342127757" />
+ </joint>
+ <link  name="FL_branch_j1_L4413Pseudo" >
+  <visual >
+   <geometry >
+    <sphere  radius="0.02857142793280738" />
+   </geometry>
+   <material  name="FL_branch_j1_L4413Pseudo_Material" >
+    <color  rgba="0.28305287027583437 0.8938670313898764 0.6508395222179674 0.5" />
+   </material>
+  </visual>
+  <inertial >
+   <mass  value="0.05" />
+   <inertia  iyy="1.632652988239212e-05"  iyz="0.0"  ixx="1.632652988239212e-05"  ixy="0.0"  ixz="0.0"  izz="1.632652988239212e-05" />
+  </inertial>
+ </link>
+ <joint  type="revolute"  name="FL_branch_j1_L4413_revolute" >
+  <parent  link="L4413" />
+  <child  link="FL_branch_j1_L4413Pseudo" />
+  <origin  rpy="0.0 0.0 0.0"  xyz="-0.0062588146783963405 0.0 0.2691935062740478" />
+  <axis  xyz="0 1 0" />
+  <limit  effort="600.0"  velocity="6.283185307179586"  lower="-3.141592653589793"  upper="3.141592653589793" />
+  <dynamics  damping="0.05"  friction="0" />
+ </joint>
+ <joint  type="fixed"  name="FL_branch_j1_L4413_Weld" >
+  <parent  link="L4415" />
+  <child  link="FL_branch_j1_L4415Pseudo" />
+  <origin  rpy="0.0 -0.7427504247421 0.0"  xyz="0.0 0.0 0.11661789187736196" />
+ </joint>
+ <link  name="FL_branch_j1_L4415Pseudo" >
+  <visual >
+   <geometry >
+    <sphere  radius="0.028571428571428574" />
+   </geometry>
+   <material  name="FL_branch_j1_L4415Pseudo_Material" >
+    <color  rgba="0.9589104484253423 0.17957973491358115 0.08175136133361638 0.5" />
+   </material>
+  </visual>
+  <inertial >
+   <mass  value="0.05" />
+   <inertia  iyy="1.6326530612244903e-05"  iyz="0.0"  ixx="1.6326530612244903e-05"  ixy="0.0"  ixz="0.0"  izz="1.6326530612244903e-05" />
+  </inertial>
+ </link>
+ <joint  type="revolute"  name="FL_branch_j2" >
+  <parent  link="L4416" />
+  <child  link="L4415" />
+  <origin  rpy="0.0 -1.0229607960636424 0.0"  xyz="0.0 0.0 0.09472751620321848" />
+  <axis  xyz="0 1 0" />
+  <limit  effort="600.0"  velocity="6.283185307179586"  lower="-3.141592653589793"  upper="3.141592653589793" />
+  <dynamics  damping="0.05"  friction="0" />
+ </joint>
+ <link  name="FL_branch_j2_L4416Unit" >
+  <visual >
+   <geometry >
+    <cylinder  length="0.04"  radius="0.02" />
+   </geometry>
+   <material  name="FL_branch_j2_L4416Unit_Material" >
+    <color  rgba="0.5011330456506692 0.8103434373824091 0.6484594447397842 0.9" />
+   </material>
+  </visual>
+  <inertial >
+   <inertia  iyy="0.0008333333333333333"  iyz="0.0"  ixx="0.0008333333333333333"  ixy="0.0"  ixz="0.0"  izz="0.001" />
+   <mass  value="0.1" />
+  </inertial>
+ </link>
+ <joint  type="fixed"  name="FL_branch_j2_L4416_WeldUnit" >
+  <parent  link="L4416" />
+  <child  link="FL_branch_j2_L4416Unit" />
+  <origin  rpy="1.5707963267948966 -1.0229607960636424 -1.1102230246251565e-16"  xyz="0.0 0.0 0.09472751620321848" />
+ </joint>
+ <joint  type="revolute"  name="FL_branch_top" >
+  <parent  link="L4411" />
+  <child  link="L4416" />
+  <origin  rpy="0.0 1.4543391309618188 0.0"  xyz="0.008955482826715684 0.0 0.2552347262379511" />
+  <axis  xyz="0 1 0" />
+  <limit  effort="600.0"  velocity="6.283185307179586"  lower="-3.141592653589793"  upper="3.141592653589793" />
+  <dynamics  damping="0.05"  friction="0" />
+ </joint>
+ <link  name="FL_branch_top_L4411Unit" >
+  <visual >
+   <geometry >
+    <cylinder  length="0.03999999910593033"  radius="0.019999999552965164" />
+   </geometry>
+   <material  name="FL_branch_top_L4411Unit_Material" >
+    <color  rgba="0.1035849832252459 0.42423163126167585 0.04983455150299154 0.9" />
+   </material>
+  </visual>
+  <inertial >
+   <inertia  iyy="0.0008333333147068819"  iyz="0.0"  ixx="0.0008333333147068819"  ixy="0.0"  ixz="0.0"  izz="0.0009999999776482583" />
+   <mass  value="0.1" />
+  </inertial>
+ </link>
+ <joint  type="fixed"  name="FL_branch_top_L4411_WeldUnit" >
+  <parent  link="L4411" />
+  <child  link="FL_branch_top_L4411Unit" />
+  <origin  rpy="1.5707963267948966 1.4543391309618188 1.1102230246251565e-16"  xyz="0.008955482826715684 0.0 0.2552347262379511" />
+ </joint>
+ <link  name="FL_branch_bot_L4412Pseudo" >
+  <visual >
+   <geometry >
+    <sphere  radius="0.02857142793280738" />
+   </geometry>
+   <material  name="FL_branch_bot_L4412Pseudo_Material" >
+    <color  rgba="0.2093543655096074 0.5780114191403481 0.09815420277582132 0.5" />
+   </material>
+  </visual>
+  <inertial >
+   <mass  value="0.05" />
+   <inertia  iyy="1.632652988239212e-05"  iyz="0.0"  ixx="1.632652988239212e-05"  ixy="0.0"  ixz="0.0"  izz="1.632652988239212e-05" />
+  </inertial>
+ </link>
+ <joint  type="revolute"  name="FL_branch_bot_L4412_revolute" >
+  <parent  link="L4412" />
+  <child  link="FL_branch_bot_L4412Pseudo" />
+  <origin  rpy="3.141592653589793 0.5235987755982991 3.141592653589793"  xyz="0.004449837087330322 0.0 0.08896171173591122" />
+  <axis  xyz="0 1 0" />
+  <limit  effort="600.0"  velocity="6.283185307179586"  lower="-3.141592653589793"  upper="3.141592653589793" />
+  <dynamics  damping="0.05"  friction="0" />
+ </joint>
+ <joint  type="fixed"  name="FL_branch_bot_L4412_Weld" >
+  <parent  link="L4413" />
+  <child  link="FL_branch_bot_L4413Pseudo" />
+  <origin  rpy="3.141592653589793 -0.8349708654422228 3.141592653589793"  xyz="1.6653345369377348e-16 0.0 0.5253971908087954" />
+ </joint>
+ <link  name="FL_branch_bot_L4413Pseudo" >
+  <visual >
+   <geometry >
+    <sphere  radius="0.02857142793280738" />
+   </geometry>
+   <material  name="FL_branch_bot_L4413Pseudo_Material" >
+    <color  rgba="0.28305287027583437 0.8938670313898764 0.6508395222179674 0.5" />
+   </material>
+  </visual>
+  <inertial >
+   <mass  value="0.05" />
+   <inertia  iyy="1.632652988239212e-05"  iyz="0.0"  ixx="1.632652988239212e-05"  ixy="0.0"  ixz="0.0"  izz="1.632652988239212e-05" />
+  </inertial>
+ </link>
+</robot>
