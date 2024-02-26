@@ -25,9 +25,10 @@ def simple_traj_derivative(traj_6d: np.ndarray, dt: float = 0.001):
 
 def get_simple_spline():
     # Sample data points
-    x = np.array([-0.5, -0.4, -0.25])
-    y = np.array([-0.55, -0.4, -0.55])
-    # y = y + 0.5
+    x = np.array([0.2, 0.3, 0.5])
+    y = np.array([0.6, 0.8, 0.6])
+    y = y + 0.15
+    #x = x + 0.4
     # Create the cubic spline interpolator
     cs = CubicSpline(x, y)
 

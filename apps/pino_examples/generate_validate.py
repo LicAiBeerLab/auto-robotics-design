@@ -12,6 +12,7 @@ from auto_robot_design.description.builder import Builder, DetalizedURDFCreater,
 from auto_robot_design.description.mechanism import JointPoint2KinematicGraph
 from auto_robot_design.generator.two_link_generator import TwoLinkGenerator
 from auto_robot_design.description.utils import draw_joint_frames, draw_joint_point, draw_link_frames
+from auto_robot_design.optimization.optimizer import jps_graph2urdf
 from auto_robot_design.pino_adapter import pino_adapter
 from auto_robot_design.pinokla.criterion_agregator import ComputeConfg, calc_criterion_on_workspace_simple_input
 
@@ -21,12 +22,9 @@ graphs_and_cons = gen.get_standard_set()
 builder = Builder(DetalizedURDFCreater)
 urdf_motors_cons_list = []
 for graph_i, constarin_i in graphs_and_cons:
-    kinematic_graph = JointPoint2KinematicGraph(graph_i)
-    robot, ative_joints, constraints = builder.create_kinematic_graph(
-        kinematic_graph)
-    pino_j_des, pino_cons_des = pino_adapter.get_pino_description(
-        ative_joints, constraints)
-    urdf_motors_cons_tuple = (robot.urdf(), pino_j_des, pino_cons_des)
+    robot, ative_joints, constraints = jps_graph2urdf(graph_i)
+    urdf_motors_cons_tuple = (robot, ative_joints, constraints)
+    
     urdf_motors_cons_list.append(urdf_motors_cons_tuple)
     # draw_joint_point(graph_i)
     # plt.show()
