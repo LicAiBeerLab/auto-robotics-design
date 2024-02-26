@@ -14,9 +14,11 @@ from scipy.spatial.transform import Rotation as R
 import trimesh
 import modern_robotics as mr
 
-from auto_robot_design.description.actuators import RevoluteUnit
+from auto_robot_design.description.actuators import RevoluteUnit, TMotor_AK80_9
 from auto_robot_design.description.kinematics import Geometry, Joint, JointPoint, Link, Mesh, Sphere, Box
+from auto_robot_design.description.mechanism import JointPoint2KinematicGraph
 from auto_robot_design.description.utils import tensor_inertia_sphere_by_mass
+from auto_robot_design.pino_adapter.pino_adapter import get_pino_description
 
 # from auto_robot_design.description.utils import calculate_inertia
 
@@ -593,3 +595,35 @@ class Builder:
         urdf_robot = urdf.Robot(*urdf_objects, name=name)
 
         return urdf_robot, active_joints, constraints
+
+def jps_graph2urdf(graph: nx.Graph):
+    kinematic_graph = JointPoint2KinematicGraph(graph)
+    kinematic_graph.define_main_branch()
+    kinematic_graph.define_span_tree()
+    thickness = 0.04
+    density = 2700 / 2.8
+
+    for n in kinematic_graph.nodes():
+        n.thickness = thickness
+        n.density = density
+
+    for j in kinematic_graph.joint_graph.nodes():
+        j.pos_limits = (-np.pi, np.pi)
+        if j.jp.active:
+            j.actuator = TMotor_AK80_9()
+        j.damphing_friction = (0.05, 0)
+    kinematic_graph.define_link_frames()
+    builder = Builder(DetalizedURDFCreater)
+
+    robot, ative_joints, constraints = builder.create_kinematic_graph(kinematic_graph)
+
+    act_description, constraints_descriptions = get_pino_description(ative_joints, constraints)
+
+    return robot.urdf(), act_description, constraints_descriptions
+
+
+def create_dict_jp_limit(joints, limit):
+    jp2limits = {}
+    for jp, lim in zip(joints, limit):
+        jp2limits[jp] = lim
+    return jp2limits

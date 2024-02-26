@@ -1,6 +1,7 @@
 import os
 import pickle
 import time
+from networkx import Graph
 import numpy as np
 import numpy.linalg as la
 import networkx as nx
@@ -14,42 +15,16 @@ from pinokla.loader_tools import build_model_with_extensions
 
 from auto_robot_design.pino_adapter.pino_adapter import get_pino_description
 from auto_robot_design.description.actuators import TMotor_AK80_9
-from auto_robot_design.description.builder import Builder, DetalizedURDFCreater
+from auto_robot_design.description.builder import Builder, DetalizedURDFCreater, jps_graph2urdf
 from auto_robot_design.description.mechanism import JointPoint2KinematicGraph
 
 
-def jps_graph2urdf(graph: nx.Graph):
-    kinematic_graph = JointPoint2KinematicGraph(graph)
-    kinematic_graph.define_main_branch()
-    kinematic_graph.define_span_tree()
-    thickness = 0.04
-    # # print(scale_factor)
-    density = 2700 / 2.8
-
-    for n in kinematic_graph.nodes():
-        n.thickness = thickness
-        n.density = density
-
-    for j in kinematic_graph.joint_graph.nodes():
-        j.pos_limits = (-np.pi, np.pi)
-        if j.jp.active:
-            j.actuator = TMotor_AK80_9()
-        j.damphing_friction = (0.05, 0)
-    kinematic_graph.define_link_frames()
-    builder = Builder(DetalizedURDFCreater)
-
-    robot, ative_joints, constraints = builder.create_kinematic_graph(kinematic_graph)
-
-    act_description, constraints_descriptions = get_pino_description(ative_joints, constraints)
-
-    return robot.urdf(), act_description, constraints_descriptions
+from pymoo.algorithms.soo.nonconvex.pso import PSO
+from pymoo.problems.single import Rastrigin
+from pymoo.optimize import minimize
+from pymoo.problems.functional import FunctionalProblem
 
 
-def create_dict_jp_limit(joints, limit):
-    jp2limits = {}
-    for jp, lim in zip(joints, limit):
-        jp2limits[jp] = lim
-    return jp2limits
 
 
 class Optimizer:
@@ -127,6 +102,7 @@ class Optimizer:
                                         False)
         total_mass = pin.computeTotalMass(free_robo.model, free_robo.data)
         com_dist = la.norm(pin.centerOfMass(free_robo.model, free_robo.data))
+        print(f" {res:5f}, {total_mass:2f}")
         return np.array([res, total_mass])
 
     def calc_fval(self, costs):
@@ -183,3 +159,30 @@ class Optimizer:
         print(f"Dara data will be in {path}")
 
         return path
+
+
+
+
+class PSOOptmizer(Optimizer):
+    def __init__(self, graph: nx.Graph, jp2limits, weights, name, **params_optimizer) -> None:
+        super().__init__(graph, jp2limits, weights, name, **params_optimizer)
+        
+        
+    def run(self, generations):
+        ___, opt_joints, upper_bounds, lower_bounds = self.convert_joints2x_opt()
+
+        n_var = len(self.opt_joints) * 2
+        problem = FunctionalProblem(n_var,
+                                    [lambda x: self.calc_fval(self.get_cost(x))],
+                                    xl = lower_bounds,
+                                    xu = upper_bounds
+                                    )
+        
+        algorithm = PSO()
+        
+        res = minimize(problem,
+               algorithm,
+               seed=1,
+               verbose=False)
+        
+        self.history.append((res.X, [0,0],  res.F))
