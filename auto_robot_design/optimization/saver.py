@@ -1,24 +1,13 @@
-import pickle
+
 import dill
 import time
 import os
 
 from matplotlib import pyplot as plt
-import numpy as np
 from pymoo.core.problem import Problem
 
 from auto_robot_design.description.utils import draw_joint_point
 from pymoo.core.callback import Callback
-
-
-
-def load_nonmutable(problem, path: str):
-    with open(os.path.join(path, "problem_data.pkl"), "rb") as f:
-        problem.graph = dill.load(f)
-        problem.opt_joints = dill.load(f)
-        problem.initial_xopt = dill.load(f)
-        problem.jp2limits = dill.load(f)
-        problem.criteria = dill.load(f)
 
 def load_checkpoint(path: str):
     with open(os.path.join(path, "checkpoint.pkl"), "rb") as f:
