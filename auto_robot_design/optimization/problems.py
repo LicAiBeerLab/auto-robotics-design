@@ -1,4 +1,5 @@
 import os
+import dill
 import pickle
 import time
 from networkx import Graph
@@ -47,6 +48,7 @@ class CalculateCriteriaProblemByWeigths(ElementwiseProblem):
         ]
         final_F = (np.array(F) @ self.weights).squeeze()
         out["F"] = final_F
+        out["Fs"] = F
 
     def convert_joints2x_opt(self):
         x_opt = np.zeros(len(self.opt_joints) * 2)
@@ -68,6 +70,18 @@ class CalculateCriteriaProblemByWeigths(ElementwiseProblem):
         for id, jp in zip(range(0, len(x_opt), num_params_one_jp), self.opt_joints):
             xz = x_opt[id : (id + num_params_one_jp)]
             jp.r = np.array([xz[0], 0, xz[1]])
+            
+    @classmethod
+    def load(cls, path, **kwargs):
+        with open(os.path.join(path, "problem_data.pkl"), "rb") as f:
+            graph = dill.load(f)
+            opt_joints = dill.load(f)
+            initial_xopt = dill.load(f)
+            jp2limits = dill.load(f)
+            criteria = dill.load(f)
+        istance = cls(graph, jp2limits, criteria, np.ones(len(criteria)), **kwargs)
+        istance.initial_xopt = initial_xopt
+        return istance
 
 
 class CalculateMultiCriteriaProblem(ElementwiseProblem):

@@ -22,8 +22,8 @@ def load_nonmutable(problem, path: str):
 
 def load_checkpoint(path: str):
     with open(os.path.join(path, "checkpoint.pkl"), "rb") as f:
-        history = dill.load(f)
-    return history
+        algorithm = dill.load(f)
+    return algorithm
 
 class ProblemSaver:
     def __init__(self, problem: Problem, folder_name: str, use_date: bool = True) -> None:
@@ -57,8 +57,9 @@ class ProblemSaver:
         draw_joint_point(self.problem.graph)
         plt.savefig(os.path.join(self.path, "initial_mechanism.png"))
 
-    def save_checkpoint(self):
-        pass
+    def save_history(self, history):
+        with open(os.path.join(self.path, "history.pkl"), "wb") as f:
+            dill.dump(history, f)
 
 class CallbackSaver(Callback):
     def __init__(self, problem_saver: ProblemSaver) -> None:
@@ -66,7 +67,5 @@ class CallbackSaver(Callback):
         self.problem_saver = problem_saver
         
     def notify(self, algorithm):
-        self.problem_saver.save_checkpoint()
         with open(os.path.join(self.problem_saver.path, "checkpoint.pkl"), "wb") as f:
             dill.dump(algorithm, f)
-        np.save(os.path.join(self.problem_saver.path, "best.npy"), algorithm.pop.get("F").min())
