@@ -1,14 +1,10 @@
-from json import load
 import multiprocessing
 import numpy as np
-import numpy.linalg as la
 
 import matplotlib.pyplot as plt
 
 from pymoo.algorithms.soo.nonconvex.pso import PSO
 from pymoo.core.problem import StarmapParallelization
-from pymoo.optimize import minimize
-
 
 import pinocchio as pin
 
@@ -62,8 +58,9 @@ n_proccess = 2
 pool = multiprocessing.Pool(n_proccess)
 runner = StarmapParallelization(pool.starmap)
 
-problem = CalculateCriteriaProblemByWeigths(graph, optimizing_joints, criteria, np.array([1, 0.4]),
-                                            elementwise_runner=runner)
+problem = CalculateCriteriaProblemByWeigths(
+    graph, optimizing_joints, criteria, np.array([1, 0.4]), elementwise_runner=runner
+)
 
 
 saver = ProblemSaver(problem, "test", False)
@@ -74,7 +71,7 @@ algorithm = PSO(pop_size=10, save_history=True)
 
 optimizer = PymooOptimizer(problem, algorithm, saver)
 
-res = optimizer.run(True, **{"seed":1, "termination":("n_gen", 2), "verbose":True})
+res = optimizer.run(True, **{"seed": 1, "termination": ("n_gen", 2), "verbose": True})
 
 best_id = np.argmin(optimizer.history["F"])
 best_x = optimizer.history["X"][best_id]

@@ -5,6 +5,7 @@ import pinocchio as pin
 
 from auto_robot_design.pinokla.loader_tools import build_model_with_extensions
 
+
 def calculate_mass(urdf, joint_description, loop_description):
     free_robo = build_model_with_extensions(
         urdf, joint_description, loop_description, False

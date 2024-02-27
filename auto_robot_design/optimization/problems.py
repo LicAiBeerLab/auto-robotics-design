@@ -1,20 +1,8 @@
 import os
 import dill
-import pickle
-import time
-from networkx import Graph
+
 import numpy as np
-import numpy.linalg as la
-import networkx as nx
 
-from cmaes import CMA
-
-import pinocchio as pin
-
-
-from pinokla.loader_tools import build_model_with_extensions
-
-from auto_robot_design.description.actuators import TMotor_AK80_9
 from auto_robot_design.description.builder import jps_graph2urdf
 
 
@@ -40,7 +28,6 @@ class CalculateCriteriaProblemByWeigths(ElementwiseProblem):
     def _evaluate(self, x, out, *args, **kwargs):
         self.mutate_JP_by_xopt(x)
         urdf, joint_description, loop_description = jps_graph2urdf(self.graph)
-
 
         F = [
             criteria(urdf, joint_description, loop_description)
@@ -70,7 +57,7 @@ class CalculateCriteriaProblemByWeigths(ElementwiseProblem):
         for id, jp in zip(range(0, len(x_opt), num_params_one_jp), self.opt_joints):
             xz = x_opt[id : (id + num_params_one_jp)]
             jp.r = np.array([xz[0], 0, xz[1]])
-            
+
     @classmethod
     def load(cls, path, **kwargs):
         with open(os.path.join(path, "problem_data.pkl"), "rb") as f:
@@ -98,7 +85,7 @@ class CalculateMultiCriteriaProblem(ElementwiseProblem):
             xl=lower_bounds,
             **kwargs,
         )
-    
+
     def _evaluate(self, x, out, *args, **kwargs):
         self.mutate_JP_by_xopt(x)
         urdf, joint_description, loop_description = jps_graph2urdf(self.graph)
