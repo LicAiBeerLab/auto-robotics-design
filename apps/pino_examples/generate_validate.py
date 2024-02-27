@@ -12,11 +12,11 @@ from auto_robot_design.generator.two_link_generator import TwoLinkGenerator
 from auto_robot_design.description.utils import draw_joint_frames, draw_joint_point, draw_link_frames
 from auto_robot_design.optimization.optimizer import jps_graph2urdf
 from auto_robot_design.pino_adapter import pino_adapter
-from auto_robot_design.pinokla.criterion_agregator import ComputeConfg, calc_criterion_on_workspace_simple_input
+from auto_robot_design.pinokla.criterion_agregator import ComputeConfg, calc_criterion_on_workspace_simple_input, save_criterion_traj
 
 gen = TwoLinkGenerator()
 graphs_and_cons = gen.get_standard_set()
-
+DIR_NAME = "generated_1"
 builder = Builder(DetalizedURDFCreater)
 urdf_motors_cons_list = []
 for graph_i, constarin_i in graphs_and_cons:
@@ -27,6 +27,8 @@ for graph_i, constarin_i in graphs_and_cons:
     # draw_joint_point(graph_i)
     # plt.show()
 
-for urdf, mot, cons in urdf_motors_cons_list:
-    robo_dict, res_dict = calc_criterion_on_workspace_simple_input(urdf, mot, cons, "G", "EE", 20, cmp_cfg=ComputeConfg(False, False, False, False))
-    pass
+for k, pack in enumerate(urdf_motors_cons_list):
+    urdf, mot, cons = pack
+    robo_dict, res_dict = calc_criterion_on_workspace_simple_input(urdf, mot, cons, "G", "EE", 100)
+    save_criterion_traj(robo_dict["urdf"], DIR_NAME, robo_dict["loop_des"],
+                    robo_dict["joint_des"], res_dict)

@@ -19,15 +19,17 @@ import os
 from scipy.spatial import ConvexHull
 from pathlib import Path
 
-DIR_NAME_FOR_LOAD = "handsome"
+DIR_NAME_FOR_LOAD = "generated_1_select"
 file_list = os.listdir(DIR_NAME_FOR_LOAD)
 handsome_guys = []
 new_list = [Path(DIR_NAME_FOR_LOAD + "/" + str(item)) for item in file_list]
  
-
+for path_i in new_list:
+    res_i = load_criterion_traj(path_i)
+    handsome_guys.append(res_i)
 
 for num, res_i in enumerate(handsome_guys):
-
+    print(f"Mech number {new_list[num]}")
     select_meh = res_i
     workspace_xyz = select_meh["workspace_xyz"]
     traj_manipulability = select_meh["traj_manipulability"]

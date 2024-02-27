@@ -151,7 +151,7 @@ def closedLoopInverseKinematicsProximal(
         min_feas = for_sort[0][0]
         min_real_feas = for_sort[0][1]
         pin.framesForwardKinematics(model, data, q)
-    print(min_real_feas," ", is_reach)
+    #print(min_real_feas," ", is_reach)
      
 
 
@@ -226,9 +226,9 @@ def closedLoopProximalMount(
         primal_feas = np.linalg.norm(constraint_value, np.inf)
         dual_feas = np.linalg.norm(J.T.dot(constraint_value + y), np.inf)
         if primal_feas < eps and dual_feas < eps:
-            print("Convergence achieved")
+            #print("Convergence achieved")
             break
-        print("constraint_value:", np.linalg.norm(constraint_value))
+        #print("constraint_value:", np.linalg.norm(constraint_value))
         rhs = np.concatenate([-constraint_value - y * mu, np.zeros(model.nv)])
 
         dz = kkt_constraint.solve(rhs)
