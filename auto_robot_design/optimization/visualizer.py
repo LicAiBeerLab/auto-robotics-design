@@ -50,5 +50,19 @@ def draw_jps_cost_on_graph(feature, cost, problem, marker = None):
     if marker is None:
         marker = "o"
     plt.scatter(feature[:,0], feature[:,1], c=cost, marker=marker)
+    return plt
 
+
+def draw_jps_distribution(feature):
+    """
+    Draw the cost of each joint on the graph
+    """
+    plt.hexbin(feature[:,0], feature[:,1], gridsize=50, cmap="YlOrBr")
+    return plt
+
+def draw_costs(cost1, cost2):
+    
+    plt.scatter(cost1, cost2)
+    # plt.xlim(min(cost1)-0.01, max(cost1)+0.01)
+    # plt.ylim(min(cost2)-0.1, max(cost2)+0.1)
     return plt
