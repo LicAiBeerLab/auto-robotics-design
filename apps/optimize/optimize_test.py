@@ -67,11 +67,11 @@ saver = ProblemSaver(problem, "test", False)
 saver.save_nonmutable()
 
 
-algorithm = PSO(pop_size=10, save_history=True)
+algorithm = PSO(pop_size=25, save_history=True)
 
 optimizer = PymooOptimizer(problem, algorithm, saver)
 
-res = optimizer.run(True, **{"seed": 1, "termination": ("n_gen", 2), "verbose": True})
+res = optimizer.run(True, **{"seed": 1, "termination": ("n_gen", 10), "verbose": True})
 
 best_id = np.argmin(optimizer.history["F"])
 best_x = optimizer.history["X"][best_id]
