@@ -56,7 +56,9 @@ class CalculateCriteriaProblemByWeigths(ElementwiseProblem):
 
         for id, jp in zip(range(0, len(x_opt), num_params_one_jp), self.opt_joints):
             xz = x_opt[id : (id + num_params_one_jp)]
-            jp.r = np.array([xz[0], 0, xz[1]])
+            list_nodes = list(self.graph.nodes())
+            id = list_nodes.index(jp)
+            list_nodes[id].r = np.array([xz[0], 0, xz[1]])
 
     @classmethod
     def load(cls, path, **kwargs):
@@ -115,4 +117,4 @@ class CalculateMultiCriteriaProblem(ElementwiseProblem):
 
         for id, jp in zip(range(0, len(x_opt), num_params_one_jp), self.opt_joints):
             xz = x_opt[id : (id + num_params_one_jp)]
-            jp.r = np.array([xz[0], 0, xz[1]])
+            self.graph[jp].r = np.array([xz[0], 0, xz[1]])

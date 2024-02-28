@@ -1,5 +1,6 @@
 from json import load
 import multiprocessing
+import os
 import numpy as np
 import numpy.linalg as la
 
@@ -34,7 +35,9 @@ optimizer.load_history(path)
 
 features, costs, total_cost = prepare_data_to_visualize_separeate_jps(optimizer.history, problem)
 # print(feature[0])
+best_id = np.argmin(optimizer.history["F"])
 
+problem.mutate_JP_by_xopt(optimizer.history["X"][best_id])
 for id, feat in enumerate(features):
     plt.figure(figsize=(10, 10))
     draw_joint_point(problem.graph)
