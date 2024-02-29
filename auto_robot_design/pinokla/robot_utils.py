@@ -244,7 +244,7 @@ def freezeJointsWithoutVis(rmodel, rconstraint_model, actuation_model, indexToLo
         list_names = [model.names[idMot] for idMot in actuation_model.idMotJoints]
         reduced_actuation_model = ActuationModel(reduced_model,list_names)
 
-    return(reduced_model, reduced_constraint_models)
+    return(reduced_model, reduced_constraint_models, reduced_actuation_model)
             
             
 

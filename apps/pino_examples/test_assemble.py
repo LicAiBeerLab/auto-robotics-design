@@ -80,7 +80,7 @@ q0 = closedLoopProximalMount(
     data,
     constraint_models,
     constraint_data,
-    actuation_model,
+   # actuation_model,
     np.array([np.pi / 2, 0, 0, -np.pi / 2, 0], dtype=np.float64),
     max_it=100,
 )
@@ -151,7 +151,7 @@ traj_6d = convert_x_y_to_6d_traj(x_traj, y_traj)
 traj_6d_v = simple_traj_derivative(traj_6d, 0.001)
 id_ee = model.getFrameId(EFFECTOR_NAME)
 
-qqq1, min_feas = closedLoopInverseKinematicsProximal(
+qqq1, min_feas, is_reash = closedLoopInverseKinematicsProximal(
     model,
     data,
     constraint_models,
@@ -165,9 +165,10 @@ qqq1, min_feas = closedLoopInverseKinematicsProximal(
  
 idpied = model.getFrameId("link6_psedo")
 
-
-
-poses, _, _ = folow_traj_by_proximal_inv_k(model, data, constraint_models, constraint_data, EFFECTOR_NAME, traj_6d, viz)
+ 
+#pin.centerOfMass(model, data, qqq1)
+ 
+poses, q_array, constraint_errors = folow_traj_by_proximal_inv_k(model, data, constraint_models, constraint_data, EFFECTOR_NAME, traj_6d, viz)
  
 viz.display(qqq1)
 # poses = np.zeros((len(traj_6d), 3))
@@ -204,5 +205,6 @@ poses = np.array(poses)
 plt.figure()
 plt.scatter(poses[:,0],  poses[:,1], marker = "d")
 plt.scatter(x_traj,  y_traj, marker = ".")
+#plt.scatter(x_traj,  y_traj)
 plt.show()
 pass

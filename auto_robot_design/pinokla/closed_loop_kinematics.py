@@ -25,8 +25,8 @@ def closedLoopInverseKinematicsProximal(
     q_start = None,
     onlytranslation=False,
     
-    max_it=500,
-    eps=1e-11,
+    max_it=1000,
+    eps=5e-11,
     rho=1e-10,
     mu=1e-3,
 ):
@@ -53,7 +53,7 @@ def closedLoopInverseKinematicsProximal(
 
     raw here (L84-126):https://gitlab.inria.fr/jucarpen/pinocchio/-/blob/pinocchio-3x/examples/simulation-closed-kinematic-chains.py
     """
-    
+    TRAJ_CONS_DEVIDER = 1
     model = pin.Model(rmodel)
     constraint_model = [pin.RigidConstraintModel(x) for x in  rconstraint_model]
     # add a contact constraint
@@ -72,11 +72,14 @@ def closedLoopInverseKinematicsProximal(
             pin.ContactType.CONTACT_6D, model, parent_joint, placement,
             model.getJointId("universel"), target_pos,
             pin.ReferenceFrame.LOCAL)
+        raise Exception("Not implemented")
+    
+    final_constraint.name = "TrajCons"
     constraint_model.append(final_constraint)
 
     data = model.createData()
     constraint_data = [cm.createData() for cm in constraint_model]
-
+ 
     # proximal solver (black magic)
     if q_start is None:
         q = pin.neutral(model)
@@ -90,6 +93,7 @@ def closedLoopInverseKinematicsProximal(
     data.M = np.eye(model.nv) * rho
     kkt_constraint = pin.ContactCholeskyDecomposition(model, constraint_model)
     primal_feas_array = np.zeros(max_it)
+    real_feas_array = np.zeros(max_it)
     q_array = np.zeros((max_it, len(q)))
     for k in range(max_it):
         pin.computeJointJacobians(model, data, q)
@@ -106,8 +110,13 @@ def closedLoopInverseKinematicsProximal(
             Jc = pin.getConstraintJacobian(model, data, cm, cd)
             LJ.append(Jc)
         J = np.concatenate(LJ)
-
+        traj_cons_value = constraint_value[-3:]
+        # if np.linalg.norm(traj_cons_value) < 0.01:
+        #     traj_cons_value = np.zeros(3)
+        constraint_value[-3:] = traj_cons_value / TRAJ_CONS_DEVIDER
         primal_feas = np.linalg.norm(constraint_value, np.inf)
+        real_constrain_feas = np.linalg.norm(constraint_value[:-3])
+        real_feas_array[k] = real_constrain_feas
         primal_feas_array[k] = primal_feas
         q_array[k] = q
         dual_feas = np.linalg.norm(J.T.dot(constraint_value + y), np.inf)
@@ -116,6 +125,7 @@ def closedLoopInverseKinematicsProximal(
             break
             
 
+        
         rhs = np.concatenate([-constraint_value - y * mu, np.zeros(model.nv)])
 
         dz = kkt_constraint.solve(rhs)
@@ -131,16 +141,21 @@ def closedLoopInverseKinematicsProximal(
     # pos_e = np.linalg.norm(data.oMf[id_frame].translation -
     #                     np.array(target_pos[0:3]))
     min_feas = primal_feas
+    min_real_feas = real_constrain_feas
     if not is_reach:
-        for_sort = np.column_stack((primal_feas_array, q_array))
+        for_sort = np.column_stack((primal_feas_array, real_feas_array ,q_array))
         key_sort = lambda x: x[0]
         for_sort = sorted(for_sort, key=key_sort)
-        finish_q = for_sort[0][1:]
+        finish_q = for_sort[0][2:]
         q = finish_q
         min_feas = for_sort[0][0]
+        min_real_feas = for_sort[0][1]
         pin.framesForwardKinematics(model, data, q)
- 
-    return q, min_feas
+    #print(min_real_feas," ", is_reach)
+     
+
+
+    return q, min_feas, is_reach
 
 
 def closedLoopProximalMount(
@@ -148,7 +163,7 @@ def closedLoopProximalMount(
     data,
     constraint_model,
     constraint_data,
-    actuation_model,
+    #actuation_model,
     q_prec=None,
     max_it=100,
     eps=1e-12,
@@ -178,7 +193,7 @@ def closedLoopProximalMount(
     raw here (L84-126):https://gitlab.inria.fr/jucarpen/pinocchio/-/blob/pinocchio-3x/examples/simulation-closed-kinematic-chains.py
     """
 
-    Lid = actuation_model.idqmot
+    #Lid = actuation_model.idqmot
     if q_prec is None:
         q_prec = pin.neutral(model)
     q = q_prec
@@ -211,9 +226,9 @@ def closedLoopProximalMount(
         primal_feas = np.linalg.norm(constraint_value, np.inf)
         dual_feas = np.linalg.norm(J.T.dot(constraint_value + y), np.inf)
         if primal_feas < eps and dual_feas < eps:
-            print("Convergence achieved")
+            #print("Convergence achieved")
             break
-        print("constraint_value:", np.linalg.norm(constraint_value))
+        #print("constraint_value:", np.linalg.norm(constraint_value))
         rhs = np.concatenate([-constraint_value - y * mu, np.zeros(model.nv)])
 
         dz = kkt_constraint.solve(rhs)
