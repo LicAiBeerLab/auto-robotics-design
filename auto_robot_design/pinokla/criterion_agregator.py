@@ -19,7 +19,8 @@ import os
 from scipy.spatial import ConvexHull
 from pathlib import Path
 
-
+def calc_traj_error_with_visualization():
+    pass
 @dataclass
 class ComputeConfg:
     IMF: bool = True

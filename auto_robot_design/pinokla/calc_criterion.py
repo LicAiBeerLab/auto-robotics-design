@@ -5,7 +5,7 @@ from numpy.linalg import norm
 import numpy as np
 
 from auto_robot_design.pinokla.closed_loop_jacobian import dq_dqmot, inverseConstraintKinematicsSpeed, closedLoopInverseKinematicsProximal
-from auto_robot_design.pinokla.closed_loop_kinematics import ForwardK
+from auto_robot_design.pinokla.closed_loop_kinematics import ForwardK, closedLoopProximalMount
 
 
 def folow_traj_by_proximal_inv_k(model, data, constraint_models, constraint_data, end_effector_frame: str,  traj_6d: np.ndarray, viz = None, q_start: np.ndarray = None):
@@ -20,7 +20,7 @@ def folow_traj_by_proximal_inv_k(model, data, constraint_models, constraint_data
     constraint_errors = np.zeros((len(traj_6d), 1))
 
     for num, i_pos in enumerate(traj_6d):
-        q, min_feas = closedLoopInverseKinematicsProximal(
+        q, min_feas, is_reach = closedLoopInverseKinematicsProximal(
             model,
             data,
             constraint_models,
@@ -30,6 +30,8 @@ def folow_traj_by_proximal_inv_k(model, data, constraint_models, constraint_data
             onlytranslation=True,
             q_start = q
         )
+        if not is_reach:
+            q = closedLoopProximalMount(model, data, constraint_models, constraint_data, q)
         if viz:
             viz.display(q)
             time.sleep(0.01)

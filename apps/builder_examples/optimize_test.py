@@ -22,7 +22,8 @@ draw_joint_point(graph)
 plt.show()
 # %% 
 
-from auto_robot_design.optimization.optimizer import Optimizer, jps_graph2urdf
+from auto_robot_design.optimization.optimizer import Optimizer, PSOOptmizer
+from auto_robot_design.description.builder import jps_graph2urdf
 
 optimizing_joints = dict(filter(lambda x: x[1]["optim"], constrain_dict.items()))
 name2jp = dict(map(lambda x: (x.name, x), graph.nodes()))
@@ -30,7 +31,8 @@ optimizing_joints = dict(map(lambda x: (name2jp[x[0]], (x[1]["x_range"][0], x[1]
 # limits = {j:()}
 optimizer = {}
 
-opt_eng = Optimizer(graph, optimizing_joints, np.array([1, 0.4]), "two_links", **optimizer)
+# opt_eng = Optimizer(graph, optimizing_joints, np.array([1, 0.4]), "two_links", **optimizer)
+opt_eng = PSOOptmizer(graph, optimizing_joints, np.array([1, 0.4]), "two_links", **optimizer)
 cost = opt_eng.get_cost(opt_eng.initial_xopt)
 print(cost, opt_eng.calc_fval(cost))
 

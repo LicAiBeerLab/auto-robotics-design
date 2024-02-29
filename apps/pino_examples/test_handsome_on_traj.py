@@ -19,7 +19,7 @@ import os
 from scipy.spatial import ConvexHull
 from pathlib import Path
 
-DIR_NAME_FOR_LOAD = "handsome"
+DIR_NAME_FOR_LOAD = "generated_1_select"
 file_list = os.listdir(DIR_NAME_FOR_LOAD)
  
 new_list = [Path(DIR_NAME_FOR_LOAD + "/" + str(item)) for item in file_list]
