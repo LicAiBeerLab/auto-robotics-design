@@ -165,8 +165,9 @@ qqq1, min_feas, is_reash = closedLoopInverseKinematicsProximal(
  
 idpied = model.getFrameId("link6_psedo")
 
-
-
+ 
+#pin.centerOfMass(model, data, qqq1)
+ 
 poses, q_array, constraint_errors = folow_traj_by_proximal_inv_k(model, data, constraint_models, constraint_data, EFFECTOR_NAME, traj_6d, viz)
  
 viz.display(qqq1)

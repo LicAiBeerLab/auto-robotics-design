@@ -47,7 +47,7 @@ def compute_along_q_space(rob: Robot, rob_free: Robot, base_frame_name: str, ee_
 
     if cmp_cfg.ApparentInertia:
         traj_foot_inertia = calc_foot_inertia_along_traj(
-            traj_M, traj_dq, traj_J_closed)
+            free_traj_M, free_traj_dq, free_traj_J_closed)
     else:
         traj_foot_inertia = None
 

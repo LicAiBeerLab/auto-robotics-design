@@ -8,6 +8,7 @@ import os
 from numpy.linalg import inv, norm
 import sys
 from scipy.spatial import ConvexHull
+from auto_robot_design.pinokla.calc_criterion import calc_IMF
 
 np.random.seed(1)
 
@@ -62,7 +63,7 @@ for path,name,ncolor in zip(Lpath,Lname,Lcolor):
     viz.loadViewerModel(rootNodeName="number 1")
 
 
-    q0=closedLoopProximalMount(model,data,constraint_model,constraint_data,actuation_model)
+    q0=closedLoopProximalMount(model,data,constraint_model,constraint_data)
 
     q0_freeflyer=np.concatenate([np.array([0,0,0,0,0,0,1]),q0])
     viz.display(q0_freeflyer)
@@ -74,9 +75,9 @@ for path,name,ncolor in zip(Lpath,Lname,Lcolor):
 
     ##Init of robot
     DT=1e-3
-    P6D_Walk=np.load("results_humanoid_2023/trajectory/walk_trajectory2.npy")
-    P6D_Squat=np.load("results_humanoid_2023/trajectory/squat_trajectory2.npy")
-    P6D_Stair=np.load("results_humanoid_2023/trajectory/climb_trajectory2.npy")
+    P6D_Walk=np.load("apps/results_humanoid_2023/trajectory/walk_trajectory2.npy")
+    P6D_Squat=np.load("apps/results_humanoid_2023/trajectory/squat_trajectory2.npy")
+    P6D_Stair=np.load("apps/results_humanoid_2023/trajectory/climb_trajectory2.npy")
 
     V6D_Walk=np.zeros(P6D_Walk.shape)
     V6D_Walk[:,1:]=(P6D_Walk[:,1:]-P6D_Walk[:,:-1])/DT
@@ -231,6 +232,7 @@ for path,name,ncolor in zip(Lpath,Lname,Lcolor):
                 zimf=1-(z.T@Lambda_free@z)/(z.T@Lambda_free_lock@z)
                 Limf.append(IMF)
                 Lzimf.append(zimf)
+                zimf2, IMF2 = calc_IMF(M_free, dq_free, Jfree)
             
 
                 Li.append(i)

@@ -200,10 +200,12 @@ def convert_full_J_to_planar_xz(full_J: np.ndarray):
 
 
 def calc_manipulability(jacob: np.ndarray):
-    ret1 = np.linalg.det(jacob@jacob.T)
+    ret1 = np.sqrt(np.linalg.det(jacob@jacob.T))
     # Alternative
-    # manip=np.linalg.svd(jacob@jacob.T)[1]
-    # np.product(manip)**0.5
+    # manip = np.linalg.svd(jacob@jacob.T)[1]
+    # ret2 = np.product(manip)**0.5
+    # Alternaive if square 
+    # ret3 = np.product(np.linalg.eig(jacob)[0])
     return ret1
 
 
@@ -288,7 +290,8 @@ def calc_force_ell_along_trj_trans(traj_J_closed):
     for num, J in enumerate(traj_J_closed):
         planar_J = convert_full_J_to_planar_xz(J)
         trans_planar_J = planar_J[:2, :2]
-        force_cap = calc_force_ellips(trans_planar_J)
+        manip = calc_manipulability(trans_planar_J)
+        force_cap = 1 / manip
         array_force_cap[num] = force_cap
 
     return array_force_cap
@@ -296,6 +299,8 @@ def calc_force_ell_along_trj_trans(traj_J_closed):
 
 def calc_IMF(M_free: np.ndarray, dq_free: np.ndarray,  J_closed_free: np.ndarray):
     y = np.array([0, 1, 0, 0, 0, 0])
+    z = np.array([0, 0, 1, 0, 0, 0])
+    x = np.array([1, 0, 0, 0, 0, 0])
     Mmot_free = dq_free.T@M_free@dq_free
     Lambda_free = np.linalg.inv(
         J_closed_free@np.linalg.inv(Mmot_free)@J_closed_free.T)
@@ -305,7 +310,9 @@ def calc_IMF(M_free: np.ndarray, dq_free: np.ndarray,  J_closed_free: np.ndarray
     IMF = np.linalg.det(np.identity(6)-Lambda_free @
                         np.linalg.inv(Lambda_free_lock))
     yimf = 1-(y.T@Lambda_free@y)/(y.T@Lambda_free_lock@y)
-    return yimf, IMF
+    zimf = 1-(z.T@Lambda_free@z)/(z.T@Lambda_free_lock@z)
+    ximf = 1-(x.T@Lambda_free@x)/(x.T@Lambda_free_lock@x)
+    return zimf, IMF
 
 
 def calc_IMF_along_traj(M_traj_free: np.ndarray, dq_traj_free: np.ndarray,  J_traj_closed_free: np.ndarray):
@@ -322,14 +329,14 @@ def calc_foot_inertia(M: np.ndarray, dq: np.ndarray,  J_closed: np.ndarray):
     return Lambda
 
 
-def calc_foot_inertia_along_traj(M_traj: np.ndarray, dq_traj: np.ndarray,  J_traj_closed: np.ndarray):
+def calc_foot_inertia_along_traj(M_traj: np.ndarray, dq_traj: np.ndarray,  J_traj_closed: np.ndarray, row: int = 2, column: int = 2):
     foot_inertia_array = np.zeros(len(M_traj))
     for M, dq, J_closed, num in zip(M_traj, dq_traj, J_traj_closed, range(len(M_traj))):
         try:
             planar_J = convert_full_J_to_planar_xz(J_closed)
-            Lambda = calc_foot_inertia(M, dq, planar_J)
-            # [0,0]xx [1,1] yy [2,2] zz
-            foot_inertia_array[num] = Lambda[1, 1]
+            Lambda = calc_foot_inertia(M, dq, J_closed)
+            # [0,0]xx [1,1] yy [2,2] zz Trans
+            foot_inertia_array[num] = Lambda[row, column]
         except:
             foot_inertia_array[num] = None
     return foot_inertia_array

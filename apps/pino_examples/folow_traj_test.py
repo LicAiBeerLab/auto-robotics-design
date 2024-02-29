@@ -96,14 +96,14 @@ for select_robot in handsome_guys:
     # plt.title("Foot inertia")
 
 
-    # plt.figure()
-    # plt.plot(traj_manipulability, marker="d")
+    plt.figure()
+    plt.plot(traj_manipulability, marker="d")
     
-    # plt.title("Manip")
+    plt.title("Manip")
 
 
-    # plt.figure()
-    # plt.scatter(poses[:, 0],  poses[:, 2], c=traj_IMF, marker="d")
-    # plt.colorbar()
-    # plt.title("IFM")
-plt.show()
+    plt.figure()
+    plt.scatter(poses[:, 0],  poses[:, 2], c=traj_IMF, marker="d")
+    plt.colorbar()
+    plt.title("IFM")
+    plt.show()

@@ -22,13 +22,14 @@ urdf_motors_cons_list = []
 for graph_i, constarin_i in graphs_and_cons:
     robot, ative_joints, constraints = jps_graph2urdf(graph_i)
     urdf_motors_cons_tuple = (robot, ative_joints, constraints)
-    
+    draw_joint_point(graph_i)
+    plt.show()
     urdf_motors_cons_list.append(urdf_motors_cons_tuple)
     # draw_joint_point(graph_i)
     # plt.show()
 
-for k, pack in enumerate(urdf_motors_cons_list):
-    urdf, mot, cons = pack
-    robo_dict, res_dict = calc_criterion_on_workspace_simple_input(urdf, mot, cons, "G", "EE", 100)
-    save_criterion_traj(robo_dict["urdf"], DIR_NAME, robo_dict["loop_des"],
-                    robo_dict["joint_des"], res_dict)
+# for k, pack in enumerate(urdf_motors_cons_list):
+#     urdf, mot, cons = pack
+#     robo_dict, res_dict = calc_criterion_on_workspace_simple_input(urdf, mot, cons, "G", "EE", 100)
+#     save_criterion_traj(robo_dict["urdf"], DIR_NAME, robo_dict["loop_des"],
+#                     robo_dict["joint_des"], res_dict)
