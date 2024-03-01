@@ -6,11 +6,10 @@ import matplotlib.pyplot as plt
 
 import networkx as nx
 import pinocchio as pin
-from auto_robot_design.description.builder import Builder, DetalizedURDFCreater, add_branch, jps_graph2urdf, jps_graph2urdf_parametrized
+from auto_robot_design.description.builder import Builder, DetalizedURDFCreater, DetalizedURDFCreaterFixedEE, add_branch, jps_graph2urdf, jps_graph2urdf_parametrized
 from auto_robot_design.description.mechanism import JointPoint2KinematicGraph
 from auto_robot_design.generator.two_link_generator import TwoLinkGenerator
 from auto_robot_design.description.utils import draw_joint_frames, draw_joint_point, draw_link_frames
-from auto_robot_design.optimization.optimizer import jps_graph2urdf
 from auto_robot_design.pino_adapter import pino_adapter
 from auto_robot_design.pinokla.calc_criterion import calc_IMF, calc_foot_inertia, calc_manipulability, convert_full_J_to_planar_xz
 from auto_robot_design.pinokla.closed_loop_jacobian import dq_dqmot, inverseConstraintKinematicsSpeed
@@ -40,13 +39,14 @@ def freeze_joint_robo(robo: Robot, joint_f: str):
 
 
 gen = TwoLinkGenerator()
-builder = Builder(DetalizedURDFCreater)
+builder = Builder(DetalizedURDFCreaterFixedEE)
 graphs_and_cons = gen.get_standard_set()
 np.set_printoptions(precision=3, linewidth=300, suppress=True, threshold=10000)
 
 graph_jp, constrain = graphs_and_cons[0]
 robot_urdf, ative_joints, constraints = jps_graph2urdf_parametrized(graph_jp)
-
+draw_joint_point(graph_jp)
+plt.show()
 
 robo = build_model_with_extensions(robot_urdf, ative_joints, constraints)
 free_robo = build_model_with_extensions(
