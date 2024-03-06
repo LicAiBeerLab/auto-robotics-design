@@ -19,15 +19,15 @@ def convert_x_y_to_6d_traj_xz(x: np.ndarray, y: np.ndarray):
 
 def simple_traj_derivative(traj_6d: np.ndarray, dt: float = 0.001):
     traj_6d_v = np.zeros(traj_6d.shape)
-    traj_6d_v[1:, :] = (traj_6d[1:, :] - traj_6d[:-1, :])/dt
+    traj_6d_v[1:, :] = np.diff(traj_6d, axis=0)/dt #(traj_6d[1:, :] - traj_6d[:-1, :])/dt
     return traj_6d_v
 
 
 def get_simple_spline():
     # Sample data points
-    x = np.array([-0.5, 0, 0.25])
-    y = np.array([-0.4, -0.1, -0.4])
-    y = y + 0.15
+    x = np.array([-0.5, 0, 0.25])*0.3
+    y = np.array([-0.4, -0.1, -0.4])*0.3
+    y = y - 0.5
     #x = x + 0.4
     # Create the cubic spline interpolator
     cs = CubicSpline(x, y)

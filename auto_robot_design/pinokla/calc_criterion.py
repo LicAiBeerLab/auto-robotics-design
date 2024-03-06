@@ -34,7 +34,7 @@ def folow_traj_by_proximal_inv_k(model, data, constraint_models, constraint_data
             q = closedLoopProximalMount(model, data, constraint_models, constraint_data, q)
         if viz:
             viz.display(q)
-            time.sleep(0.01)
+            time.sleep(0.1)
         
         pin.framesForwardKinematics(model, data, q)
         poses[num] = data.oMf[ee_frame_id].translation
@@ -200,14 +200,22 @@ def convert_full_J_to_planar_xz(full_J: np.ndarray):
 
 
 def calc_manipulability(jacob: np.ndarray):
-    ret1 = np.sqrt(np.linalg.det(jacob@jacob.T))
+    # ret1 = np.sqrt(np.linalg.det(jacob@jacob.T))
     # Alternative
-    # manip = np.linalg.svd(jacob@jacob.T)[1]
+    U, S, Vh = np.linalg.svd(jacob)
     # ret2 = np.product(manip)**0.5
     # Alternaive if square 
     # ret3 = np.product(np.linalg.eig(jacob)[0])
-    return ret1
+    return np.prod(S)
 
+def calc_svd_jacobian(jacob: np.ndarray):
+    # ret1 = np.sqrt(np.linalg.det(jacob@jacob.T))
+    # Alternative
+    U, S, Vh = np.linalg.svd(jacob)
+    # ret2 = np.product(manip)**0.5
+    # Alternaive if square 
+    # ret3 = np.product(np.linalg.eig(jacob)[0])
+    return U, S, Vh
 
 def calc_force_ellips(jacob: np.ndarray):
     try:
@@ -284,6 +292,15 @@ def calc_manipulability_along_trj_trans(traj_J_closed):
 
     return array_manip
 
+def calc_svd_j_along_trj_trans(traj_J_closed):
+    array_manip = []
+    for num, J in enumerate(traj_J_closed):
+        planar_J = convert_full_J_to_planar_xz(J)
+        trans_planar_J = planar_J[:2, :2]
+        # svd_j = calc_svd_jacobian(trans_planar_J)
+        array_manip.append(trans_planar_J)
+
+    return array_manip
 
 def calc_force_ell_along_trj_trans(traj_J_closed):
     array_force_cap = np.zeros(len(traj_J_closed))

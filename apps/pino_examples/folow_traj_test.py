@@ -45,65 +45,65 @@ def get_spline():
     # plt.show()
     return (x_traj_spline, y_traj_spline)
 
+if __name__=="__main__":
+    DIR_NAME_FOR_LOAD = "generated_1_select"
+    file_list = os.listdir(DIR_NAME_FOR_LOAD)
+    handsome_guys = []
+    new_list = [Path(DIR_NAME_FOR_LOAD + "/" + str(item)) for item in file_list]
 
-DIR_NAME_FOR_LOAD = "generated_1_select"
-file_list = os.listdir(DIR_NAME_FOR_LOAD)
-handsome_guys = []
-new_list = [Path(DIR_NAME_FOR_LOAD + "/" + str(item)) for item in file_list]
-
-for path_i in new_list:
-    res_i = load_criterion_traj(path_i)
-    handsome_guys.append(res_i)
-for select_robot in handsome_guys:
- 
-    robo = build_model_with_extensions(
-        str(select_robot["urdf"]),
-        joint_description=select_robot["mot_description"].item(),
-        loop_description=select_robot["loop_description"].item(),
-        fixed=True)
-    free_robo = build_model_with_extensions(
-        str(select_robot["urdf"]),
-        joint_description=select_robot["mot_description"].item(),
-        loop_description=select_robot["loop_description"].item(),
-        fixed=False)
-
-    # viz = MeshcatVisualizer(robo.model, robo.visual_model, robo.visual_model)
-    # viz.viewer = meshcat.Visualizer().open()
-    # viz.clean()
-    # viz.loadViewerModel()
-
-    x_traj, y_traj = get_spline()
-    traj_6d = convert_x_y_to_6d_traj_xz(x_traj, y_traj)
-
-
-    EFFECTOR_NAME = "EE"
-    poses, q_array, constraint_errors = folow_traj_by_proximal_inv_k(
-        robo.model, robo.data, robo.constraint_models, robo.constraint_data, EFFECTOR_NAME, traj_6d)
-    pos_errors, q_array2, traj_force_cap, traj_foot_inertia, traj_manipulability, traj_IMF = calc_criterion_along_traj(
-        robo, free_robo, "G", "EE", traj_6d)
-
-    poses = np.array(poses)
-
-    plt.figure()
-    plt.plot(traj_force_cap, marker="d")
- 
-    plt.title("Force cap")
-
-
-    # plt.figure()
-    # plt.plot(traj_foot_inertia, marker="d")
+    for path_i in new_list:
+        res_i = load_criterion_traj(path_i)
+        handsome_guys.append(res_i)
+    for select_robot in handsome_guys:
     
-    # plt.title("Foot inertia")
+        robo = build_model_with_extensions(
+            str(select_robot["urdf"]),
+            joint_description=select_robot["mot_description"].item(),
+            loop_description=select_robot["loop_description"].item(),
+            fixed=True)
+        free_robo = build_model_with_extensions(
+            str(select_robot["urdf"]),
+            joint_description=select_robot["mot_description"].item(),
+            loop_description=select_robot["loop_description"].item(),
+            fixed=False)
+
+        # viz = MeshcatVisualizer(robo.model, robo.visual_model, robo.visual_model)
+        # viz.viewer = meshcat.Visualizer().open()
+        # viz.clean()
+        # viz.loadViewerModel()
+
+        x_traj, y_traj = get_spline()
+        traj_6d = convert_x_y_to_6d_traj_xz(x_traj, y_traj)
 
 
-    plt.figure()
-    plt.plot(traj_manipulability, marker="d")
+        EFFECTOR_NAME = "EE"
+        poses, q_array, constraint_errors = folow_traj_by_proximal_inv_k(
+            robo.model, robo.data, robo.constraint_models, robo.constraint_data, EFFECTOR_NAME, traj_6d)
+        pos_errors, q_array2, traj_force_cap, traj_foot_inertia, traj_manipulability, traj_IMF = calc_criterion_along_traj(
+            robo, free_robo, "G", "EE", traj_6d)
+
+        poses = np.array(poses)
+
+        plt.figure()
+        plt.plot(traj_force_cap, marker="d")
     
-    plt.title("Manip")
+        plt.title("Force cap")
 
 
-    plt.figure()
-    plt.scatter(poses[:, 0],  poses[:, 2], c=traj_IMF, marker="d")
-    plt.colorbar()
-    plt.title("IFM")
-    plt.show()
+        # plt.figure()
+        # plt.plot(traj_foot_inertia, marker="d")
+        
+        # plt.title("Foot inertia")
+
+
+        plt.figure()
+        plt.plot(traj_manipulability, marker="d")
+        
+        plt.title("Manip")
+
+
+        plt.figure()
+        plt.scatter(poses[:, 0],  poses[:, 2], c=traj_IMF, marker="d")
+        plt.colorbar()
+        plt.title("IFM")
+        plt.show()
