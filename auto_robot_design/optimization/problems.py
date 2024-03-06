@@ -9,8 +9,14 @@ from auto_robot_design.description.builder import jps_graph2urdf
 from pymoo.core.problem import ElementwiseProblem
 from auto_robot_design.optimization.test_criteria import calculate_mass
 
-from auto_robot_design.pinokla.criterion_agregator import calc_criterion_along_traj, calc_traj_error
-from auto_robot_design.pinokla.default_traj import convert_x_y_to_6d_traj_xz, get_simple_spline
+from auto_robot_design.pinokla.criterion_agregator import (
+    calc_criterion_along_traj,
+    calc_traj_error,
+)
+from auto_robot_design.pinokla.default_traj import (
+    convert_x_y_to_6d_traj_xz,
+    get_simple_spline,
+)
 from auto_robot_design.pinokla.loader_tools import build_model_with_extensions
 
 
@@ -125,7 +131,6 @@ class CalculateMultiCriteriaProblem(ElementwiseProblem):
             self.graph[jp].r = np.array([xz[0], 0, xz[1]])
 
 
-
 class BigComputeCriteriaProblemByWeigths(ElementwiseProblem):
     def __init__(self, graph, jp2limits, **kwargs):
         self.graph = graph
@@ -145,19 +150,34 @@ class BigComputeCriteriaProblemByWeigths(ElementwiseProblem):
     def _evaluate(self, x, out, *args, **kwargs):
         self.mutate_JP_by_xopt(x)
         urdf, joint_description, loop_description = jps_graph2urdf(self.graph)
- 
+
         robo = build_model_with_extensions(urdf, joint_description, loop_description)
-        free_robo = build_model_with_extensions(urdf, joint_description, loop_description, False)
+        free_robo = build_model_with_extensions(
+            urdf, joint_description, loop_description, False
+        )
         x_traj, y_traj = get_simple_spline()
         traj_6d = convert_x_y_to_6d_traj_xz(x_traj, y_traj)
-        pos_errors, q_array, traj_force_cap, traj_foot_inertia, traj_manipulability, traj_IMF = calc_criterion_along_traj(robo, free_robo, "G", "EE", traj_6d)
-        pos_error_max= np.max(np.linalg.norm(pos_errors, axis=1))
+        (
+            pos_errors,
+            q_array,
+            traj_force_cap,
+            traj_foot_inertia,
+            traj_manipulability,
+            traj_IMF,
+            traj_dot_fc,
+        ) = calc_criterion_along_traj(robo, free_robo, "G", "EE", traj_6d)
+        
+        mean_dp_u1_traj = np.mean(traj_dot_fc["u1_traj"])
+        mean_dp_u2_traj = np.mean(traj_dot_fc["u2_traj"])
+        mean_dp_u2_z = np.mean(traj_dot_fc["u2_z"])
+        mean_dp_u1_z = np.mean(traj_dot_fc["u1_z"])
+        pos_error_max = np.max(np.linalg.norm(pos_errors, axis=1))
         mass = calculate_mass(urdf, joint_description, loop_description)
         minimize_manip = 1 / np.mean(traj_manipulability)
         minimize_IMF = 1 / np.mean(traj_IMF)
-        
+
         F = [pos_error_max, mass, minimize_manip, minimize_IMF]
- 
+
         final_F = (np.array(F) @ self.weights).squeeze()
         out["F"] = final_F
         out["Fs"] = F

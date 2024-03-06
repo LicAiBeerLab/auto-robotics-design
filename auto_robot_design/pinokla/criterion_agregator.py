@@ -1,3 +1,4 @@
+from calendar import c
 from copy import deepcopy
 from dataclasses import dataclass
 from hashlib import sha256
@@ -19,6 +20,7 @@ from auto_robot_design.pinokla.calc_criterion import (
     calc_IMF_along_traj,
     calc_foot_inertia_along_traj,
     calc_force_ell_along_trj_trans,
+    calc_force_ell_projection_along_trj,
     calc_manipulability_along_trj,
     calc_manipulability_along_trj_trans,
     folow_traj_by_proximal_inv_k,
@@ -46,6 +48,7 @@ class ComputeConfg:
     ForcreCapability: bool = True
     Manipulability: bool = True
     ApparentInertia: bool = True
+    DotProdForceCapability: bool = True
 
 
 def compute_along_q_space(
@@ -104,8 +107,13 @@ def compute_along_q_space(
         traj_IMF = calc_IMF_along_traj(free_traj_M, free_traj_dq, free_traj_J_closed)
     else:
         traj_IMF = None
+        
+    if cmp_cfg.DotProdForceCapability:
+        traj_dot_fc = calc_force_ell_projection_along_trj(traj_J_closed, traj_6d)
+    else:
+        traj_dot_fc = None
 
-    return (traj_force_cap, traj_foot_inertia, traj_manipulability, traj_IMF)
+    return (traj_force_cap, traj_foot_inertia, traj_manipulability, traj_IMF, traj_dot_fc)
 
 
 def calc_criterion_on_workspace(
@@ -175,7 +183,7 @@ def calc_criterion_along_traj(
     pos_errors = traj_6d[:, :3] - poses_3d
     # pos_error_sum = sum(map(np.linalg.norm, pos_errors))
     try:
-        traj_force_cap, traj_foot_inertia, traj_manipulability, traj_IMF = (
+        traj_force_cap, traj_foot_inertia, traj_manipulability, traj_IMF,  = (
             compute_along_q_space(
                 robo, robo_free, base_frame_name, ee_frame_name, q_array, cmp_cfg
             )
@@ -195,88 +203,6 @@ def calc_criterion_along_traj(
         traj_foot_inertia,
         traj_manipulability,
         traj_IMF,
-    )
-
-
-def calc_dot_j_along_traj(
-    robo: Robot,
-    base_frame_name: str,
-    ee_frame_name: str,
-    traj_6d: np.ndarray,
-):
-    """
-    Calculate the dot product of the trajectory with the Jacobian along the trajectory.
-
-    Args:
-        robo (Robot): The robot object.
-        base_frame_name (str): The name of the base frame.
-        ee_frame_name (str): The name of the end-effector frame.
-        traj_6d (np.ndarray): The 6D trajectory.
-
-    Returns:
-        Tuple: A tuple containing the absolute dot product values for <d_trajectory|u1>, <d_trajectory|u2>,
-        z-component of u1, and z-component of u2.
-    """
-    poses_3d, q_array, __ = folow_traj_by_proximal_inv_k(
-        robo.model,
-        robo.data,
-        robo.constraint_models,
-        robo.constraint_data,
-        ee_frame_name,
-        traj_6d,
-    )
-    pos_errors = traj_6d[:, :3] - poses_3d
-
-    __, traj_J_closed, __ = kinematic_simulation(
-        robo.model,
-        robo.data,
-        robo.actuation_model,
-        robo.constraint_models,
-        robo.constraint_data,
-        ee_frame_name,
-        base_frame_name,
-        q_array,
-    )
-    # main_branch_joint_name = ["TL_ground", "TL_knee"]
-    # ids_main_branch = [robo.model.getJointId(n) for n in main_branch_joint_name]
-    pin.framesForwardKinematics(robo.model, robo.data, q_array[0])
-    pin.computeJointJacobians(robo.model, robo.data, q_array[0])
-    # J_ok = []
-    # for q in q_array:
-    #     pin.framesForwardKinematics(robo.model, robo.data, q)
-
-    #     J = pin.computeJointJacobians(robo.model, robo.data, q)
-    #     J = J[np.array([0,2])][:,np.array(ids_main_branch)]
-    #     J_ok.append(J)
-    try:
-        svd_J = calc_svd_j_along_trj_trans(traj_J_closed)
-    except:
-        svd_J = None
-
-    d_xy = np.diff(traj_6d[:, np.array([0, 2])], axis=0)
-    d_xy = np.vstack([d_xy, [0, 0]])
-    traj_j_svd = [np.linalg.svd(J_ck) for J_ck in svd_J]
-    # eig_J[id, :2] =  J_svd[1]
-    # eig_J[id, 2] = np.prod(J_svd[1])
-
-    u1 = np.array([1 / J_svd[1][0] * J_svd[0][0, :] for J_svd in traj_j_svd])
-    u2 = np.array([1 / J_svd[1][1] * J_svd[0][1, :] for J_svd in traj_j_svd])
-
-    abs_dot_product_traj_u1 = np.abs(np.sum(u1 * d_xy, axis=1).squeeze())
-    abs_dot_product_traj_u2 = np.abs(np.sum(u2 * d_xy, axis=1).squeeze())
-
-    abs_dot_product_z_u1 = u1[:, 1]
-    abs_dot_product_z_u2 = u2[:, 1]
-    # print(f'{"".join(str(np.round(pos, 4).tolist())):=^30}')
-    # print(f"Velocity: S_close: {eig_J[id, :2]}, Det CK:  {eig_J[id, 2]}")
-    # print(f"Force:  S_close: {eig_J[id, :2] ** (-1)}, Det CK: {1/ eig_J[id, 2]}")
-    # print(f"Projection: <d_traj|S1> {np.dot(d_xy, u1)}, <d_traj|S2> {np.dot(d_xy, u2)}")
-    # print(f"Projection: <ez|S1> {np.dot(ez, u1)}, <ez|S2> {np.dot(ez, u2)}")
-    return (
-        abs_dot_product_traj_u1,
-        abs_dot_product_traj_u2,
-        abs_dot_product_z_u1,
-        abs_dot_product_z_u2,
     )
 
 

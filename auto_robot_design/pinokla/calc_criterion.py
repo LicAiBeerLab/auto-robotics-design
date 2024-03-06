@@ -302,6 +302,39 @@ def calc_svd_j_along_trj_trans(traj_J_closed):
 
     return array_manip
 
+def calc_force_ell_projection_along_trj(traj_J_closed, traj_6d):
+    """
+    Calculates the force ellipsoid projection along a trajectory.
+
+    Args:
+        traj_J_closed (numpy.ndarray): Closed trajectory of Jacobian matrices.
+        traj_6d (numpy.ndarray): 6-dimensional trajectory.
+
+    Returns:
+        dict: Dictionary containing the following keys:
+            - "u1_traj": Absolute dot product of trajectory and u1.
+            - "u2_traj": Absolute dot product of trajectory and u2.
+            - "u1_z": Absolute dot product of z-axis and u1.
+            - "u2_z": Absolute dot product of z-axis and u2.
+    """
+    svd_J = calc_svd_j_along_trj_trans(traj_J_closed)
+
+    d_xy = np.diff(traj_6d[:, np.array([0, 2])], axis=0)
+    d_xy = np.vstack([d_xy, [0, 0]])
+    traj_j_svd = [np.linalg.svd(J_ck) for J_ck in svd_J]
+
+    u1 = np.array([1 / J_svd[1][0] * J_svd[0][0, :] for J_svd in traj_j_svd])
+    u2 = np.array([1 / J_svd[1][1] * J_svd[0][1, :] for J_svd in traj_j_svd])
+
+    abs_dot_product_traj_u1 = np.abs(np.sum(u1 * d_xy, axis=1).squeeze())
+    abs_dot_product_traj_u2 = np.abs(np.sum(u2 * d_xy, axis=1).squeeze())
+
+    abs_dot_product_z_u1 = u1[:, 1]
+    abs_dot_product_z_u2 = u2[:, 1]
+
+    out = {"u1_traj": abs_dot_product_traj_u1, "u2_traj": abs_dot_product_traj_u2, "u1_z": abs_dot_product_z_u1, "u2_z": abs_dot_product_z_u2}
+    return out
+
 def calc_force_ell_along_trj_trans(traj_J_closed):
     array_force_cap = np.zeros(len(traj_J_closed))
     for num, J in enumerate(traj_J_closed):
