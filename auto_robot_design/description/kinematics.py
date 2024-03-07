@@ -244,7 +244,8 @@ class Link:
     @density.setter
     def density(self, value: float):
         self._density = value
-        self.define_geometry()
+        self.geometry.density = value
+        # self.define_geometry()
 
     @property
     def thickness(self):
@@ -271,7 +272,7 @@ class Link:
     @inertial_frame.setter
     def inertial_frame(self, value: np.ndarray):
         self._inertial_frame = value
-        self.define_geometry()
+        # self.define_geometry()
 
     def define_geometry(self):
         num_joint = len(self.joints)
