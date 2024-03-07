@@ -1,4 +1,3 @@
-from two_link_generator import set_circle_points
 import numpy as np
 from typing import Tuple, List
 import networkx as nx
@@ -8,7 +7,7 @@ from auto_robot_design.description.builder import add_branch
 from auto_robot_design.description.utils import draw_joint_point
 import itertools
 
-
+from utilities import set_circle_points
 class ThreeLinkGenerator():
     def __init__(self) -> None:
         self.variants_2l = 5

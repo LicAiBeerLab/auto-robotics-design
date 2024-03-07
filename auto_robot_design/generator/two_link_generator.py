@@ -8,33 +8,24 @@ from auto_robot_design.description.kinematics import JointPoint
 from auto_robot_design.description.builder import add_branch
 from auto_robot_design.description.utils import draw_joint_point
 import itertools
-
-
-def set_circle_points(pos_1, pos_2, add_pos, n):
-    center = (pos_1+pos_2)/2
-    vec = pos_1-center
-    if np.linalg.norm(add_pos-center) > np.linalg.norm(pos_1-center):
-        pos_turn = center + np.array([vec[0]*np.cos(np.pi/n)-vec[2]*np.sin(
-            np.pi/n), 0, vec[2]*np.cos(np.pi/n)+vec[0]*np.sin(np.pi/n)])
-        neg_turn = center + np.array([vec[0]*np.cos(-np.pi/n)-vec[2]*np.sin(-np.pi/n),
-                                     0, vec[2]*np.cos(-np.pi/n)+vec[0]*np.sin(-np.pi/n)])
-        new_pos_list = []
-        crit = int((-0.5+int(np.linalg.norm(pos_turn-add_pos)
-                   < np.linalg.norm(neg_turn-add_pos)))*2)
-        for i in range(crit*1, crit * n, crit):
-            angle = i*np.pi/n
-            new_pos_list.append(center + np.array([vec[0]*np.cos(angle)-vec[2]*np.sin(
-                angle), 0, vec[2]*np.cos(angle)+vec[0]*np.sin(angle)]))
-    else:
-        new_pos_list = []
-        for i in range(1, n):
-            new_pos_list.append(pos_1 + (pos_2-pos_1)/n*i)
-    return new_pos_list
+from utilities import set_circle_points
 
 
 class TwoLinkGenerator():
+    """Generates all possible graphs with two links in main branch
+    """
+
     def __init__(self) -> None:
         self.variants = list(range(7))
+        self.constrain_dict = {}  # should be updated after creating each joint
+        self.current_main_branch = []
+        self.graph = nx.Graph()
+
+    def reset(self):
+        """Reset the graph builder."""
+        self.constrain_dict = {}  # should be updated after creating each joint
+        self.current_main_branch = []
+        self.graph = nx.Graph()
 
     def build_standard_two_linker(self, knee_pos: float = -0.5, nominal_length=1, right_shift=np.tan(np.pi/6)/2):
         ground_joint = JointPoint(
@@ -42,187 +33,212 @@ class TwoLinkGenerator():
             w=np.array([0, 1, 0]),
             attach_ground=True,
             active=True,
-            name="TL_ground"
+            name="Main_ground"
         )
-        graph_dict = {"TL_ground": ground_joint}
-        constrain_dict = {ground_joint.name: {'optim': False,
-                                              'x_range': (-0.2, 0.2), 'z_range': (-0.2, 0.2)}}
-        branch = [ground_joint]
-        # if variant not in (1,2,3): raise Exception("wrong variant!")
-        # knee_joint_pos = np.array([right_shift, 0, -variant * 0.25])
-        # knee_joint_pos = np.array([right_shift, 0, -np.random.uniform(0.2,0.8)])
+        # graph_dict = {"TL_ground": ground_joint}
+        self.constrain_dict[ground_joint.name] = {'optim': False,
+                                                  'x_range': (-0.2, 0.2), 'z_range': (-0.2, 0.2)}
+        self.current_main_branch.append(ground_joint)
+
         knee_joint_pos = np.array([right_shift, 0, knee_pos])
         knee_joint = JointPoint(
-            r=knee_joint_pos, w=np.array([0, 1, 0]), name=f"TL_knee")
-        constrain_dict[knee_joint.name] = {
+            r=knee_joint_pos, w=np.array([0, 1, 0]), name=f"Main_knee")
+        self.constrain_dict[knee_joint.name] = {
             'optim': False, 'x_range': (-0.2, 0.2), 'z_range': (-0.2, 0.2)}
-        branch.append(knee_joint)
-        graph_dict["TL_knee"] = knee_joint
+        self.current_main_branch.append(knee_joint)
         ee = JointPoint(
             r=np.array([0, 0, -nominal_length]),
             w=np.array([0, 1, 0]),
             attach_endeffector=True,
-            name="TL_ee"
+            name="Main_ee"
         )
-        graph_dict["TL_ee"] = ee
-        branch.append(ee)
-        constrain_dict[ee.name] = {
+        self.current_main_branch.append(ee)
+        self.constrain_dict[ee.name] = {
             'optim': False, 'x_range': (-0.2, 0.2), 'z_range': (-0.2, 0.2)}
-        graph = nx.Graph()
-        add_branch(graph, branch)
 
-        return graph, graph_dict, constrain_dict
+        add_branch(self.graph, self.current_main_branch)
 
-    def add_tl_branch(self, graph, graph_dict, constrain_dict, inner: bool = True, shift=0.25, ground: bool = True):
-        knee_joint: JointPoint = graph_dict["TL_knee"]
-        knee_pos = knee_joint.r
-        ee: JointPoint = graph_dict["TL_ee"]
-        ee_pos = ee.r
-        connection_point = (ee_pos + knee_pos)/2
+    def add_2l_branch(self, inner: bool = True, shift=0.25, ground: bool = True):
+
+        # we have several possible connection points and create a joint for each at the start
         if inner:
-            branch_knee_pos = knee_pos + np.array([-knee_pos[0]-shift, 0, 0])
+            ground_connection = np.array([-shift, 0, 0])
         else:
-            branch_knee_pos = knee_pos + np.array([shift, 0, 0])
+            ground_connection = np.array([shift, 0, 0])
 
-        branch_knee_joint = JointPoint(r=branch_knee_pos,
-                                       w=np.array([0, 1, 0]),
-                                       name="TL_branch_knee")
-        constrain_dict[branch_knee_joint.name] = {
-            'optim': True, 'x_range': (-0.5, 0.5), 'z_range': (-0.5, 0.5)}
-        branch_connection = JointPoint(r=connection_point,
-                                       w=np.array([0, 1, 0]),
-                                       name="TL_branch_connection")
-        constrain_dict[branch_connection.name] = {
+        link_connection_points = [
+            (self.current_main_branch[i-1].r + self.current_main_branch[i].r)/2 for i in range(1, len(self.current_main_branch))]
+
+        # create joints for each possible point, not all of them will be used in the final graph
+        # ground is always active
+        ground_joint = JointPoint(r=ground_connection,
+                                  w=np.array([0, 1, 0]),
+                                  attach_ground=True,
+                                  active=True,
+                                  name=f"2L_ground")
+        self.constrain_dict[ground_joint.name] = {
+            'optim': True, 'x_range': (-0.2, 0.2)}
+        # create connection dict
+        connection_joints = {ground_joint: []}
+
+        top_link_joint = JointPoint(r=link_connection_points[0], w=np.array([
+                                    0, 1, 0]), active=True, name=f'2L_top')
+        self.constrain_dict[top_link_joint.name] = {
             'optim': True, 'x_range': (-0.2, 0.2), 'z_range': (-0.2, 0.2)}
+        connection_joints[top_link_joint] = [
+            [self.current_main_branch[0], self.current_main_branch[1]]]
 
+        bot_link_joint = JointPoint(
+            r=link_connection_points[1], w=np.array([0, 1, 0]), name=f'2L_bot')
+        self.constrain_dict[bot_link_joint.name] = {
+            'optim': True, 'x_range': (-0.2, 0.2), 'z_range': (-0.2, 0.2)}
+        connection_joints[bot_link_joint] = [
+            [self.current_main_branch[1], self.current_main_branch[2]]]
+
+        branch = []
         if ground:
-            ground_connection = np.array([branch_knee_pos[0], 0, 0])
-            branch_ground_joint = JointPoint(r=ground_connection,
-                                             w=np.array([0, 1, 0]),
-                                             attach_ground=True,
-                                             active=True,
-                                             name="TL_branch_ground")
-            constrain_dict[branch_ground_joint.name] = {
-                'optim': True, 'x_range': (-0.4, 0.4)}
-            add_branch(graph, [
-                       branch_ground_joint, branch_knee_joint, branch_connection, [knee_joint, ee]])
-            return graph, constrain_dict
+            top_joint: JointPoint = ground_joint
         else:
-            ground_joint: JointPoint = graph_dict["TL_ground"]
-            ground_connection = (ground_joint.r+knee_pos)/2
-            branch_ground_joint = JointPoint(r=ground_connection,
-                                             w=np.array([0, 1, 0]),
-                                             active=True,
-                                             name="TL_branch_ground")
-            constrain_dict[branch_ground_joint.name] = {
-                'optim': True, 'x_range': (-0.2, 0.2), 'z_range': (-0.2, 0.2)}
-            add_branch(graph, [[ground_joint, knee_joint], branch_ground_joint,
-                       branch_knee_joint, branch_connection, [knee_joint, ee]])
-            return graph, constrain_dict
+            top_joint: JointPoint = top_link_joint
+        bot_joint: JointPoint = bot_link_joint
 
-    def add_fl_branch(self, graph, graph_dict, constrain_dict, inner: bool = True, shift=0.5, ground: bool = True, variant=0):
-        knee_joint: JointPoint = graph_dict["TL_knee"]
-        knee_pos = knee_joint.r
-        ee: JointPoint = graph_dict["TL_ee"]
-        ee_pos = ee.r
-        ground_joint: JointPoint = graph_dict["TL_ground"]
-        ground_pos = ground_joint.r
-
+        # create joints in the branch, currently depends on the type of the branch
         if inner:
-            branch_ground_pos = np.array([-shift, 0, 0])
+            knee_point = (top_joint.r + bot_joint.r) / \
+                2 + np.array([-shift, 0, 0])
         else:
-            branch_ground_pos = np.array([shift, 0, 0])
+            knee_point = (top_joint.r + bot_joint.r) / \
+                2 + np.array([shift, 0, 0])
+        branch_knee_joint = JointPoint(r=knee_point, w=np.array(
+            [0, 1, 0]), name=f"2L_knee")
+        self.constrain_dict[branch_knee_joint.name] = {
+            'optim': True, 'x_range': (-0.4, 0.4), 'z_range': (-0.4, 0.4)}
 
-        connection_top = (ground_pos + knee_pos)/2
-        connection_bot = (ee_pos + knee_pos)/2
+        branch += connection_joints[top_joint]
+        branch.append(top_joint)
+        branch.append(branch_knee_joint)
+        branch.append(bot_joint)
+        branch += connection_joints[bot_joint]
+        top_joint.active = True
 
-        branch_ground_joint = JointPoint(r=branch_ground_pos,
-                                         w=np.array([0, 1, 0]),
-                                         active=True,
-                                         attach_ground=True, name="FL_branch_ground")
-        constrain_dict[branch_ground_joint.name] = {
-            'optim': True, 'x_range': (-0.4, 0.4)}
-        top_joint = JointPoint(r=connection_top,
-                               w=np.array([0, 1, 0]),
-                               name="FL_branch_top")
-        constrain_dict[top_joint.name] = {
+        add_branch(self.graph, branch)
+
+    def add_4l_branch(self, inner: bool = True, shift=0.5, variant=0):
+        # we have several possible connection points and create a joint for each at the start
+        if inner:
+            ground_connection = np.array([-shift, 0, 0])
+        else:
+            ground_connection = np.array([shift, 0, 0])
+
+        link_connection_points = [
+            (self.current_main_branch[i-1].r + self.current_main_branch[i].r)/2 for i in range(1, len(self.current_main_branch))]
+
+        # create joints for each possible point, not all of them will be used in the final graph
+        # ground is always active
+        ground_joint = JointPoint(r=ground_connection,
+                                  w=np.array([0, 1, 0]),
+                                  attach_ground=True,
+                                  active=True,
+                                  name=f"2L_ground")
+        self.constrain_dict[ground_joint.name] = {
+            'optim': True, 'x_range': (-0.2, 0.2)}
+        # create connection dict
+        connection_joints = {ground_joint: []}
+
+        top_link_joint = JointPoint(
+            r=link_connection_points[0], w=np.array([0, 1, 0]), name=f'4L_top')
+        self.constrain_dict[top_link_joint.name] = {
             'optim': True, 'x_range': (-0.2, 0.2), 'z_range': (-0.2, 0.2)}
-        bot_joint = JointPoint(r=connection_bot,
-                               w=np.array([0, 1, 0]),
-                               name="FL_branch_bot")
-        constrain_dict[bot_joint.name] = {
+        connection_joints[top_link_joint] = [
+            [self.current_main_branch[0], self.current_main_branch[1]]]
+
+        bot_link_joint = JointPoint(
+            r=link_connection_points[1], w=np.array([0, 1, 0]), name=f'4L_bot')
+        self.constrain_dict[bot_link_joint.name] = {
             'optim': True, 'x_range': (-0.2, 0.2), 'z_range': (-0.2, 0.2)}
-        new_joint_dict = {branch_ground_joint: [], top_joint: [
-            [ground_joint, knee_joint]], bot_joint: [[ee, knee_joint]]}
+        connection_joints[bot_link_joint] = [
+            [self.current_main_branch[1], self.current_main_branch[2]]]
+
         # triangle with 3 connections
         if variant == 0:
-            pos_1 = np.array([branch_ground_joint.r[0], 0, bot_joint.r[2]])
-            pos_2 = np.array([branch_ground_joint.r[0], 0, bot_joint.r[2]/2])
+            pos_1 = np.array([ground_joint.r[0], 0, bot_link_joint.r[2]])
+            pos_2 = np.array([ground_joint.r[0], 0, bot_link_joint.r[2]/2])
             j1 = JointPoint(r=pos_1,
                             w=np.array([0, 1, 0]),
-                            name="FL_branch_knee")
-            constrain_dict[j1.name] = {
+                            name="4LT1_triplet_bot")
+            self.constrain_dict[j1.name] = {
                 'optim': True, 'x_range': (-0.4, 0.4), 'z_range': (-0.4, 0.4)}
             j2 = JointPoint(r=pos_2,
                             w=np.array([0, 1, 0]),
-                            name="FL_branch_hip")
-            constrain_dict[j2.name] = {
+                            name="4LT1_triplet_top")
+            self.constrain_dict[j2.name] = {
                 'optim': True, 'x_range': (-0.4, 0.4), 'z_range': (-0.4, 0.4)}
-            add_branch(graph, [[ee, knee_joint], bot_joint,
-                       j1, j2, branch_ground_joint])
+
+            branch = []
+            branch += connection_joints[bot_link_joint]
+            branch.append(j1)
+            branch.append(j2)
+            branch.append(ground_joint)
+            branch += connection_joints[ground_joint]
+            add_branch(self.graph, branch)
+
             j3 = JointPoint(r=(pos_1+pos_2)/2,
                             w=np.array([0, 1, 0]),
-                            name="FL_branch_additional")
-            constrain_dict[j3.name] = {
+                            name="4LT1_triplet_mid")
+            self.constrain_dict[j3.name] = {
                 'optim': True, 'x_range': (-0.4, 0.4), 'z_range': (-0.4, 0.4)}
-            add_branch(graph, [[ground_joint, knee_joint],
-                       top_joint, j3, [j1, j2]])
-            return graph, constrain_dict
+
+            secondary_branch = []
+            secondary_branch += connection_joints[top_link_joint]
+            secondary_branch.append(top_link_joint)
+            secondary_branch.append(j3)
+            secondary_branch.append([j1, j2])
+
+            add_branch(self.graph, secondary_branch)
 
         else:
-            new_joints = [branch_ground_joint, top_joint, bot_joint]
+            new_joints = [ground_joint, top_link_joint, bot_link_joint]
             permutation = list(itertools.permutations(new_joints))[variant-1]
 
             new_joint_pos = set_circle_points(
                 permutation[0].r, permutation[2].r, permutation[1].r, 4)
-            branch = new_joint_dict[permutation[0]]
+
+            branch = []
+            branch += connection_joints[permutation[0]]
             branch.append(permutation[0])
             triangle_joints = []
             for i, pos in enumerate(new_joint_pos):
                 joint = JointPoint(r=pos, w=np.array(
-                    [0, 1, 0]), name=f"FL_branch_j{i}")
-                constrain_dict[joint.name] = {
+                    [0, 1, 0]), name=f"4LT2_j{i}")
+                self.constrain_dict[joint.name] = {
                     'optim': True, 'x_range': (-0.4, 0.4), 'z_range': (-0.4, 0.4)}
                 branch.append(joint)
-                if i<2:
+                if i < 2:
                     triangle_joints.append(joint)
 
             branch.append(permutation[2])
-            branch += new_joint_dict[permutation[2]]
-            add_branch(graph, branch)
+            branch += connection_joints[permutation[2]]
+            add_branch(self.graph, branch)
 
-            branch_2 = [triangle_joints, permutation[1]] + \
-                    new_joint_dict[permutation[1]]
+            secondary_branch = [triangle_joints, permutation[1]
+                                ] + connection_joints[permutation[1]]
 
-            add_branch(graph, branch_2)
-            return graph, constrain_dict
+            add_branch(self.graph, secondary_branch)
 
     def get_standard_set(self, knee_pos=-0.5, shift=0.5):
-        answer_list = []
+        result_list = []
         for inner in [True, False]:
             for ground in [True, False]:
-                graph, graph_dict, constrain_dict = self.build_standard_two_linker(
-                    knee_pos=knee_pos)
-                graph, constrain_dict = self.add_tl_branch(
-                    graph, graph_dict, constrain_dict, inner=inner, ground=ground, shift=shift)
-                answer_list.append((graph, constrain_dict))
+                self.reset()
+                self.build_standard_two_linker(knee_pos=knee_pos)
+                self.add_2l_branch(inner=inner, ground=ground, shift=shift)
+                result_list.append((self.graph, self.constrain_dict))
             for i in self.variants:
-                graph, graph_dict, constrain_dict = self.build_standard_two_linker(
-                    knee_pos=knee_pos)
-                graph, constrain_dict = self.add_fl_branch(
-                    graph, graph_dict, constrain_dict, inner=inner, variant=i, shift=shift)
-                answer_list.append((graph, constrain_dict))
-        return answer_list
+                self.reset()
+                self.build_standard_two_linker(knee_pos=knee_pos)
+                self.add_4l_branch(inner=inner, variant=i, shift=shift)
+                result_list.append((self.graph, self.constrain_dict))
+        return result_list
 
 
 def get_constrain_space(constrain_dict: dict):
@@ -264,9 +280,8 @@ if __name__ == '__main__':
     graph, constrain_dict = gen.get_standard_set()[0]
     space = get_constrain_space(constrain_dict)
     random_vector = np.zeros(len(space))
-    for i, r in enumerate(space):
-        random_vector[i] = np.random.uniform(low=r[0], high=r[1])
+    for j, r in enumerate(space):
+        random_vector[j] = np.random.uniform(low=r[0], high=r[1])
 
     get_changed_graph(graph, constrain_dict, random_vector)
     draw_joint_point(graph)
-
