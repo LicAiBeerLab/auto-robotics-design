@@ -1,3 +1,7 @@
+    """Functions for generating random graph for a mechanism with two DoF
+    
+    The link lengths and joint positions are randomly sampled from the parametrized ranges.
+    """
 import networkx as nx
 import numpy as np
 from typing import Tuple, List
@@ -14,30 +18,42 @@ def build_main_branch(
     angle_range: Tuple[float] = (-pi / 3, pi / 3),
     ender_fixed: bool = True,
 ):
+    """Create the list of joints that represents the main branch of the mechanism
+
+    Each link and angle are randomly sampled from uniform distribution within parametrized boundaries.
+
+    Args:
+        n_link_options (Tuple[float], optional): options for amount of links in the branch. Defaults to (2, 3, 4).
+        length_range (Tuple[float], optional): range of link lengths. Defaults to (0.2, 1.4).
+        angle_range (Tuple[float], optional): range of default joint angles. Defaults to (-pi / 3, pi / 3).
+        ender_fixed (bool, optional): option that determined if the end-effector is directly under the ground joint. Defaults to True.
+
+    Returns:
+        Tuple[List[Joint_Point], int]: returns the list of joints to construct the new branch in the graph and the number of DoF
+    """
+    # required for calculating DoF
     body_counter = 0
     joint_counter = 0
-    # ender_fixed ==True means the end-effector is always right under the ground joint
-    length_constrains = length_range
-    angle_constraints = angle_range
     # sample the number of links in the main branch
     main_branch_links = np.random.choice(n_link_options)
     # create ground point and branch
     ground_joint = JointPoint(
-        r=np.zeros(3),
+        r=np.zeros(3), # main ground is always in the origin of coordinate system
         w=np.array([0, 1, 0]),
         attach_ground=True,
-        active=True,
+        active=True, 
         name="Ground_main",
     )
     joint_counter += 1
     main_branch = [ground_joint]
     for i in range(main_branch_links - 1):
-        # sample length and angle to get new joint
-        sampled_length = np.random.uniform(*length_constrains)
-        sampled_angle = np.random.uniform(*angle_constraints)
+        # sample length and angle for new joint placement
+        sampled_length = np.random.uniform(*length_range)
+        sampled_angle = np.random.uniform(*angle_range)
         x = sampled_length * np.sin(sampled_angle)
         y = 0
         z = -sampled_length * np.cos(sampled_angle)
+        # the position is calculated relative to the previous joint
         new_coordenates = main_branch[-1].r + np.array([x, y, z])
         main_branch.append(
             JointPoint(r=new_coordenates, w=np.array([0, 1, 0]), name=f"J{i}m")
@@ -45,14 +61,17 @@ def build_main_branch(
         joint_counter += 1
         body_counter += 1
 
-    sampled_length = np.random.uniform(*length_constrains)
+    # the last point in the branch is the end-effector
+    sampled_length = np.random.uniform(*length_range)
     if ender_fixed:
-        x = -main_branch[-1].r[0]
+        x = -main_branch[-1].r[0]# set the ee to the 0 position in x
         y = 0
         if sampled_length > abs(main_branch[-1].r[0]):
+            # the z coordinate can be calculated according to sampled length
             z = -((sampled_length**2 - main_branch[-1].r[0] ** 2) ** 0.5)
         else:
-            z = -length_range[0]
+            # the sampled length is too short, the z shift is set to be the min_length/2 (just an arbitrary number to not set it zero)
+            z = -length_range[0]/2
         new_coordenates = main_branch[-1].r + np.array([x, y, z])
         main_branch.append(
             JointPoint(
@@ -64,7 +83,7 @@ def build_main_branch(
         )
         body_counter += 1
     else:
-        sampled_angle = np.random.uniform(*angle_constraints)
+        sampled_angle = np.random.uniform(*angle_range)
         x = sampled_length * np.sin(sampled_angle)
         y = 0
         z = -sampled_length * np.cos(sampled_angle)
@@ -333,4 +352,4 @@ if __name__ == "__main__":
     if graph:
         draw_joint_point(graph)
     else:
-        # print("Fail!")
+        print("Fail!")

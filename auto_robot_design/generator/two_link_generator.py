@@ -269,4 +269,4 @@ if __name__ == '__main__':
 
     get_changed_graph(graph, constrain_dict, random_vector)
     draw_joint_point(graph)
-    pass
+
