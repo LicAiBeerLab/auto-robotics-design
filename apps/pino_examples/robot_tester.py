@@ -18,21 +18,12 @@ import matplotlib.pyplot as plt
 
 from scipy.spatial import ConvexHull
 from efim_zoo import (
-    efim_robot_str4,
-    efim_robot4_loop_description,
-    efim_robot4_joint_description,
-    efim_robot_str7,
-    efim_robot7_joint_description,
-    efim_robot7_loop_description,
+ 
+ 
     efim_robot_str6,
     efim_robot6_joint_description,
     efim_robot6_loop_description,
-    efim_robot_str5,
-    efim_robot5_joint_description,
-    efim_robot5_loop_description,
-    efim_robot_str8,
-    efim_robot8_joint_description,
-    efim_robot8_loop_description,)
+  )
 
 robo = build_model_with_extensions(efim_robot_str6,
                                    joint_description=efim_robot6_joint_description,

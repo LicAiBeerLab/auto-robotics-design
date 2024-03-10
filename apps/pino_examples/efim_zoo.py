@@ -52,37 +52,7 @@ efim_robot3_joint_description = {
     "joint_type": [],
 }
 
-f = open("robots\generated_zoo\\robot_kobila.urdf", "r")
-efim_robot_str4 = str(f.read())
-f.close()
-
-
-efim_robot4_joint_description =  {
-    "name_mot": ['Ground_main', 'J3_0'],
-    "joint_name": [],
-    "joint_type": [],
-}
-efim_robot4_loop_description = {
-    "closed_loop": [['J0_0_L5Pseudo', 'J0_0_L8Pseudo'],
-                    ['J4_1_0_L6Pseudo', 'J4_1_0_L5Pseudo']],
-    "type": ["6d", "6d"]
-}
-
-f = open("robots\generated_zoo\\handsome.urdf", "r")
-efim_robot_str5 = str(f.read())
-f.close()
-
-
-efim_robot5_joint_description =  {
-    "name_mot": ['G0main', 'J0_0'],
-    "joint_name": [],
-    "joint_type": [],
-}
-efim_robot5_loop_description = {
-    "closed_loop": [['J1m_L4Pseudo', 'J1m_L5Pseudo']],
-    "type": ["6d"]
-}
-
+  
 f = open("robots\generated_zoo\\handsome_EE_fix.urdf", "r")
 efim_robot_str6 = str(f.read())
 f.close()

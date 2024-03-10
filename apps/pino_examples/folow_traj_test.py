@@ -66,7 +66,7 @@ if __name__=="__main__":
             joint_description=select_robot["mot_description"].item(),
             loop_description=select_robot["loop_description"].item(),
             fixed=False)
-
+        
         # viz = MeshcatVisualizer(robo.model, robo.visual_model, robo.visual_model)
         # viz.viewer = meshcat.Visualizer().open()
         # viz.clean()
@@ -81,7 +81,7 @@ if __name__=="__main__":
             robo.model, robo.data, robo.constraint_models, robo.constraint_data, EFFECTOR_NAME, traj_6d)
         pos_errors, q_array2, traj_force_cap, traj_foot_inertia, traj_manipulability, traj_IMF = calc_criterion_along_traj(
             robo, free_robo, "G", "EE", traj_6d)
-
+        #kinematic_simulation(free_robo.model, free_robo.data, free_robo.actuation_model, free_robo.constraint_models, free_robo.constraint_data, "EE", "G",[])
         poses = np.array(poses)
 
         plt.figure()

@@ -73,7 +73,7 @@ def compute_along_q_space(
         ee_frame_name,
         base_frame_name,
         free_space_q,
-        False,
+        True,
     )
 
     traj_M, traj_J_closed, traj_dq = kinematic_simulation(
@@ -182,19 +182,19 @@ def calc_criterion_along_traj(
     )
     pos_errors = traj_6d[:, :3] - poses_3d
     # pos_error_sum = sum(map(np.linalg.norm, pos_errors))
-    try:
-        traj_force_cap, traj_foot_inertia, traj_manipulability, traj_IMF,  = (
-            compute_along_q_space(
-                robo, robo_free, base_frame_name, ee_frame_name, q_array, cmp_cfg
-            )
+ 
+    traj_force_cap, traj_foot_inertia, traj_manipulability, traj_IMF,  = (
+        compute_along_q_space(
+            robo, robo_free, base_frame_name, ee_frame_name, q_array, cmp_cfg
         )
-    except:
-        traj_force_cap, traj_foot_inertia, traj_manipulability, traj_IMF = (
-            None,
-            None,
-            None,
-            None,
-        )
+    )
+
+    traj_force_cap, traj_foot_inertia, traj_manipulability, traj_IMF = (
+        None,
+        None,
+        None,
+        None,
+    )
 
     return (
         pos_errors,
