@@ -230,4 +230,16 @@ def moment_criteria_calc(calculate_desription: dict[str,
     for index in range(data_dict.get_data_len()):
         data_frame = data_dict[index]
         for key, criteria in calculate_desription.items():
-            res_dict[key] = 
+            res_dict[key][index] = criteria(data_frame, robo)
+    return res_dict
+
+
+def along_criteria_calc(calculate_desription: dict[str, ComputeInterface],
+                        data_dict: DataDict,
+                        robo: Robot = None):
+    res_dict = {}
+    for index in range(data_dict.get_data_len()):
+        data_frame = data_dict[index]
+        for key, criteria in calculate_desription.items():
+            res_dict[key] = criteria(data_frame, robo)
+    return res_dict
