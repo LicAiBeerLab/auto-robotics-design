@@ -1045,7 +1045,7 @@ class ParametrizedBuilder(Builder):
         if link.name == "G" and self.size_ground.any():
             link.geometry.size = list(self.size_ground)
             pos = np.zeros(3)
-            pos[1] = self.size_ground[1] / 2 - self.thickness["default"] / 2
+            pos[1] = self.size_ground[1] / 2
             link.inertial_frame = mr.RpToTrans(np.eye(3), pos)
         else:
             link.thickness = self.thickness[link.name] if link.name in self.thickness else self.thickness["default"]
