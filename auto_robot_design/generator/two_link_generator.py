@@ -176,6 +176,7 @@ class TwoLinkGenerator():
 
             branch = []
             branch += connection_joints[bot_link_joint]
+            branch.append(bot_link_joint)
             branch.append(j1)
             branch.append(j2)
             branch.append(ground_joint)
