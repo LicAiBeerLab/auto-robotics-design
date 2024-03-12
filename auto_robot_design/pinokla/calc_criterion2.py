@@ -1,4 +1,8 @@
+from copy import deepcopy
+from enum import Enum, IntFlag, auto
+
 from typing import NamedTuple, Optional
+from auto_robot_design.pinokla.criterion_math import ImfProjections
 from auto_robot_design.pinokla.loader_tools import (
     build_model_with_extensions,
     Robot,
@@ -13,15 +17,121 @@ import numpy as np
 from auto_robot_design.pinokla.closed_loop_jacobian import dq_dqmot, inverseConstraintKinematicsSpeed, closedLoopInverseKinematicsProximal
 from auto_robot_design.pinokla.closed_loop_kinematics import ForwardK, closedLoopProximalMount
 import numpy.typing as npt
+from collections import UserDict
+
+
+class MovmentSurface(IntFlag):
+    XZ = auto()
+    ZY = auto()
+    YX = auto()
 
 
 class PsedoStepResault(NamedTuple):
-    J_closed: Optional[np.ndarray] = None
-    M: Optional[np.ndarray] = None
-    dq: Optional[np.ndarray] = None
+    J_closed: np.ndarray = None
+    M: np.ndarray = None
+    dq: np.ndarray = None
 
 
-def psedo_static_step(robot: Robot, q_state : np.ndarray, ee_frame_name: str) -> PsedoStepResault:
+class DataDict(UserDict):
+
+    def get_frame(self, index):
+        extracted_elements = {}
+        for key, array in self.items():
+            extracted_elements[key] = array[index]
+        return extracted_elements
+
+    def get_data_len(self):
+        return len(self[next(iter(self))])
+
+
+def search_workspace(model,
+                     data,
+                     effector_frame_name: str,
+                     base_frame_name: str,
+                     q_space: np.ndarray,
+                     actuation_model,
+                     constraint_models,
+                     viz=None):
+    c = 0
+    q_start = pin.neutral(model)
+    workspace_xyz = np.empty((len(q_space), 3))
+    available_q = np.empty((len(q_space), len(q_start)))
+    for q_sample in q_space:
+
+        q_dict_mot = zip(actuation_model.idqmot, q_sample)
+        for key, value in q_dict_mot:
+            q_start[key] = value
+        q3, error = ForwardK(
+            model,
+            constraint_models,
+            actuation_model,
+            q_start,
+            150,
+        )
+
+        if error < 1e-11:
+            if viz:
+                viz.display(q3)
+                time.sleep(0.005)
+            q_start = q3
+            pin.framesForwardKinematics(model, data, q3)
+            id_effector = model.getFrameId(effector_frame_name)
+            id_base = model.getFrameId(base_frame_name)
+            effector_pos = data.oMf[id_effector].translation
+            base_pos = data.oMf[id_base].translation
+            transformed_pos = effector_pos - base_pos
+
+            workspace_xyz[c] = transformed_pos
+            available_q[c] = q3
+            c += 1
+    return (workspace_xyz[0:c], available_q[0:c])
+
+
+def folow_traj_by_proximal_inv_k(model,
+                                 data,
+                                 constraint_models,
+                                 constraint_data,
+                                 end_effector_frame: str,
+                                 traj_6d: np.ndarray,
+                                 viz=None,
+                                 q_start: np.ndarray = None):
+    if q_start:
+        q = q_start
+    else:
+        q = pin.neutral(model)
+
+    ee_frame_id = model.getFrameId(end_effector_frame)
+    poses = np.zeros((len(traj_6d), 3))
+    q_array = np.zeros((len(traj_6d), len(q)))
+    constraint_errors = np.zeros((len(traj_6d), 1))
+
+    for num, i_pos in enumerate(traj_6d):
+        q, min_feas, is_reach = closedLoopInverseKinematicsProximal(
+            model,
+            data,
+            constraint_models,
+            constraint_data,
+            i_pos,
+            ee_frame_id,
+            onlytranslation=True,
+            q_start=q)
+        if not is_reach:
+            q = closedLoopProximalMount(model, data, constraint_models,
+                                        constraint_data, q)
+        if viz:
+            viz.display(q)
+            time.sleep(0.1)
+
+        pin.framesForwardKinematics(model, data, q)
+        poses[num] = data.oMf[ee_frame_id].translation
+        q_array[num] = q
+        constraint_errors[num] = min_feas
+
+    return poses, q_array, constraint_errors
+
+
+def psedo_static_step(robot: Robot, q_state: np.ndarray,
+                      ee_frame_name: str) -> PsedoStepResault:
 
     ee_frame_id = robot.model.getFrameId(ee_frame_name)
     pin.framesForwardKinematics(robot.model, robot.data, q_state)
@@ -29,8 +139,9 @@ def psedo_static_step(robot: Robot, q_state : np.ndarray, ee_frame_name: str) ->
     pin.centerOfMass(robot.model, robot.data, q_state)
 
     vq, J_closed = inverseConstraintKinematicsSpeed(
-        robot.model, robot.data, robot.constraint_models, robot.constraint_data, robot.actuation_model,
-        q_state, ee_frame_id, robot.data.oMf[ee_frame_id].action@np.zeros(6))
+        robot.model, robot.data, robot.constraint_models,
+        robot.constraint_data, robot.actuation_model, q_state, ee_frame_id,
+        robot.data.oMf[ee_frame_id].action @ np.zeros(6))
     LJ = []
     for (cm, cd) in zip(robot.constraint_models, robot.constraint_data):
         Jc = pin.getConstraintJacobian(robot.model, robot.data, cm, cd)
@@ -42,10 +153,81 @@ def psedo_static_step(robot: Robot, q_state : np.ndarray, ee_frame_name: str) ->
     return PsedoStepResault(J_closed, M, dq)
 
 
+def iterate_over_q_space(robot: Robot, q_space: np.ndarray,
+                         ee_frame_name: str):
+    zero_step = psedo_static_step(robot, q_space[0], ee_frame_name)
 
-def iterate_over_q_space(robot: Robot,  q_space: np.ndarray, ee_frame_name: str):
-    zero_resault = psedo_static_step(robot, q_space[0], ee_frame_name)
-    
+    res_dict = DataDict()
+    for key, value in zero_step._asdict().items():
+        alocate_array = np.zeros((len(q_space), *value.shape),
+                                 dtype=np.float64)
+        res_dict[key] = alocate_array
+
+    for num, q_state in enumerate(q_space):
+        one_step_res = psedo_static_step(robot, q_state, ee_frame_name)
+        for key, value in one_step_res._asdict().items():
+            res_dict[key][num] = value
+
+    return res_dict
 
 
+class ComputeInterfaceMoment:
 
+    def __call__(self, data_frame: dict[str, np.ndarray], robo: Robot = None):
+        raise NotImplemented
+
+    def output_matrix_shape(self) -> Optional[tuple]:
+        return None
+
+
+class ComputeInterface:
+
+    def __call__(self, data_dict: DataDict, robo: Robot = None):
+        raise NotImplemented
+
+
+class ImfCompute(ComputeInterfaceMoment):
+
+    def __init__(self, projection: ImfProjections) -> None:
+        self.projection = projection
+
+    def __call__(self, data_frame: dict[str, np.ndarray], robo: Robot = None):
+        pass
+
+
+class ManipCompute(ComputeInterfaceMoment):
+
+    def __init__(self, surface) -> None:
+        self.surface = surface
+
+    def __call__(self, data_frame: dict[str, np.ndarray], robo: Robot = None):
+        pass
+
+
+class NeutralPoseMass(ComputeInterface):
+
+    def __init__(self) -> None:
+        pass
+
+    def __call__(self, data_frame: dict[str, np.ndarray], robo: Robot = None):
+        pass
+
+
+def moment_criteria_calc(calculate_desription: dict[str,
+                                                    ComputeInterfaceMoment],
+                         data_dict: DataDict,
+                         robo: Robot = None) -> dict:
+    res_dict = DataDict()
+    for key, criteria in calculate_desription.items():
+        shape = criteria.output_matrix_shape()
+        if shape:
+            res_dict[key] = np.zeros((data_dict.get_data_len(), *shape),
+                                     dtype=np.float32)
+        else:
+            frame_data = data_dict.get_frame(0)
+            # Need implement alocate from zero step data size
+            raise NotImplemented
+    for index in range(data_dict.get_data_len()):
+        data_frame = data_dict[index]
+        for key, criteria in calculate_desription.items():
+            res_dict[key] = 

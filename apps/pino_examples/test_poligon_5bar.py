@@ -6,13 +6,14 @@ import matplotlib.pyplot as plt
 
 import networkx as nx
 import pinocchio as pin
-from auto_robot_design.description.builder import Builder, DetalizedURDFCreater, add_branch, jps_graph2urdf, jps_graph2urdf_parametrized
+from auto_robot_design.description.builder import Builder, DetalizedURDFCreater, add_branch, jps_graph2urdf_parametrized
 from auto_robot_design.description.mechanism import JointPoint2KinematicGraph
 from auto_robot_design.generator.two_link_generator import TwoLinkGenerator
 from auto_robot_design.description.utils import draw_joint_frames, draw_joint_point, draw_link_frames
-from auto_robot_design.optimization.optimizer import jps_graph2urdf
+
 from auto_robot_design.pino_adapter import pino_adapter
 from auto_robot_design.pinokla.calc_criterion import calc_IMF, calc_foot_inertia, calc_manipulability, convert_full_J_to_planar_xz
+from auto_robot_design.pinokla.calc_criterion2 import iterate_over_q_space
 from auto_robot_design.pinokla.closed_loop_jacobian import dq_dqmot, inverseConstraintKinematicsSpeed
 from auto_robot_design.pinokla.criterion_agregator import ComputeConfg, calc_criterion_on_workspace_simple_input, save_criterion_traj
 from auto_robot_design.pinokla.loader_tools import Robot, build_model_with_extensions
@@ -57,9 +58,11 @@ robo.model.armature[robo.actuation_model.idvmot[:]] = np.array([0.1, 0.1])
 free_robo.model.armature[robo.actuation_model.idvmot[:]] = np.array([0.1, 0.1])
 
 
+
 q_0 = pin.neutral(robo.model)
 q_0_ee = pin.neutral(robo_fixed_EE.model)
 q0_free = np.concatenate([np.array([0, 0, 0, 0, 0, 0, 1]), q_0])
+iterate_over_q_space(robo, [q_0], "EE")
 M_ee = pin.crba(robo_fixed_EE.model, robo_fixed_EE.data, q_0_ee)
 M = pin.crba(robo.model, robo.data, q_0)
 LJ_free = []
