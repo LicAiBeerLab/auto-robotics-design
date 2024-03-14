@@ -73,7 +73,7 @@ def compute_along_q_space(
         ee_frame_name,
         base_frame_name,
         free_space_q,
-        True,
+        False,
     )
 
     traj_M, traj_J_closed, traj_dq = kinematic_simulation(
@@ -108,12 +108,9 @@ def compute_along_q_space(
     else:
         traj_IMF = None
         
-    if cmp_cfg.DotProdForceCapability:
-        traj_dot_fc = calc_force_ell_projection_along_trj(traj_J_closed, traj_6d)
-    else:
-        traj_dot_fc = None
+ 
 
-    return (traj_force_cap, traj_foot_inertia, traj_manipulability, traj_IMF, traj_dot_fc)
+    return (traj_force_cap, traj_foot_inertia, traj_manipulability, traj_IMF)
 
 
 def calc_criterion_on_workspace(

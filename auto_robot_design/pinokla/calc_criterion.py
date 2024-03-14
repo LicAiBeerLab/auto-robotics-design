@@ -225,7 +225,7 @@ def calc_force_ellips(jacob: np.ndarray):
     return ret1
 
 
-def kinematic_simulation(model, data, actuation_model, constraint_models, constraint_data, frame_name_ee: str,  base_frame_name: str,  q_space: np.ndarray, compute_all_terms=True, viz=None):
+def kinematic_simulation(model, data, actuation_model, constraint_models, constraint_data, frame_name_ee: str,  base_frame_name: str,  q_space: np.ndarray, compute_all_terms=False, viz=None):
     id_ee = model.getFrameId(frame_name_ee)
     # Zero iterate for precise allocate
     # Not the best soluition

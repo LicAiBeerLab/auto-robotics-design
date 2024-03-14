@@ -213,6 +213,24 @@ class NeutralPoseMass(ComputeInterface):
         pass
 
 
+class ForceEllProjections(ComputeInterface):
+
+    def __init__(self) -> None:
+        pass
+
+    def __call__(self, data_frame: dict[str, np.ndarray], robo: Robot = None):
+        pass
+
+
+class PosesError(ComputeInterface):
+
+    def __init__(self) -> None:
+        pass
+
+    def __call__(self, data_frame: dict[str, np.ndarray], robo: Robot = None):
+        pass
+
+
 def moment_criteria_calc(calculate_desription: dict[str,
                                                     ComputeInterfaceMoment],
                          data_dict: DataDict,

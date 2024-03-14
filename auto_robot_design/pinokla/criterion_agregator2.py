@@ -5,6 +5,7 @@ from hashlib import sha256
 import time
 from typing import NamedTuple
 import odio_urdf
+from auto_robot_design.pinokla.calc_criterion2 import DataDict, iterate_over_q_space
 from auto_robot_design.pinokla.default_traj import (
     convert_x_y_to_6d_traj,
     convert_x_y_to_6d_traj_xz,
@@ -40,4 +41,17 @@ import matplotlib.pyplot as plt
 import os
 from scipy.spatial import ConvexHull
 from pathlib import Path
+
+def calculate_quasi_static_metrics(free_robot: Robot, fixed_robot: Robot, traj_6d: np.ndarray) -> tuple[DataDict, DataDict]:
+    poses, q_fixed = folow_traj_by_proximal_inv_k(traj_6d)
+    q_free = q_fixed
+    res_dict_free = iterate_over_q_space()
+    res_dict_fixed = iterate_over_q_space()
+    res_dict_fixed["traj"] = poses
+    return res_dict_free, res_dict_fixed
+
+class GiveMeNuberDude:
+    def __init__(self) -> None:
+        pass
+
 
