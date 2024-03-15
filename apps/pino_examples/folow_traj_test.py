@@ -5,6 +5,7 @@ import odio_urdf
 from auto_robot_design.pinokla.closed_loop_kinematics import ForwardK, ForwardK1, closedLoopProximalMount
 from auto_robot_design.pinokla.criterion_agregator import calc_criterion_along_traj, compute_along_q_space, load_criterion_traj, save_criterion_traj
 from hashlib import sha256
+from auto_robot_design.pinokla.criterion_agregator2 import calculate_quasi_static_simdata
 from auto_robot_design.pinokla.default_traj import convert_x_y_to_6d_traj_xz, get_simple_spline
 from auto_robot_design.pinokla.loader_tools import build_model_with_extensions, Robot, completeRobotLoader, completeRobotLoaderFromStr
 from auto_robot_design.pinokla.calc_criterion import calc_IMF_along_traj, calc_force_ell_along_trj_trans, folow_traj_by_proximal_inv_k, kinematic_simulation, search_workspace, set_end_effector
@@ -77,33 +78,32 @@ if __name__=="__main__":
 
 
         EFFECTOR_NAME = "EE"
-        poses, q_array, constraint_errors = folow_traj_by_proximal_inv_k(
-            robo.model, robo.data, robo.constraint_models, robo.constraint_data, EFFECTOR_NAME, traj_6d)
+        res_dict_free, res_dict_fixed = calculate_quasi_static_simdata(free_robo, robo, "EE", traj_6d)
         pos_errors, q_array2, traj_force_cap, traj_foot_inertia, traj_manipulability, traj_IMF = calc_criterion_along_traj(
             robo, free_robo, "G", "EE", traj_6d)
-        #kinematic_simulation(free_robo.model, free_robo.data, free_robo.actuation_model, free_robo.constraint_models, free_robo.constraint_data, "EE", "G",[])
+        kinematic_simulation(free_robo.model, free_robo.data, free_robo.actuation_model, free_robo.constraint_models, free_robo.constraint_data, "EE", "G",[])
         poses = np.array(poses)
 
-        plt.figure()
-        plt.plot(traj_force_cap, marker="d")
+        # plt.figure()
+        # plt.plot(traj_force_cap, marker="d")
     
-        plt.title("Force cap")
+        # plt.title("Force cap")
+
+
+        # # plt.figure()
+        # # plt.plot(traj_foot_inertia, marker="d")
+        
+        # # plt.title("Foot inertia")
 
 
         # plt.figure()
-        # plt.plot(traj_foot_inertia, marker="d")
+        # plt.plot(traj_manipulability, marker="d")
         
-        # plt.title("Foot inertia")
+        # plt.title("Manip")
 
 
-        plt.figure()
-        plt.plot(traj_manipulability, marker="d")
-        
-        plt.title("Manip")
-
-
-        plt.figure()
-        plt.scatter(poses[:, 0],  poses[:, 2], c=traj_IMF, marker="d")
-        plt.colorbar()
-        plt.title("IFM")
-        plt.show()
+        # plt.figure()
+        # plt.scatter(poses[:, 0],  poses[:, 2], c=traj_IMF, marker="d")
+        # plt.colorbar()
+        # plt.title("IFM")
+        # plt.show()

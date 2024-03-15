@@ -2,7 +2,7 @@ from copy import deepcopy
 from enum import Enum, IntFlag, auto
 
 from typing import NamedTuple, Optional
-from auto_robot_design.pinokla.criterion_math import ImfProjections
+from auto_robot_design.pinokla.criterion_math import ImfProjections, calc_IMF, calc_force_ell_projection_along_trj, calc_force_ellips_space, calculate_mass, calc_manipulability, convert_full_J_to_planar_xz
 from auto_robot_design.pinokla.loader_tools import (
     build_model_with_extensions,
     Robot,
@@ -192,16 +192,25 @@ class ImfCompute(ComputeInterfaceMoment):
         self.projection = projection
 
     def __call__(self, data_frame: dict[str, np.ndarray], robo: Robot = None):
-        pass
+        imf = calc_IMF(data_frame["M"], data_frame["dq"],
+                       data_frame["J_closed"], self.projection)
+        return imf
 
 
 class ManipCompute(ComputeInterfaceMoment):
 
-    def __init__(self, surface) -> None:
+    def __init__(self, surface: MovmentSurface) -> None:
         self.surface = surface
 
     def __call__(self, data_frame: dict[str, np.ndarray], robo: Robot = None):
-        pass
+        if self.surface == MovmentSurface.XZ:
+            target_J = data_frame["J_closed"]
+            target_J = convert_full_J_to_planar_xz(target_J)
+            target_J = target_J[2:2]
+        else:
+            raise NotImplemented
+        manip_space = calc_manipulability(target_J)
+        return manip_space
 
 
 class NeutralPoseMass(ComputeInterface):
@@ -209,8 +218,8 @@ class NeutralPoseMass(ComputeInterface):
     def __init__(self) -> None:
         pass
 
-    def __call__(self, data_frame: dict[str, np.ndarray], robo: Robot = None):
-        pass
+    def __call__(self, data_dict: DataDict, robo: Robot = None):
+        return calculate_mass(robo)
 
 
 class ForceEllProjections(ComputeInterface):
@@ -218,23 +227,26 @@ class ForceEllProjections(ComputeInterface):
     def __init__(self) -> None:
         pass
 
-    def __call__(self, data_frame: dict[str, np.ndarray], robo: Robot = None):
-        pass
+    def __call__(self, data_dict: DataDict, robo: Robot = None):
+        ell_params = calc_force_ell_projection_along_trj(
+            data_dict["J_closed"], data_dict["traj_6d"])
+        return ell_params
 
 
-class PosesError(ComputeInterface):
+class PosesErrorMSE(ComputeInterface):
 
     def __init__(self) -> None:
         pass
 
-    def __call__(self, data_frame: dict[str, np.ndarray], robo: Robot = None):
-        pass
-
+    def __call__(self, data_dict: DataDict, robo: Robot = None):
+        errors = norm(data_dict["traj_6d"] - data_dict["traj_6d_ee"], axis=0)
+        mse = np.mean(errors)
+        return mse
 
 def moment_criteria_calc(calculate_desription: dict[str,
                                                     ComputeInterfaceMoment],
                          data_dict: DataDict,
-                         robo: Robot = None) -> dict:
+                         robo: Robot = None) -> DataDict:
     res_dict = DataDict()
     for key, criteria in calculate_desription.items():
         shape = criteria.output_matrix_shape()
@@ -254,7 +266,7 @@ def moment_criteria_calc(calculate_desription: dict[str,
 
 def along_criteria_calc(calculate_desription: dict[str, ComputeInterface],
                         data_dict: DataDict,
-                        robo: Robot = None):
+                        robo: Robot = None) -> dict:
     res_dict = {}
     for index in range(data_dict.get_data_len()):
         data_frame = data_dict[index]

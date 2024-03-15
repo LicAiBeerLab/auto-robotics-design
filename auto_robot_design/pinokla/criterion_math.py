@@ -2,6 +2,11 @@ from enum import IntFlag, auto
 
 from matplotlib.pylab import LinAlgError
 import numpy as np
+import pinocchio as pin
+
+from auto_robot_design.pinokla.loader_tools import Robot
+
+import numpy.linalg as la
 
 
 class ImfProjections(IntFlag):
@@ -61,6 +66,7 @@ def calc_force_ellips_space(jacob: np.ndarray):
         ret1 = 0
     return ret1
 
+
 def calc_svd_j_along_trj_trans(traj_J_closed):
     array_manip = []
     for num, J in enumerate(traj_J_closed):
@@ -70,6 +76,7 @@ def calc_svd_j_along_trj_trans(traj_J_closed):
         array_manip.append(trans_planar_J)
 
     return array_manip
+
 
 def calc_force_ell_projection_along_trj(traj_J_closed, traj_6d):
     """
@@ -108,3 +115,17 @@ def calc_force_ell_projection_along_trj(traj_J_closed, traj_6d):
         "u2_z": abs_dot_product_z_u2
     }
     return out
+
+
+def calculate_mass(robo: Robot):
+    q_0 = pin.neutral(robo.model)
+    pin.computeAllTerms(
+        robo.model,
+        robo.data,
+        q_0,
+        np.zeros(robo.model.nv),
+    )
+    total_mass = pin.computeTotalMass(robo.model, robo.data)
+    com_dist = la.norm(pin.centerOfMass(robo.model, robo.data))
+
+    return total_mass
