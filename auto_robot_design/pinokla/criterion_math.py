@@ -20,6 +20,9 @@ def convert_full_J_to_planar_xz(full_J: np.ndarray):
     ret = np.row_stack((full_J[0], full_J[2], full_J[4]))
     return ret
 
+def convert_full_J_to_planar_xy(full_J: np.ndarray):
+    ret = np.row_stack((full_J[0], full_J[1], full_J[3]))
+    return ret
 
 def calc_manipulability(jacob: np.ndarray):
     U, S, Vh = np.linalg.svd(jacob)

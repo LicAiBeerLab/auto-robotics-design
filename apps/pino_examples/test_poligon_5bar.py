@@ -1,21 +1,13 @@
-from matplotlib.scale import scale_factory
 import numpy as np
-import numpy.linalg as la
 
-import matplotlib.pyplot as plt
 
-import networkx as nx
 import pinocchio as pin
-from auto_robot_design.description.builder import Builder, DetalizedURDFCreater, add_branch, jps_graph2urdf_parametrized
-from auto_robot_design.description.mechanism import JointPoint2KinematicGraph
+from auto_robot_design.description.builder import Builder, DetalizedURDFCreater, jps_graph2urdf_parametrized
 from auto_robot_design.generator.two_link_generator import TwoLinkGenerator
-from auto_robot_design.description.utils import draw_joint_frames, draw_joint_point, draw_link_frames
 
-from auto_robot_design.pino_adapter import pino_adapter
-from auto_robot_design.pinokla.calc_criterion import calc_IMF, calc_foot_inertia, calc_manipulability, convert_full_J_to_planar_xz
-from auto_robot_design.pinokla.calc_criterion2 import iterate_over_q_space
+from auto_robot_design.pinokla.calc_criterion import calc_IMF, calc_manipulability, convert_full_J_to_planar_xz
+from auto_robot_design.pinokla.calc_criterion import iterate_over_q_space
 from auto_robot_design.pinokla.closed_loop_jacobian import dq_dqmot, inverseConstraintKinematicsSpeed
-from auto_robot_design.pinokla.criterion_agregator import ComputeConfg, calc_criterion_on_workspace_simple_input, save_criterion_traj
 from auto_robot_design.pinokla.loader_tools import Robot, build_model_with_extensions
 from auto_robot_design.pinokla.robot_utils import freezeJointsWithoutVis
 
@@ -106,11 +98,11 @@ manip = calc_manipulability(planar_J[:2, :2])
 
 
 planar_J = convert_full_J_to_planar_xz(Jf36_closed)
-Lambda = calc_foot_inertia(M, dq, planar_J)
-Lambda_ee = calc_foot_inertia(M_ee, dq_ee, J_closed_EE)
-Lambda_free = calc_foot_inertia(M_free, dq_free, J_closed_free)
+# Lambda = calc_foot_inertia(M, dq, planar_J)
+# Lambda_ee = calc_foot_inertia(M_ee, dq_ee, J_closed_EE)
+# Lambda_free = calc_foot_inertia(M_free, dq_free, J_closed_free)
 ddd = np.linalg.svd(Jf36_closed@Jf36_closed.T)
-yimf, IMF = calc_IMF(M_free, dq_free, J_closed_free)
+IMF = calc_IMF(M_free, dq_free, J_closed_free)
 pass
 
 # draw_joint_point(graph_i)
