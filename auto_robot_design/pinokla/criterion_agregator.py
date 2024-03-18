@@ -16,6 +16,19 @@ def calculate_quasi_static_simdata(free_robot: Robot,
                                    ee_frame_name: str,
                                    traj_6d: np.ndarray,
                                    viz=None) -> tuple[DataDict, DataDict]:
+    """Calc critrion for free model(root joint is universal) and 
+    fixed model (root joint is weld).
+
+    Args:
+        free_robot (Robot): free model
+        fixed_robot (Robot): fixed model
+        ee_frame_name (str): _description_
+        traj_6d (np.ndarray): Desired end-effector trajectory
+        viz (_type_, optional): _description_. Defaults to None.
+
+    Returns:
+        tuple[DataDict, DataDict]: free data, closed data
+    """
     poses, q_fixed, constraint_errors = folow_traj_by_proximal_inv_k(
         fixed_robot.model, fixed_robot.data, fixed_robot.constraint_models,
         fixed_robot.constraint_data, ee_frame_name, traj_6d, viz)
@@ -38,6 +51,8 @@ def calculate_quasi_static_simdata(free_robot: Robot,
 
 
 class CriteriaAggregator:
+    """Create models form urdf and calculate critrion.
+    """
 
     def __init__(self, dict_moment_criteria: dict[str, ComputeInterfaceMoment],
                  dict_along_criteria: dict[str, ComputeInterfaceMoment],
@@ -48,6 +63,16 @@ class CriteriaAggregator:
         self.traj_6d = traj_6d
 
     def get_criteria_data(self, urdf_str: str, mot_des: dict, loop_des: dict):
+        """Perform calculating
+
+        Args:
+            urdf_str (str): _description_
+            mot_des (dict): _description_
+            loop_des (dict): _description_
+
+        Returns:
+            _type_: moment_critria_trj, along_critria_trj, res_dict_fixed
+        """
         fixed_robot = build_model_with_extensions(urdf_str, mot_des, loop_des,
                                                   True)
         free_robot = build_model_with_extensions(urdf_str, mot_des, loop_des,

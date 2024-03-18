@@ -33,8 +33,22 @@ class PsedoStepResault(NamedTuple):
 
 
 class DataDict(UserDict):
+    """Dict to srote simulation data. Each value is np.array with same size. 
+    
+
+    Args:
+        UserDict (_type_): _description_
+    """
 
     def get_frame(self, index):
+        """Get values with same index.
+
+        Args:
+            index (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """
         extracted_elements = {}
         for key, array in self.items():
             extracted_elements[key] = array[index]
@@ -52,6 +66,21 @@ def search_workspace(model,
                      actuation_model,
                      constraint_models,
                      viz=None):
+    """Iterate forward kinamatics over q_space and try to minimize constain value.
+
+    Args:
+        model (_type_): _description_
+        data (_type_): _description_
+        effector_frame_name (str): _description_
+        base_frame_name (str): _description_
+        q_space (np.ndarray): _description_
+        actuation_model (_type_): _description_
+        constraint_models (_type_): _description_
+        viz (_type_, optional): _description_. Defaults to None.
+
+    Returns:
+        _type_: _description_
+    """
     c = 0
     q_start = pin.neutral(model)
     workspace_xyz = np.empty((len(q_space), 3))
@@ -95,6 +124,21 @@ def folow_traj_by_proximal_inv_k(model,
                                  traj_6d: np.ndarray,
                                  viz=None,
                                  q_start: np.ndarray = None):
+    """Solve the inverse kinematic problem
+
+    Args:
+        model (_type_): _description_
+        data (_type_): _description_
+        constraint_models (_type_): _description_
+        constraint_data (_type_): _description_
+        end_effector_frame (str): _description_
+        traj_6d (np.ndarray): _description_
+        viz (_type_, optional): _description_. Defaults to None.
+        q_start (np.ndarray, optional): _description_. Defaults to None.
+
+    Returns:
+        _type_: _description_
+    """
     if q_start:
         q = q_start
     else:
@@ -172,7 +216,24 @@ def iterate_over_q_space(robot: Robot, q_space: np.ndarray,
 
 
 class ComputeInterfaceMoment:
-    def __call__(self, data_frame: dict[str, np.ndarray], robo: Robot = None) -> np.ndarray:
+    """Abstract class for calculate criterion on each step of simulation.
+    """
+
+    def __call__(self,
+                 data_frame: dict[str, np.ndarray],
+                 robo: Robot = None) -> np.ndarray:
+        """Call on every data frame from data_dict.
+
+        Args:
+            data_frame (dict[str, np.ndarray]): see get_frame
+            robo (Robot, optional): model description. Defaults to None.
+
+        Raises:
+            NotImplemented: _description_
+
+        Returns:
+            np.ndarray: _description_
+        """
         raise NotImplemented
 
     def output_matrix_shape(self) -> Optional[tuple]:
@@ -180,28 +241,47 @@ class ComputeInterfaceMoment:
 
 
 class ComputeInterface:
+    """Abstract class for calculate criterion on data trajectory of simulation.
+    """
 
     def __call__(self, data_dict: DataDict, robo: Robot = None):
+        """Call on output data_dict, that sonatain whole simualtion data. See iterate_over_q_space and psedo_static_step.
+
+        Args:
+            data_dict (DataDict): simualtion data dict
+            robo (Robot, optional): model description. Defaults to None.
+
+        Raises:
+            NotImplemented: _description_
+        """
         raise NotImplemented
 
 
 class ImfCompute(ComputeInterfaceMoment):
+    """Wrapper for IMF. Criterion implementation src is criterion_math
+    """
 
     def __init__(self, projection: ImfProjections) -> None:
         self.projection = projection
 
-    def __call__(self, data_frame: dict[str, np.ndarray], robo: Robot = None) -> np.ndarray:
+    def __call__(self,
+                 data_frame: dict[str, np.ndarray],
+                 robo: Robot = None) -> np.ndarray:
         imf = calc_IMF(data_frame["M"], data_frame["dq"],
                        data_frame["J_closed"], self.projection)
         return imf
 
 
 class ManipCompute(ComputeInterfaceMoment):
+    """Wrapper for manipulability. Criterion implementation src is criterion_math
+    """
 
     def __init__(self, surface: MovmentSurface) -> None:
         self.surface = surface
 
-    def __call__(self, data_frame: dict[str, np.ndarray], robo: Robot = None) -> np.ndarray:
+    def __call__(self,
+                 data_frame: dict[str, np.ndarray],
+                 robo: Robot = None) -> np.ndarray:
         if self.surface == MovmentSurface.XZ:
             target_J = data_frame["J_closed"]
             target_J = convert_full_J_to_planar_xz(target_J)
@@ -213,6 +293,8 @@ class ManipCompute(ComputeInterfaceMoment):
 
 
 class NeutralPoseMass(ComputeInterface):
+    """Wrapper for calculate total mass of robot. Criterion implementation src is criterion_math
+    """
 
     def __init__(self) -> None:
         pass
@@ -222,6 +304,11 @@ class NeutralPoseMass(ComputeInterface):
 
 
 class ForceEllProjections(ComputeInterface):
+    """Wrapper for calc_force_ell_projection_along_trj.
+
+    Args:
+        ComputeInterface (_type_): _description_
+    """
 
     def __init__(self) -> None:
         pass
@@ -233,6 +320,8 @@ class ForceEllProjections(ComputeInterface):
 
 
 class TranslationErrorMSE(ComputeInterface):
+    """Calculate mean square error for translation part of end effector trajectory
+    """
 
     def __init__(self) -> None:
         pass
@@ -240,7 +329,8 @@ class TranslationErrorMSE(ComputeInterface):
     def __call__(self, data_dict: DataDict, robo: Robot = None):
 
         errors = np.sum(
-            norm(data_dict["traj_6d"][:,:3] - data_dict["traj_6d_ee"][:,:3], axis=1))
+            norm(data_dict["traj_6d"][:, :3] - data_dict["traj_6d_ee"][:, :3],
+                 axis=1))
         mse = np.mean(errors)
         return mse
 
@@ -249,6 +339,17 @@ def moment_criteria_calc(calculate_desription: dict[str,
                                                     ComputeInterfaceMoment],
                          data_dict: DataDict,
                          robo: Robot = None) -> DataDict:
+    """Calculate all critrion from calculate_desription. Each criterion is 
+    called on data frames that represent the data at each point in time.
+
+    Args:
+        calculate_desription (dict[str, ComputeInterfaceMoment]): key is criterion name, value is critrion resault
+        data_dict (DataDict): _description_
+        robo (Robot, optional): _description_. Defaults to None.
+
+    Returns:
+        DataDict: _description_
+    """
     res_dict = DataDict()
     for key, criteria in calculate_desription.items():
         shape = criteria.output_matrix_shape()
@@ -258,8 +359,8 @@ def moment_criteria_calc(calculate_desription: dict[str,
         else:
             frame_data = data_dict.get_frame(0)
             zero_step = criteria(frame_data)
-            res_dict[key] = np.zeros((data_dict.get_data_len(), *zero_step.shape),
-                                     dtype=np.float32)
+            res_dict[key] = np.zeros(
+                (data_dict.get_data_len(), *zero_step.shape), dtype=np.float32)
             # Need implement alocate from zero step data size
             # raise NotImplemented
     for index in range(data_dict.get_data_len()):
@@ -272,11 +373,17 @@ def moment_criteria_calc(calculate_desription: dict[str,
 def along_criteria_calc(calculate_desription: dict[str, ComputeInterface],
                         data_dict: DataDict,
                         robo: Robot = None) -> dict:
+    """Each criterion get the entire DataDict and Robot.
+
+    Args:
+        calculate_desription (dict[str, ComputeInterface]): _description_
+        data_dict (DataDict): _description_
+        robo (Robot, optional): _description_. Defaults to None.
+
+    Returns:
+        dict: _description_
+    """
     res_dict = {}
-    for index in range(data_dict.get_data_len()):
- 
-        for key, criteria in calculate_desription.items():
-            res_dict[key] = criteria(data_dict, robo)
+    for key, criteria in calculate_desription.items():
+        res_dict[key] = criteria(data_dict, robo)
     return res_dict
-
-
