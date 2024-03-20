@@ -39,9 +39,10 @@ def calc_IMF(M: np.ndarray,
              J_closed: np.ndarray,
              projection: ImfProjections = ImfProjections.Z):
 
+    x = np.array([1, 0, 0, 0, 0, 0])
     y = np.array([0, 1, 0, 0, 0, 0])
     z = np.array([0, 0, 1, 0, 0, 0])
-    x = np.array([1, 0, 0, 0, 0, 0])
+
 
     Mmot_free = dq.T @ M @ dq
     Lambda_free = np.linalg.inv(

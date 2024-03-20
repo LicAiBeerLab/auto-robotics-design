@@ -8,9 +8,7 @@ from auto_robot_design.description.builder import jps_graph2urdf
 
 from pymoo.core.problem import ElementwiseProblem
 
-from auto_robot_design.pinokla.criterion_agregator import (
-    CriteriaAggregator,
-)
+from auto_robot_design.pinokla.criterion_agregator import CriteriaAggregator
 
 
 class CalculateCriteriaProblemByWeigths(ElementwiseProblem):
@@ -33,10 +31,11 @@ class CalculateCriteriaProblemByWeigths(ElementwiseProblem):
         self.mutate_JP_by_xopt(x)
         urdf, joint_description, loop_description = jps_graph2urdf(self.graph)
 
-        moment_critria_trj, along_critria_trj, res_dict_fixed = self.criteria.get_criteria_data(urdf, joint_description, loop_description)
-        imf_start_fin = -(moment_critria_trj["IMF"][0] +  moment_critria_trj["IMF"][-1]) / 2
-        mass = along_critria_trj["MASS"]
-        pos_err = along_critria_trj["POS_ERR"]
+        instant_criteria_trj, along_criteria_trj, res_dict_fixed = self.criteria.get_criteria_data(urdf, joint_description, loop_description)
+        
+        imf_start_fin = -(instant_criteria_trj["IMF"][0] +  instant_criteria_trj["IMF"][-1]) / 2
+        mass = along_criteria_trj["MASS"]
+        pos_err = along_criteria_trj["POS_ERR"]
         F = [imf_start_fin, mass, pos_err]
         final_F = sum([w * crit for w, crit in zip(self.weights, F)])
         out["F"] = final_F
