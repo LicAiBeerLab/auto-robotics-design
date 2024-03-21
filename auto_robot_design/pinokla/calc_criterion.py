@@ -318,6 +318,13 @@ class ManipCompute(ComputeInterfaceMoment):
 class ForceCapabilityProjectionCompute(ComputeInterface):
     """Wrapper for calculate projection force ellipsoid axis to ez and xz trajectory. Criterion implementation src is criterion_math
     Return sum of absolute dot product of trajectory and u1, u2 (axis force ellips), z-axis and u1, u2 (axis force ellips).
+    
+    Fucntion Call Returns:
+        tuple: A tuple containing the following values:
+            - abs_dot_product_traj_u1: The absolute dot product of the trajectory and u1.
+            - abs_dot_product_traj_u2: The absolute dot product of the trajectory and u2.
+            - abs_dot_product_z_u1: The absolute dot product of the z-axis and u1.
+            - abs_dot_product_z_u2: The absolute dot product of the z-axis and u2.
     """
 
     def __call__(self, data_dict: DataDict, robo: Robot = None) -> np.ndarray:
