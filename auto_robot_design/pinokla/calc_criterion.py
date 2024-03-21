@@ -349,7 +349,7 @@ class ForceCapabilityProjectionCompute(ComputeInterface):
         Jc_xz_traj = Jc_traj[:, [0, 2], :]
         # U, S, Vh = np.linalg.svd(Jc_xz_traj, hermitian=True)
         U, S, Vh = np.linalg.svd(Jc_xz_traj)
-        USsec = np.array([np.diag(s) @ u for u, s in zip(U, S)])
+        USsec = np.array([np.diag(1/s) @ u for u, s in zip(U, S)])
         US1 = USsec[:, 0, :]
         US2 = USsec[:, 1, :]
 
