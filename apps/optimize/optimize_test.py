@@ -46,17 +46,20 @@ if __name__ == '__main__':
             ),
             optimizing_joints.items(),
         ))
-
+    # set the criteria to be calculated for each mechanism using the dictionaries 
+    # criteria that either calculated without any reference to points, or calculated through the aggregation of values from all points on trajectory
     dict_along_criteria = {
         "MASS": NeutralPoseMass(),
-        "POS_ERR": TranslationErrorMSE(),
-        "ELL_PRJ": ForceEllProjections()
+        "POS_ERR": TranslationErrorMSE(), # MSE of deviation from the trajectory
+        "ELL_PRJ": ForceEllProjections() 
     }
+    # criteria calculated for each point on the trajectory
     dict_moment_criteria = {
-        "IMF": ImfCompute(ImfProjections.Z),
-        "MANIP": ManipCompute(MovmentSurface.XZ)
+        "IMF": ImfCompute(ImfProjections.Z), # Impact mitigation factor along the axis
+        "MANIP": ManipCompute(MovmentSurface.XZ) 
     }
 
+    # trajectory construction, each point is three coordinates and 
     x_traj, y_traj = get_simple_spline()
     traj_6d = convert_x_y_to_6d_traj_xz(x_traj, y_traj)
 

@@ -137,7 +137,10 @@ def folow_traj_by_proximal_inv_k(model,
         q_start (np.ndarray, optional): _description_. Defaults to None.
 
     Returns:
-        _type_: _description_
+        np.array: end-effector positions in final state
+        np.array: joint coordinates in final state
+        np.array: deviations from the desired position
+
     """
     if q_start:
         q = q_start
