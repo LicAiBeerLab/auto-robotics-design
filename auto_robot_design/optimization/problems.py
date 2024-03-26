@@ -12,12 +12,13 @@ from auto_robot_design.pinokla.criterion_agregator import CriteriaAggregator
 
 
 class CalculateCriteriaProblemByWeigths(ElementwiseProblem):
-    def __init__(self, graph, jp2limits, criteria : CriteriaAggregator, weights, **kwargs):
+    def __init__(self, graph, jp2limits, criteria : CriteriaAggregator, weights, rewards=[], **kwargs):
         self.graph = graph
         self.jp2limits = jp2limits
         self.opt_joints = list(self.jp2limits.keys())
         self.weights = weights
         self.criteria = criteria
+        self.rewards = rewards
         self.initial_xopt, __, upper_bounds, lower_bounds = self.convert_joints2x_opt()
         super().__init__(
             n_var=len(self.initial_xopt),
@@ -27,19 +28,30 @@ class CalculateCriteriaProblemByWeigths(ElementwiseProblem):
             **kwargs,
         )
 
+    def add_reward(self, reward, weight=1.0):
+        self.rewards.append((reward, weight))
+        
     def _evaluate(self, x, out, *args, **kwargs):
         self.mutate_JP_by_xopt(x)
         urdf, joint_description, loop_description = jps_graph2urdf(self.graph)
 
-        instant_criteria_trj, along_criteria_trj, res_dict_fixed = self.criteria.get_criteria_data(urdf, joint_description, loop_description)
+        point_criteria_vector, trajectory_criteria, res_dict_fixed = self.criteria.get_criteria_data(urdf, joint_description, loop_description)
         
-        imf_start_fin = -(instant_criteria_trj["IMF"][0] +  instant_criteria_trj["IMF"][-1]) / 2
-        mass = along_criteria_trj["MASS"]
-        pos_err = along_criteria_trj["POS_ERR"]
-        F = [imf_start_fin, mass, pos_err]
-        final_F = sum([w * crit for w, crit in zip(self.weights, F)])
-        out["F"] = final_F
-        out["Fs"] = F
+        # all rewards are calculated and added to the result
+        total_result = 0
+        partial_results = []
+        for reward, weight in self.rewards:
+            partial_results.append(reward.calculate(point_criteria_vector, trajectory_criteria))
+            total_result+= weight*partial_results[-1]
+        
+        # imf_start_fin = -(instant_criteria_trj["IMF"][0] +  instant_criteria_trj["IMF"][-1]) / 2
+        # mass = along_criteria_trj["MASS"]
+        # pos_err = along_criteria_trj["POS_ERR"]
+        # F = [imf_start_fin, mass, pos_err]
+        # final_F = sum([w * crit for w, crit in zip(self.weights, F)])
+        
+        out["F"] = total_result
+        out["Fs"] = partial_results
 
     def convert_joints2x_opt(self):
         x_opt = np.zeros(len(self.opt_joints) * 2)
