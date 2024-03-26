@@ -78,14 +78,14 @@ for path,name,ncolor in zip(Lpath,Lname,Lcolor):
     viz.loadViewerModel(rootNodeName="number 1")
 
 
-    q0=closedLoopProximalMount(model,data,constraint_model,constraint_data,actuation_model)
+    q0=closedLoopProximalMount(model,data,constraint_model,constraint_data)
     viz.display(q0)
 
     ##Init of robot
     DT=1e-3
-    P6D_Walk=np.load("results_humanoid_2023/trajectory/walk_trajectory2.npy")
-    P6D_Squat=np.load("results_humanoid_2023/trajectory/squat_trajectory2.npy")
-    P6D_Stair=np.load("results_humanoid_2023/trajectory/climb_trajectory2.npy")
+    P6D_Walk=np.load("apps/results_humanoid_2023/trajectory/walk_trajectory2.npy")
+    P6D_Squat=np.load("apps/results_humanoid_2023/trajectory/squat_trajectory2.npy")
+    P6D_Stair=np.load("apps/results_humanoid_2023/trajectory/climb_trajectory2.npy")
 
     V6D_Walk=np.zeros(P6D_Walk.shape)
     V6D_Walk[:,1:]=(P6D_Walk[:,1:]-P6D_Walk[:,:-1])/DT
