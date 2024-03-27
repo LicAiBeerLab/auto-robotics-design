@@ -35,8 +35,9 @@ class CalculateCriteriaProblemByWeigths(ElementwiseProblem):
         self.mutate_JP_by_xopt(x)
         urdf, joint_description, loop_description = jps_graph2urdf(self.graph)
 
+        #calculates all characteristics declared in the CriteriaAggregator
         point_criteria_vector, trajectory_criteria, res_dict_fixed = self.criteria.get_criteria_data(urdf, joint_description, loop_description)
-        
+
         # all rewards are calculated and added to the result
         total_result = 0
         partial_results = []
@@ -44,13 +45,8 @@ class CalculateCriteriaProblemByWeigths(ElementwiseProblem):
             partial_results.append(reward.calculate(point_criteria_vector, trajectory_criteria, res_dict_fixed))
             total_result+= weight*partial_results[-1]
         
-        # imf_start_fin = -(instant_criteria_trj["IMF"][0] +  instant_criteria_trj["IMF"][-1]) / 2
-        # mass = along_criteria_trj["MASS"]
-        # pos_err = along_criteria_trj["POS_ERR"]
-        # F = [imf_start_fin, mass, pos_err]
-        # final_F = sum([w * crit for w, crit in zip(self.weights, F)])
-        
-        out["F"] = total_result
+        # the form of the output required by the pymoo lib
+        out["F"] = -total_result
         out["Fs"] = partial_results
 
     def convert_joints2x_opt(self):

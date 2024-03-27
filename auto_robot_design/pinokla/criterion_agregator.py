@@ -29,23 +29,28 @@ def calculate_quasi_static_simdata(free_robot: Robot,
     Returns:
         tuple[DataDict, DataDict]: free data, closed data
     """
+    # get the actual ee poses, corresponding joint (generalized coordinates) positions and errors for unreachable trajectory points 
     poses, q_fixed, constraint_errors = folow_traj_by_proximal_inv_k(
         fixed_robot.model, fixed_robot.data, fixed_robot.constraint_models,
         fixed_robot.constraint_data, ee_frame_name, traj_6d, viz)
 
+    # add standard body position to all points in the q space
     normal_pose = np.array([0, 0, 0, 0, 0, 0, 1], dtype=np.float64)
     free_body_q = np.repeat(normal_pose[np.newaxis, :], len(q_fixed), axis=0)
     free_space_q = np.concatenate((free_body_q, q_fixed), axis=1)
-
+    # perform calculations of the Jacobians, inertial and dq for free and fixed robots
     res_dict_free = iterate_over_q_space(free_robot, free_space_q,
                                          ee_frame_name)
     res_dict_fixed = iterate_over_q_space(fixed_robot, q_fixed, ee_frame_name)
-
+    # add trajectory following characteristics to the result dictionaries
     res_dict_fixed["traj_6d_ee"] = poses
     res_dict_free["traj_6d_ee"] = poses
 
     res_dict_fixed["traj_6d"] = traj_6d
     res_dict_free["traj_6d"] = traj_6d
+
+    res_dict_fixed["error"] = constraint_errors
+    res_dict_free["error"] = constraint_errors
 
     return res_dict_free, res_dict_fixed
 
@@ -78,16 +83,17 @@ class CriteriaAggregator:
         free_robot = build_model_with_extensions(urdf_str, mot_des, loop_des,
                                                  False)
 
-        
+        # perform calculations of the data required to calculate the fancy mech criteria
         res_dict_free, res_dict_fixed = calculate_quasi_static_simdata(
             free_robot, fixed_robot, self.end_effector_name, self.traj_6d)
-
-        moment_critria_trj = moment_criteria_calc(self.dict_moment_criteria,
+        # calculate the criteria that can be assigned to each point at the trajectory 
+        point_critria_vector = moment_criteria_calc(self.dict_moment_criteria,
                                                   res_dict_free, res_dict_fixed)
-        along_critria_trj = along_criteria_calc(self.dict_along_criteria,res_dict_free,
+        # calculate criteria that characterize the performance along the whole trajectory  
+        trajectory_critria = along_criteria_calc(self.dict_along_criteria,res_dict_free,
                                                 res_dict_fixed, fixed_robot)
 
-        return moment_critria_trj, along_critria_trj, res_dict_fixed
+        return point_critria_vector, trajectory_critria, res_dict_fixed
 
 
 def save_criterion_traj(

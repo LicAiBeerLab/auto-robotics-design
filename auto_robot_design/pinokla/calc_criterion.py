@@ -195,7 +195,7 @@ def pseudo_static_step(robot: Robot, q_state: np.ndarray,
         LJ.append(Jc)
 
     M = pin.crba(robot.model, robot.data, q_state)
-    dq = dq_dqmot(robot.model, robot.actuation_model, LJ)
+    dq = dq_dqmot(robot.model, robot.actuation_model, LJ)# TODO: force Kirill to explain what is this and why we need it
 
     return PsedoStepResault(J_closed, M, dq)
 
@@ -334,11 +334,12 @@ class TranslationErrorMSE(ComputeInterface):
 
     def __call__(self, data_dict: DataDict, robo: Robot = None):
 
-        errors = np.sum(
-            norm(data_dict["traj_6d"][:, :3] - data_dict["traj_6d_ee"][:, :3],
-                 axis=1))
-        mse = np.mean(errors)
-        return mse
+        errors = norm(data_dict["traj_6d"][:, :3] - data_dict["traj_6d_ee"][:, :3],
+                 axis=1)
+        mean_error = np.mean(errors)
+        if mean_error < 1e-6:
+            return 0 
+        return mean_error
 
 
 def moment_criteria_calc(calculate_desription: dict[str,

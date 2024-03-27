@@ -205,8 +205,8 @@ def inverseConstraintKinematicsSpeed(model,data,constraint_model,constraint_data
     dq_dmot[Lidfree]=dq_dmot_no[nv_mot:,:]
 
     #computation of the closed-loop jacobian
-    Jf_closed=pin.computeFrameJacobian(model,data,q0,ideff,pin.LOCAL)@dq_dmot
-    
+    #Jf_closed=pin.computeFrameJacobian(model,data,q0,ideff,pin.LOCAL)@dq_dmot
+    Jf_closed=pin.computeFrameJacobian(model,data,q0,ideff,pin.LOCAL_WORLD_ALIGNED)@dq_dmot
     #computation of the kinematics
     vqmot=np.linalg.pinv(Jf_closed)@veff 
     vqfree=-pinvJfree@Jmot@vqmot
