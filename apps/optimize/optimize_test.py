@@ -63,6 +63,7 @@ if __name__ == '__main__':
     x_traj, y_traj = get_simple_spline()
     traj_6d = convert_x_y_to_6d_traj_xz(x_traj, y_traj)
 
+    # class that enables calculating of criteria along the trajectory for the urdf description of the mechanism
     crag = CriteriaAggregator(dict_moment_criteria, dict_along_criteria,
                               traj_6d)
 
@@ -70,9 +71,11 @@ if __name__ == '__main__':
     pool = multiprocessing.Pool(n_proccess)
     runner = StarmapParallelization(pool.starmap)
 
+    from auto_robot_design.optimization.reward import VelocityReward
+    rewards = [(VelocityReward(manipulability_key='MANIP', trajectory_key="traj_6d", poses_key="traj_6d_ee"), 1)]
     problem = CalculateCriteriaProblemByWeigths(graph,
                                                 optimizing_joints,
-                                                crag, [1, 1, 1],
+                                                crag, [1, 1, 1],rewards=rewards,
                                                 elementwise_runner=runner)
 
     saver = ProblemSaver(problem, "test", False)

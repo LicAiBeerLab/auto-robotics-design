@@ -177,7 +177,7 @@ def folow_traj_by_proximal_inv_k(model,
     return poses, q_array, constraint_errors
 
 
-def psedo_static_step(robot: Robot, q_state: np.ndarray,
+def pseudo_static_step(robot: Robot, q_state: np.ndarray,
                       ee_frame_name: str) -> PsedoStepResault:
 
     ee_frame_id = robot.model.getFrameId(ee_frame_name)
@@ -202,7 +202,7 @@ def psedo_static_step(robot: Robot, q_state: np.ndarray,
 
 def iterate_over_q_space(robot: Robot, q_space: np.ndarray,
                          ee_frame_name: str):
-    zero_step = psedo_static_step(robot, q_space[0], ee_frame_name)
+    zero_step = pseudo_static_step(robot, q_space[0], ee_frame_name)
 
     res_dict = DataDict()
     for key, value in zero_step._asdict().items():
@@ -211,7 +211,7 @@ def iterate_over_q_space(robot: Robot, q_space: np.ndarray,
         res_dict[key] = alocate_array
 
     for num, q_state in enumerate(q_space):
-        one_step_res = psedo_static_step(robot, q_state, ee_frame_name)
+        one_step_res = pseudo_static_step(robot, q_state, ee_frame_name)
         for key, value in one_step_res._asdict().items():
             res_dict[key][num] = value
 
@@ -266,6 +266,7 @@ class ImfCompute(ComputeInterfaceMoment):
 
     def __init__(self, projection: ImfProjections) -> None:
         self.projection = projection
+        self.is_fixed = False
 
     def __call__(self,
                  data_frame: dict[str, np.ndarray],
@@ -281,6 +282,7 @@ class ManipCompute(ComputeInterfaceMoment):
 
     def __init__(self, surface: MovmentSurface) -> None:
         self.surface = surface
+        self.is_fixed = True
 
     def __call__(self,
                  data_frame: dict[str, np.ndarray],
@@ -291,8 +293,9 @@ class ManipCompute(ComputeInterfaceMoment):
             target_J = target_J[:2, :2]
         else:
             raise NotImplemented
-        manip_space = calc_manipulability(target_J)
-        return manip_space
+        #manip_space = calc_manipulability(target_J)
+        #return manip_space 
+        return target_J 
 
 
 class NeutralPoseMass(ComputeInterface):
@@ -300,7 +303,7 @@ class NeutralPoseMass(ComputeInterface):
     """
 
     def __init__(self) -> None:
-        pass
+        self.is_fixed = True
 
     def __call__(self, data_dict: DataDict, robo: Robot = None):
         return calculate_mass(robo)
@@ -314,7 +317,7 @@ class ForceEllProjections(ComputeInterface):
     """
 
     def __init__(self) -> None:
-        pass
+        self.is_fixed = True
 
     def __call__(self, data_dict: DataDict, robo: Robot = None):
         ell_params = calc_force_ell_projection_along_trj(
@@ -327,7 +330,7 @@ class TranslationErrorMSE(ComputeInterface):
     """
 
     def __init__(self) -> None:
-        pass
+        self.is_fixed = True
 
     def __call__(self, data_dict: DataDict, robo: Robot = None):
 
@@ -340,7 +343,7 @@ class TranslationErrorMSE(ComputeInterface):
 
 def moment_criteria_calc(calculate_desription: dict[str,
                                                     ComputeInterfaceMoment],
-                         data_dict: DataDict,
+                         data_dict_free: DataDict, data_dict_fixed: DataDict,
                          robo: Robot = None) -> DataDict:
     """Calculate all critrion from calculate_desription. Each criterion is 
     called on data frames that represent the data at each point in time.
@@ -355,6 +358,11 @@ def moment_criteria_calc(calculate_desription: dict[str,
     """
     res_dict = DataDict()
     for key, criteria in calculate_desription.items():
+        if criteria.is_fixed:
+            data_dict = data_dict_fixed
+        else:
+            data_dict = data_dict_free
+        
         shape = criteria.output_matrix_shape()
         if shape:
             res_dict[key] = np.zeros((data_dict.get_data_len(), *shape),
@@ -366,15 +374,21 @@ def moment_criteria_calc(calculate_desription: dict[str,
                 (data_dict.get_data_len(), *zero_step.shape), dtype=np.float32)
             # Need implement alocate from zero step data size
             # raise NotImplemented
-    for index in range(data_dict.get_data_len()):
-        data_frame = data_dict.get_frame(index)
+
+    for index in range(data_dict_fixed.get_data_len()):
         for key, criteria in calculate_desription.items():
+            if criteria.is_fixed:
+                data_dict = data_dict_fixed
+            else:
+                data_dict = data_dict_free
+
+            data_frame = data_dict.get_frame(index)
             res_dict[key][index] = criteria(data_frame, robo)
     return res_dict
 
 
 def along_criteria_calc(calculate_desription: dict[str, ComputeInterface],
-                        data_dict: DataDict,
+                        data_dict_free: DataDict, data_dict_fixed: DataDict,
                         robo: Robot = None) -> dict:
     """Each criterion get the entire DataDict and Robot.
 
@@ -388,5 +402,10 @@ def along_criteria_calc(calculate_desription: dict[str, ComputeInterface],
     """
     res_dict = {}
     for key, criteria in calculate_desription.items():
+        if criteria.is_fixed:
+            data_dict = data_dict_fixed
+        else:
+            data_dict = data_dict_free
+
         res_dict[key] = criteria(data_dict, robo)
     return res_dict

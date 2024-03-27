@@ -16,7 +16,7 @@ def calculate_quasi_static_simdata(free_robot: Robot,
                                    ee_frame_name: str,
                                    traj_6d: np.ndarray,
                                    viz=None) -> tuple[DataDict, DataDict]:
-    """Calc critrion for free model(root joint is universal) and 
+    """Calculate criteria for free model(root joint is universal) and 
     fixed model (root joint is weld).
 
     Args:
@@ -51,7 +51,7 @@ def calculate_quasi_static_simdata(free_robot: Robot,
 
 
 class CriteriaAggregator:
-    """Create models form urdf and calculate critrion.
+    """Create models from urdf and calculate criteria for the given trajectory.
     """
 
     def __init__(self, dict_moment_criteria: dict[str, ComputeInterfaceMoment],
@@ -78,12 +78,13 @@ class CriteriaAggregator:
         free_robot = build_model_with_extensions(urdf_str, mot_des, loop_des,
                                                  False)
 
+        
         res_dict_free, res_dict_fixed = calculate_quasi_static_simdata(
             free_robot, fixed_robot, self.end_effector_name, self.traj_6d)
 
         moment_critria_trj = moment_criteria_calc(self.dict_moment_criteria,
-                                                  res_dict_free)
-        along_critria_trj = along_criteria_calc(self.dict_along_criteria,
+                                                  res_dict_free, res_dict_fixed)
+        along_critria_trj = along_criteria_calc(self.dict_along_criteria,res_dict_free,
                                                 res_dict_fixed, fixed_robot)
 
         return moment_critria_trj, along_critria_trj, res_dict_fixed

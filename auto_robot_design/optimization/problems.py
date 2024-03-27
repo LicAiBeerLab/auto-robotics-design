@@ -41,7 +41,7 @@ class CalculateCriteriaProblemByWeigths(ElementwiseProblem):
         total_result = 0
         partial_results = []
         for reward, weight in self.rewards:
-            partial_results.append(reward.calculate(point_criteria_vector, trajectory_criteria))
+            partial_results.append(reward.calculate(point_criteria_vector, trajectory_criteria, res_dict_fixed))
             total_result+= weight*partial_results[-1]
         
         # imf_start_fin = -(instant_criteria_trj["IMF"][0] +  instant_criteria_trj["IMF"][-1]) / 2
