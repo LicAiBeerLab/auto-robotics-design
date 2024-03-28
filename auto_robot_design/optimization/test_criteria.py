@@ -19,4 +19,4 @@ def calculate_mass(urdf, joint_description, loop_description):
     total_mass = pin.computeTotalMass(free_robo.model, free_robo.data)
     com_dist = la.norm(pin.centerOfMass(free_robo.model, free_robo.data))
 
-    return total_mass * com_dist
+    return total_mass 
