@@ -8,8 +8,6 @@ from trimesh import Trimesh
 from scipy.spatial.transform import Rotation as R
 import modern_robotics as mr
 
-from auto_robot_design.description.mechanism import KinematicGraph
-
 # from auto_robot_design.description.mechanism import KinematicGraph
 
 
@@ -272,14 +270,14 @@ def calculate_inertia(length):
     Izz = 1 / 12 * 1 * (0.001**2 * 0.001**2)
     return {"ixx": Ixx, "ixy": 0, "ixz": 0, "iyy": Iyy, "iyz": 0, "izz": Izz}
 
-def set_random_actuators(graph: KinematicGraph, actuators: list):
+def set_random_actuators(graph: nx.Graph, actuators: list):
     active_joints = [j for j in graph.joint_graph.nodes() if j.jp.active]
     list_actuators = np.random.choice(actuators, len(active_joints))
     
     for joint, actuator in zip(active_joints, list_actuators):
         joint.actuator = actuator
         
-def set_actuator_to_all_joints(graph: KinematicGraph, actuator):
+def set_actuator_to_all_joints(graph: nx.Graph, actuator):
     active_joints = [j for j in graph.joint_graph.nodes() if j.jp.active]
     for joint in active_joints:
         joint.actuator = actuator

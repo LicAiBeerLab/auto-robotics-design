@@ -133,7 +133,7 @@ draw_joints = False
 draw_links_repr = False
 
 # %%
-from auto_robot_design.description.utils import draw_joint_frames, draw_joint_point, draw_link_frames
+from auto_robot_design.description.utils import draw_joint_frames, draw_joint_point, draw_link_frames, set_actuator_to_all_joints
 
 if draw_joints:
     draw_joint_point(graph) 
@@ -178,10 +178,10 @@ for n in kinematic_graph.nodes():
 
 for j in kinematic_graph.joint_graph.nodes():
     j.pos_limits = (-np.pi, np.pi)
-    if j.jp.active:
-        j.actuator = TMotor_AK80_9()
     j.damphing_friction = (0.05, 0)
 kinematic_graph.define_link_frames()
+
+set_actuator_to_all_joints(kinematic_graph, TMotor_AK60_6())
 
 if draw_joints:
     draw_link_frames(kinematic_graph)

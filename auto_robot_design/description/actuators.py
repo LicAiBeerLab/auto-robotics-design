@@ -13,6 +13,8 @@ class Actuator:
     peak_velocity: float = 0.0
     size: list[float] = field(default_factory=list)
     reduction_ratio: float = 0.0
+    nominal_effort: float = 0.0
+    nominal_speed: float = 0.0
     
     def get_max_effort(self):
         return self.peak_effort * 0.6
@@ -91,6 +93,8 @@ class TMotor_AK10_9(RevoluteActuator):
             self.peak_velocity = 297.5
             self.size = [0.045, 0.062]
             self.reduction_ratio = 1/9
+            self.nominal_effort = 18
+            self.nominal_speed = 220 * 2 * np.pi / 60
 
 @dataclass
 class TMotor_AK70_10(RevoluteActuator):
@@ -100,6 +104,8 @@ class TMotor_AK70_10(RevoluteActuator):
             self.peak_velocity = 382.5
             self.size = [0.0415, 0.05]
             self.reduction_ratio = 1/10
+            self.nominal_effort = 10
+            self.nominal_speed = 310 * 2 * np.pi / 60
 
 @dataclass
 class TMotor_AK60_6(RevoluteActuator):
@@ -109,6 +115,8 @@ class TMotor_AK60_6(RevoluteActuator):
             self.peak_velocity = 285
             self.size = [0.034, 0.0395]
             self.reduction_ratio = 1/6
+            self.nominal_effort = 3
+            self.nominal_speed = 420 * 2 * np.pi / 60
 
 @dataclass
 class TMotor_AK80_64(RevoluteActuator):
@@ -118,6 +126,8 @@ class TMotor_AK80_64(RevoluteActuator):
             self.peak_velocity = 54.6
             self.size = [0.0445, 0.062]
             self.reduction_ratio = 1/64
+            self.nominal_effort = 6
+            self.nominal_speed = 600 * 2 * np.pi / 60
 
 @dataclass
 class TMotor_AK80_9(RevoluteActuator):
@@ -127,6 +137,8 @@ class TMotor_AK80_9(RevoluteActuator):
             self.peak_velocity = 475
             self.size = [0.0425, 0.0385]
             self.reduction_ratio = 1/9
+            self.nominal_effort = 9
+            self.nominal_speed = 390 * 2 * np.pi / 60
             
 
 @dataclass
@@ -137,6 +149,8 @@ class Unitree_GO_Motor(RevoluteActuator):
             self.peak_velocity = 30 / 2 / np.pi * 60
             self.size = [0.0478, 0.041]
             self.reduction_ratio = 1/6.33
+            self.nominal_effort = 0.7
+            self.nominal_speed = 1600 * 2 * np.pi / 60
 
 @dataclass
 class Unitree_B1_Motor(RevoluteActuator):
@@ -159,11 +173,14 @@ class Unitree_A1_Motor(RevoluteActuator):
 @dataclass
 class MyActuator_RMD_MT_RH_17_100_N(RevoluteActuator):
     def __init__(self):
-            self.mass = 0.640
-            self.peak_effort = 25
-            self.peak_velocity = 20
-            self.size = [0.0405, 0.063]
-            self.reduction_ratio = 1/100
+            self.mass = 0.590
+            self.peak_effort = 40
+            self.peak_velocity = 100
+            self.size = [0.076/2, 0.0605]
+            self.reduction_ratio = 1/36
+            self.nominal_effort = 18
+            self.nominal_speed = 90 * 2 * np.pi / 60
+
 
 t_motor_actuators = [
     TMotor_AK10_9(),
