@@ -33,13 +33,14 @@ def freeze_joint_robo(robo: Robot, joint_f: str):
 
 
 gen = TwoLinkGenerator()
-builder = Builder(DetalizedURDFCreater)
+builder = Builder(DetalizedURDFCreaterFixedEE)
 graphs_and_cons = gen.get_standard_set()
 np.set_printoptions(precision=3, linewidth=300, suppress=True, threshold=10000)
 
 graph_jp, constrain = graphs_and_cons[0]
 robot_urdf, ative_joints, constraints = jps_graph2urdf_parametrized(graph_jp)
-
+draw_joint_point(graph_jp)
+plt.show()
 
 robo = build_model_with_extensions(robot_urdf, ative_joints, constraints)
 free_robo = build_model_with_extensions(
