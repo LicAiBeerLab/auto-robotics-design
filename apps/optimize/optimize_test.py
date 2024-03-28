@@ -16,11 +16,11 @@ from auto_robot_design.description.utils import (
     draw_joint_point, )
 from auto_robot_design.optimization.problems import CalculateCriteriaProblemByWeigths
 from auto_robot_design.optimization.optimizer import PymooOptimizer
-from auto_robot_design.pinokla.calc_criterion import ForceEllProjections, ImfCompute, ManipCompute, MovmentSurface, NeutralPoseMass, TranslationErrorMSE
+from auto_robot_design.pinokla.calc_criterion import ForceCapabilityProjectionCompute, ImfCompute, ManipCompute, MovmentSurface, NeutralPoseMass, TranslationErrorMSE
 from auto_robot_design.pinokla.criterion_agregator import CriteriaAggregator
 from auto_robot_design.pinokla.criterion_math import ImfProjections
 from auto_robot_design.pinokla.default_traj import convert_x_y_to_6d_traj_xz, get_simple_spline
-from auto_robot_design.optimization.reward import VelocityReward, EndPointZRRReward, EndPointIMFReward, PositioningReward, MassReward
+from auto_robot_design.optimization.reward import VelocityReward, EndPointZRRReward, EndPointIMFReward, PositioningReward, MassReward, ForceEllipsoidReward
 
 
 if __name__ == '__main__':
@@ -52,7 +52,7 @@ if __name__ == '__main__':
     dict_along_criteria = {
         "MASS": NeutralPoseMass(),
         "POS_ERR": TranslationErrorMSE(), # MSE of deviation from the trajectory
-        "ELL_PRJ": ForceEllProjections() 
+        "ELL_PRJ": ForceCapabilityProjectionCompute() 
     }
     # criteria calculated for each point on the trajectory
     dict_moment_criteria = {
@@ -73,6 +73,7 @@ if __name__ == '__main__':
     runner = StarmapParallelization(pool.starmap)
 
     rewards = [(VelocityReward(manipulability_key='MANIP', trajectory_key="traj_6d", error_key="error"), 1),
+               (ForceEllipsoidReward(manipulability_key='MANIP', trajectory_key="traj_6d", error_key="error"),1),
                (EndPointIMFReward(imf_key='IMF', trajectory_key="traj_6d", error_key="error"), 1),
                (EndPointZRRReward(manipulability_key='MANIP', trajectory_key="traj_6d", error_key="error"),1),
                (PositioningReward(pos_error_key="POS_ERR"),1),(MassReward(mass_key="MASS"),1)

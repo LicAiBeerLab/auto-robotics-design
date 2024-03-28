@@ -375,60 +375,6 @@ class ForceCapabilityProjectionCompute(ComputeInterface):
         )
 
 
-class ForceCapabilityProjectionCompute(ComputeInterface):
-    """Wrapper for calculate projection force ellipsoid axis to ez and xz trajectory. Criterion implementation src is criterion_math
-    Return sum of absolute dot product of trajectory and u1, u2 (axis force ellips), z-axis and u1, u2 (axis force ellips).
-    
-    Fucntion Call Returns:
-        tuple: A tuple containing the following values:
-            - abs_dot_product_traj_u1: The absolute dot product of the trajectory and u1.
-            - abs_dot_product_traj_u2: The absolute dot product of the trajectory and u2.
-            - abs_dot_product_z_u1: The absolute dot product of the z-axis and u1.
-            - abs_dot_product_z_u2: The absolute dot product of the z-axis and u2.
-    """
-
-    def __call__(self, data_dict: DataDict, robo: Robot = None) -> np.ndarray:
-        """
-        Calculate projection force ellipsoid axis to ez and xz trajectory.
-
-        Args:
-            data_dict (DataDict): A dictionary containing the required data for calculation.
-            robo (Robot, optional): The robot object. Defaults to None.
-
-        Returns:
-            tuple: A tuple containing the following values:
-                - abs_dot_product_traj_u1: The absolute dot product of the trajectory and u1.
-                - abs_dot_product_traj_u2: The absolute dot product of the trajectory and u2.
-                - abs_dot_product_z_u1: The absolute dot product of the z-axis and u1.
-                - abs_dot_product_z_u2: The absolute dot product of the z-axis and u2.
-        """
-
-        Jc_traj = data_dict["J_closed"]
-        traj_xz = data_dict["traj_6d_ee"][:, [0, 2]]
-
-        Jc_xz_traj = Jc_traj[:, [0, 2], :]
-        # U, S, Vh = np.linalg.svd(Jc_xz_traj, hermitian=True)
-        U, S, Vh = np.linalg.svd(Jc_xz_traj)
-        USsec = np.array([np.diag(1/s) @ u for u, s in zip(U, S)])
-        US1 = USsec[:, 0, :]
-        US2 = USsec[:, 1, :]
-
-        d_traj_xz = np.diff(traj_xz, axis=0)
-        d_traj_xz = np.vstack([d_traj_xz, [0, 0]])
-
-        abs_dot_product_traj_u1 = np.sum(np.abs(np.sum(US1 * d_traj_xz, axis=1))).squeeze()
-        abs_dot_product_traj_u2 = np.sum(np.abs(np.sum(US2 * d_traj_xz, axis=1))).squeeze()
-        abs_dot_product_z_u1 = np.sum(np.abs(US1[:, 1])).squeeze()
-        abs_dot_product_z_u2 = np.sum(np.abs(US2[:, 1])).squeeze()
-
-        return (
-            abs_dot_product_traj_u1,
-            abs_dot_product_traj_u2,
-            abs_dot_product_z_u1,
-            abs_dot_product_z_u2,
-        )
-
-
 class NeutralPoseMass(ComputeInterface):
     """Wrapper for calculate total mass of robot. Criterion implementation src is criterion_math"""
 
