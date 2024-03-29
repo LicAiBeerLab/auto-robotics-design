@@ -40,14 +40,16 @@ class VelocityReward(Reward):
         manipulability_matrices:list[np.array] = point_criteria[self.manip_key]
         trajectory_points = trajectory_results[self.trajectory_key]
         errors = trajectory_results[self.error_key]
+        diff_vector = np.diff(trajectory_points,axis=0)[:,[0,2]]
         n_steps = len(trajectory_points)
         result = 0
         for i in range(n_steps-1):
-            # the reward is none zero only if the point is reached 
+            # the reward is none zero only if the point is reached
             if errors[i]>1e-6:
                 continue
             # get the direction of the trajectory
-            trajectory_shift = np.array([trajectory_points[i+1][0]-trajectory_points[i][0], trajectory_points[i+1][2]-trajectory_points[i][2]])
+            #trajectory_shift = np.array([trajectory_points[i+1][0]-trajectory_points[i][0], trajectory_points[i+1][2]-trajectory_points[i][2]])
+            trajectory_shift = diff_vector[i]
             trajectory_direction = trajectory_shift/np.linalg.norm(trajectory_shift)
 
             # get the manipulability matrix for the current point
