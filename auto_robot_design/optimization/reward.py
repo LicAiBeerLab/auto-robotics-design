@@ -3,8 +3,10 @@ import numpy as np
 
 class Reward():
     """Interface for the optimization criteria"""
+
     def __init__(self) -> None:
         pass
+
     def calculate(self, point_criteria, trajectory_criteria, trajectory_results) -> float:
         """Calculate the value of the criterion from the data"""
         pass
@@ -13,6 +15,7 @@ class Reward():
 class VelocityReward(Reward):
     """Reward the mech for the value of the manipulability along the trajectory
     """
+
     def __init__(self, manipulability_key, trajectory_key, error_key) -> None:
         """Set the dictionary keys for the data
 
@@ -37,23 +40,24 @@ class VelocityReward(Reward):
             float: value of the reward
         """
         # get the manipulability for each point at the trajectory
-        manipulability_matrices:list[np.array] = point_criteria[self.manip_key]
+        manipulability_matrices: list[np.array] = point_criteria[self.manip_key]
         trajectory_points = trajectory_results[self.trajectory_key]
         errors = trajectory_results[self.error_key]
-        diff_vector = np.diff(trajectory_points,axis=0)[:,[0,2]]
+        diff_vector = np.diff(trajectory_points, axis=0)[:, [0, 2]]
         n_steps = len(trajectory_points)
         result = 0
         for i in range(n_steps-1):
             # the reward is none zero only if the point is reached
-            if errors[i]>1e-6:
+            if errors[i] > 1e-6:
                 continue
             # get the direction of the trajectory
-            #trajectory_shift = np.array([trajectory_points[i+1][0]-trajectory_points[i][0], trajectory_points[i+1][2]-trajectory_points[i][2]])
+            # trajectory_shift = np.array([trajectory_points[i+1][0]-trajectory_points[i][0], trajectory_points[i+1][2]-trajectory_points[i][2]])
             trajectory_shift = diff_vector[i]
-            trajectory_direction = trajectory_shift/np.linalg.norm(trajectory_shift)
+            trajectory_direction = trajectory_shift / \
+                np.linalg.norm(trajectory_shift)
 
             # get the manipulability matrix for the current point
-            manipulability_matrix:np.array = manipulability_matrices[i]
+            manipulability_matrix: np.array = manipulability_matrices[i]
             # find alpha from A@x = alpha*y, with ||x|| = 1 and y = trajectory_direction
             # get inverse of the manipulability matrix
             manipulability_matrix_inv = np.linalg.inv(manipulability_matrix)
@@ -65,6 +69,7 @@ class VelocityReward(Reward):
 
 class ForceEllipsoidReward(Reward):
     """Force capability along the trajectory"""
+
     def __init__(self, manipulability_key, trajectory_key, error_key) -> None:
         """Set the dictionary keys for the data
 
@@ -75,30 +80,33 @@ class ForceEllipsoidReward(Reward):
         self.manip_key = manipulability_key
         self.trajectory_key = trajectory_key
         self.error_key = error_key
-    
+
     def calculate(self, point_criteria, trajectory_criteria, trajectory_results) -> float:
-        manipulability_matrices:list[np.array] = point_criteria[self.manip_key]
+        manipulability_matrices: list[np.array] = point_criteria[self.manip_key]
         trajectory_points = trajectory_results[self.trajectory_key]
         errors = trajectory_results[self.error_key]
         n_steps = len(trajectory_points)
         result = 0
         for i in range(n_steps-1):
-            # the reward is none zero only if the point is reached 
-            if errors[i]>1e-6:
+            # the reward is none zero only if the point is reached
+            if errors[i] > 1e-6:
                 continue
             # get the direction of the trajectory
-            trajectory_shift = np.array([trajectory_points[i+1][0]-trajectory_points[i][0], trajectory_points[i+1][2]-trajectory_points[i][2]])
-            trajectory_direction = trajectory_shift/np.linalg.norm(trajectory_shift)
-            manipulability_matrix:np.array = manipulability_matrices[i]
+            trajectory_shift = np.array(
+                [trajectory_points[i+1][0]-trajectory_points[i][0], trajectory_points[i+1][2]-trajectory_points[i][2]])
+            trajectory_direction = trajectory_shift / \
+                np.linalg.norm(trajectory_shift)
+            manipulability_matrix: np.array = manipulability_matrices[i]
             force_matrix = np.transpose(manipulability_matrix)
-            result+=np.linalg.norm(force_matrix@trajectory_direction)
+            result += 1/np.linalg.norm(force_matrix@trajectory_direction)
 
         return result/(n_steps-1)
 
 
 class EndPointZRRReward(Reward):
     """Reduction ratio along the vertical (z) axis in the edge points of the trajectory (stance poses)"""
-    def __init__(self, manipulability_key, trajectory_key, error_key)-> None:
+
+    def __init__(self, manipulability_key, trajectory_key, error_key) -> None:
         """Set the dictionary keys for the data
 
         Args:
@@ -121,27 +129,29 @@ class EndPointZRRReward(Reward):
         Returns:
             float: value of the reward
         """
-        manipulability_matrices:list[np.array] = point_criteria[self.manip_key]
+        manipulability_matrices: list[np.array] = point_criteria[self.manip_key]
         errors = trajectory_results[self.error_key]
-        # the reward is none zero only if the point is reached 
-        if errors[0]>1e-6:
+        # the reward is none zero only if the point is reached
+        if errors[0] > 1e-6:
             starting_result = 0
         else:
-            starting_pose_matrix =  np.transpose(manipulability_matrices[0])
-            starting_result = np.linalg.norm(starting_pose_matrix@np.array([0,1]))
-        # the reward is none zero only if the point is reached 
-        if errors[-1]>1e-6:
+            starting_pose_matrix = np.transpose(manipulability_matrices[0])
+            starting_result = 1 / \
+                np.linalg.norm(starting_pose_matrix@np.array([0, 1]))
+        # the reward is none zero only if the point is reached
+        if errors[-1] > 1e-6:
             end_result = 0
         else:
-            end_pose_matrix =  np.transpose(manipulability_matrices[-1])
-            end_result = np.linalg.norm(end_pose_matrix@np.array([0,1]))
+            end_pose_matrix = np.transpose(manipulability_matrices[-1])
+            end_result = 1/np.linalg.norm(end_pose_matrix@np.array([0, 1]))
 
         return (starting_result + end_result)/2
 
 
 class EndPointIMFReward(Reward):
     """IMF in the trajectory edge points"""
-    def __init__(self, imf_key, trajectory_key, error_key)-> None:
+
+    def __init__(self, imf_key, trajectory_key, error_key) -> None:
         """Set the dictionary keys for the data
 
         Args:
@@ -164,23 +174,25 @@ class EndPointIMFReward(Reward):
         Returns:
             float: value of the reward
         """
-        IMF:list[np.array] = point_criteria[self.imf_key]
+        IMF: list[np.array] = point_criteria[self.imf_key]
         errors = trajectory_results[self.error_key]
 
-        if errors[0]>1e-6:
+        if errors[0] > 1e-6:
             starting_result = 0
         else:
             starting_result = IMF[0]
-        
-        if errors[-1]>1e-6:
+
+        if errors[-1] > 1e-6:
             end_result = 0
         else:
             end_result = IMF[-1]
 
         return (starting_result + end_result)/2
-    
+
+
 class PositioningReward():
     """Mean position error for the trajectory"""
+
     def __init__(self,  pos_error_key) -> None:
         """Set the dictionary keys for the data
 
@@ -207,6 +219,7 @@ class PositioningReward():
 
 class MassReward():
     """Mass for the trajectory"""
+
     def __init__(self, mass_key) -> None:
         """Set the dictionary keys for the data
 
@@ -229,4 +242,3 @@ class MassReward():
         # get the manipulability for each point at the trajectory
         mass = trajectory_criteria[self.mass_key]
         return -mass
-
