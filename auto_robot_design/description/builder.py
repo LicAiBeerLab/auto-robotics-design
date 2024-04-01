@@ -568,6 +568,246 @@ class DetalizedURDFCreater(URDFLinkCreater):
         return out
 
 
+class DetalizedURDFCreaterFixedEE(URDFLinkCreater):
+    def __init__(self) -> None:
+        super().__init__()
+
+    @classmethod
+    def create_joint(cls, joint: Joint):
+        if joint.link_in is None or joint.link_out is None:
+            return {"joint": []}
+        origin = cls.trans_matrix2xyz_rpy(joint.frame)
+        if joint.is_constraint:
+            color1 = joint.link_in.geometry.color
+            color1[3] = 0.5
+            color2 = joint.link_out.geometry.color
+            color2[3] = 0.5
+
+            name_link_in = joint.jp.name + "_" + joint.link_in.name + "Pseudo"
+            rad_in = joint.link_in.geometry.get_thickness() / 1.4
+            urdf_pseudo_link_in = urdf.Link(
+                urdf.Visual(
+                    urdf.Geometry(
+                        urdf.Sphere(float(rad_in))
+                    ),
+                    urdf.Material(
+                        urdf.Color(rgba=color1), name=name_link_in + "_Material"
+                    ),
+                    # name=name_link_in + "_Visual",
+                ),
+                urdf.Inertial(urdf.Mass(float(joint.actuator.mass / 2)),
+                              urdf.Inertia(**cls.convert_inertia(tensor_inertia_sphere_by_mass(joint.actuator.mass / 2, rad_in)))),
+                name=name_link_in,
+            )
+            urdf_joint_in = urdf.Joint(
+                urdf.Parent(link=joint.link_in.name),
+                urdf.Child(link=name_link_in),
+                urdf.Origin(
+                    xyz=origin[0],
+                    rpy=origin[1],
+                ),
+                urdf.Axis(joint.jp.w.tolist()),
+                urdf.Limit(
+                    lower=joint.pos_limits[0],
+                    upper=joint.pos_limits[1],
+                    effort=joint.actuator.get_max_effort(),
+                    velocity=joint.actuator.get_max_vel(),
+                ),
+                urdf.Dynamics(
+                    damping=joint.damphing_friction[0],
+                    friction=joint.damphing_friction[1],
+                ),
+                name=joint.jp.name + "_" + joint.link_in.name + "_revolute",
+                type="revolute",
+            )
+
+            name_link_out = joint.jp.name + "_" + joint.link_out.name + "Pseudo"
+            rad_out = joint.link_out.geometry.get_thickness() / 1.4
+            urdf_pseudo_link_out = urdf.Link(
+                urdf.Visual(
+                    urdf.Geometry(
+                        urdf.Sphere(float(rad_out))
+                    ),
+                    urdf.Material(
+                        urdf.Color(rgba=color2), name=name_link_out + "_Material"
+                    ),
+                    # name=name_link_out + "_Visual",
+                ),
+                urdf.Inertial(
+                    urdf.Mass(float(joint.actuator.mass / 2)),
+                    urdf.Inertia(**cls.convert_inertia(tensor_inertia_sphere_by_mass(joint.actuator.mass / 2, rad_out)))),
+                name=name_link_out,
+            )
+
+            H_in_j = joint.frame
+            H_w_in = joint.link_in.frame
+
+            H_w_out = joint.link_out.frame
+
+            H_out_j = mr.TransInv(H_w_out) @ H_w_in @ H_in_j
+
+            out_origin = cls.trans_matrix2xyz_rpy(H_out_j)
+
+            urdf_joint_out = urdf.Joint(
+                urdf.Parent(link=joint.link_out.name),
+                urdf.Child(link=name_link_out),
+                urdf.Origin(
+                    xyz=out_origin[0],
+                    rpy=out_origin[1],
+                ),
+                name=joint.jp.name + "_" + joint.link_in.name + "_Weld",
+                type="fixed",
+            )
+
+            out = {
+                "joint": [
+                    urdf_pseudo_link_in,
+                    urdf_joint_in,
+                    urdf_joint_out,
+                    urdf_pseudo_link_out,
+                ],
+                "constraint": [name_link_in, name_link_out],
+            }
+        else:
+            if "EE" in [l.name for l in joint.links]:
+                urdf_joint = urdf.Joint(
+                    urdf.Parent(link=joint.link_in.name),
+                    urdf.Child(link=joint.link_out.name),
+                    urdf.Origin(
+                        xyz=origin[0],
+                        rpy=origin[1],
+                    ),
+                    name=joint.jp.name,
+                    type="fixed",
+                )
+            else:
+                urdf_joint = urdf.Joint(
+                    urdf.Parent(link=joint.link_in.name),
+                    urdf.Child(link=joint.link_out.name),
+                    urdf.Origin(
+                        xyz=origin[0],
+                        rpy=origin[1],
+                    ),
+                    urdf.Axis(joint.jp.w.tolist()),
+                    urdf.Limit(
+                        lower=joint.pos_limits[0],
+                        upper=joint.pos_limits[1],
+                        effort=joint.actuator.get_max_effort(),
+                        velocity=joint.actuator.get_max_vel(),
+                    ),
+                    urdf.Dynamics(
+                        damping=joint.damphing_friction[0],
+                        friction=joint.damphing_friction[1],
+                    ),
+                    name=joint.jp.name,
+                    type="revolute",
+                )
+            out = {"joint": [urdf_joint]}
+            if joint.jp.active:
+                connected_unit = RevoluteUnit()
+                connected_unit.size = [
+                    joint.link_in.geometry.get_thickness() / 2,
+                    joint.link_in.geometry.get_thickness(),
+                ]
+            elif not joint.actuator.size:
+                unit_size = [
+                    joint.link_in.geometry.get_thickness() / 2,
+                    joint.link_in.geometry.get_thickness(),
+                ]
+                joint.actuator.size = unit_size
+                connected_unit = joint.actuator
+            else:
+                connected_unit = joint.actuator
+
+            name_joint_link = joint.jp.name + "_" + joint.link_in.name + "Unit"
+            name_joint_weld = joint.jp.name + "_" + joint.link_in.name + "_WeldUnit"
+            Rp_j = mr.TransToRp(joint.frame)
+            color = joint.link_in.geometry.color
+            color[3] = 0.9
+            rot_a = R.from_matrix(
+                Rp_j[0] @ R.from_rotvec([np.pi / 2, 0, 0]).as_matrix()
+            ).as_euler("xyz")
+            urdf_joint_weld = urdf.Joint(
+                urdf.Parent(link=joint.link_in.name),
+                urdf.Child(link=name_joint_link),
+                urdf.Origin(
+                    xyz=Rp_j[1].tolist(),
+                    rpy=rot_a.tolist(),
+                ),
+                name=name_joint_weld,
+                type="fixed",
+            )
+            urdf_unit_link = urdf.Link(
+                urdf.Visual(
+                    urdf.Geometry(
+                        urdf.Cylinder(
+                            length=connected_unit.size[1], radius=connected_unit.size[0]
+                        )
+                    ),
+                    urdf.Material(
+                        urdf.Color(rgba=color), name=name_joint_link + "_Material"
+                    ),
+                    # name=name_joint_link + "_Visual",
+                ),
+                urdf.Inertial(
+                    urdf.Inertia(
+                        **cls.convert_inertia(connected_unit.calculate_inertia())
+                    ),
+                    urdf.Mass(float(connected_unit.mass)),
+                ),
+                name=name_joint_link,
+            )
+
+            if joint.jp.active:
+                out["active"] = joint.jp.name
+                name_actuator_link = (
+                    joint.jp.name + "_" + joint.link_in.name + "Actuator"
+                )
+                name_actuator_weld = (
+                    joint.jp.name + "_" + joint.link_in.name + "_WeldActuator"
+                )
+                pos = Rp_j[1] + joint.jp.w * (
+                    joint.actuator.size[1] / 2 + connected_unit.size[1] / 2
+                )
+                urdf_actuator_weld = urdf.Joint(
+                    urdf.Parent(link=joint.link_in.name),
+                    urdf.Child(link=name_actuator_link),
+                    urdf.Origin(
+                        xyz=pos.tolist(),
+                        rpy=rot_a.tolist(),
+                    ),
+                    name=name_actuator_weld,
+                    type="fixed",
+                )
+                urdf_actuator_link = urdf.Link(
+                    urdf.Visual(
+                        urdf.Geometry(
+                            urdf.Cylinder(
+                                length=joint.actuator.size[1],
+                                radius=joint.actuator.size[0],
+                            )
+                        ),
+                        urdf.Material(
+                            urdf.Color(rgba=color),
+                            name=name_actuator_link + "_Material",
+                        ),
+                        # name=name_actuator_link + "_Visual",
+                    ),
+                    urdf.Inertial(
+                        urdf.Inertia(
+                            **cls.convert_inertia(joint.actuator.calculate_inertia())
+                        ),
+                        urdf.Mass(float(connected_unit.mass)),
+                    ),
+                    name=name_actuator_link,
+                )
+                out["joint"].append(urdf_actuator_weld)
+                out["joint"].append(urdf_actuator_link)
+
+            out["joint"].append(urdf_unit_link)
+            out["joint"].append(urdf_joint_weld)
+        return out
+
 class Builder:
     def __init__(self, creater) -> None:
         self.creater = creater
@@ -655,7 +895,8 @@ def jps_graph2urdf_parametrized(graph: nx.Graph, density_EE: float = 2700 / 2.8,
             j.actuator = actuator
         j.damphing_friction = (0.05, 0)
     kinematic_graph.define_link_frames()
-    builder = Builder(DetalizedURDFCreater)
+    # builder = Builder(DetalizedURDFCreater)
+    builder = Builder(DetalizedURDFCreaterFixedEE)
 
     robot, ative_joints, constraints = builder.create_kinematic_graph(
         kinematic_graph)
