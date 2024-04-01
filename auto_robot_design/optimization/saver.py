@@ -47,6 +47,7 @@ class ProblemSaver:
             dill.dump(self.problem.criteria, f)
         draw_joint_point(self.problem.graph)
         plt.savefig(os.path.join(self.path, "initial_mechanism.png"))
+        plt.close()
 
     def save_history(self, history):
         with open(os.path.join(self.path, "history.pkl"), "wb") as f:

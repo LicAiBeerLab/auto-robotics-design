@@ -8,7 +8,7 @@ from pymoo.core.problem import StarmapParallelization
 
 
 from auto_robot_design.description.builder import jps_graph2urdf
-from auto_robot_design.generator.two_link_generator import TwoLinkGenerator
+from auto_robot_design.generator.restricted_generator.two_link_generator import TwoLinkGenerator
 from auto_robot_design.optimization.saver import (
     ProblemSaver, )
 
@@ -60,7 +60,7 @@ if __name__ == '__main__':
         "MANIP": ManipCompute(MovmentSurface.XZ) 
     }
 
-    # trajectory construction, each point is three coordinates and 
+    # trajectory construction, each point is three coordinates
     x_traj, y_traj = get_simple_spline()
     traj_6d = convert_x_y_to_6d_traj_xz(x_traj, y_traj)
 
