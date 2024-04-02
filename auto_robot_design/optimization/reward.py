@@ -218,7 +218,7 @@ class PositioningReward():
 
 
 class MassReward():
-    """Mass for the trajectory"""
+    """Mass of the robot"""
 
     def __init__(self, mass_key) -> None:
         """Set the dictionary keys for the data
