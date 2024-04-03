@@ -13,6 +13,8 @@ from auto_robot_design.pinokla.criterion_agregator import CriteriaAggregator
 
 class CalculateCriteriaProblemByWeigths(ElementwiseProblem):
     def __init__(self, graph, jp2limits, criteria : CriteriaAggregator, weights, rewards=[], **kwargs):
+        if "Actuator" in kwargs:
+            self.motor = kwargs["Actuator"]
         self.graph = graph
         self.jp2limits = jp2limits
         self.opt_joints = list(self.jp2limits.keys())
@@ -42,7 +44,7 @@ class CalculateCriteriaProblemByWeigths(ElementwiseProblem):
         total_result = 0
         partial_results = []
         for reward, weight in self.rewards:
-            partial_results.append(reward.calculate(point_criteria_vector, trajectory_criteria, res_dict_fixed))
+            partial_results.append(reward.calculate(point_criteria_vector, trajectory_criteria, res_dict_fixed, Actuator = self.motor))
             total_result+= weight*partial_results[-1]
         
         # the form of the output required by the pymoo lib

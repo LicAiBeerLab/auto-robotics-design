@@ -8,7 +8,7 @@ from auto_robot_design.description.actuators import TMotor_AK60_6
 # from auto_robot_design.generator_functions import generate_graph
 from auto_robot_design.generator.respawn_algorithm import generate_graph
 from auto_robot_design.description.mechanism import JointPoint2KinematicGraph
-from auto_robot_design.description.builder import DetalizedURDFCreaterFixedEE, ParametrizedBuilder, jps_graph2urdf_by_bulder
+from auto_robot_design.description.builder import DetailedURDFCreatorFixedEE, ParametrizedBuilder, jps_graph2urdf_by_bulder
 from auto_robot_design.generator.two_link_generator import TwoLinkGenerator
 from auto_robot_design.pino_adapter.pino_adapter import get_pino_description
 
@@ -33,7 +33,7 @@ thickness = 0.04
 density = 2700 / 2.8
 
 
-builder = ParametrizedBuilder(DetalizedURDFCreaterFixedEE,
+builder = ParametrizedBuilder(DetailedURDFCreatorFixedEE,
                               density=density,
                               thickness={"default": thickness, "EE":0.08},
                               actuator=TMotor_AK60_6(),

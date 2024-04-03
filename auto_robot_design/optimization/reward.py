@@ -7,7 +7,7 @@ class Reward():
     def __init__(self) -> None:
         pass
 
-    def calculate(self, point_criteria, trajectory_criteria, trajectory_results) -> float:
+    def calculate(self, point_criteria, trajectory_criteria, trajectory_results,**kwargs) -> float:
         """Calculate the value of the criterion from the data"""
         pass
 
@@ -28,7 +28,7 @@ class VelocityReward(Reward):
         self.trajectory_key = trajectory_key
         self.error_key = error_key
 
-    def calculate(self, point_criteria, trajectory_criteria, trajectory_results) -> float:
+    def calculate(self, point_criteria, trajectory_criteria, trajectory_results, **kwargs) -> float:
         """Calculate the length of the line from zero to the cross of the manipulability ellipsoid and trajectory direction
 
         Args:
@@ -81,7 +81,7 @@ class ForceEllipsoidReward(Reward):
         self.trajectory_key = trajectory_key
         self.error_key = error_key
 
-    def calculate(self, point_criteria, trajectory_criteria, trajectory_results) -> float:
+    def calculate(self, point_criteria, trajectory_criteria, trajectory_results, **kwargs) -> float:
         manipulability_matrices: list[np.array] = point_criteria[self.manip_key]
         trajectory_points = trajectory_results[self.trajectory_key]
         errors = trajectory_results[self.error_key]
@@ -118,7 +118,7 @@ class EndPointZRRReward(Reward):
         self.trajectory_key = trajectory_key
         self.error_key = error_key
 
-    def calculate(self, point_criteria, trajectory_criteria, trajectory_results) -> float:
+    def calculate(self, point_criteria, trajectory_criteria, trajectory_results, **kwargs) -> float:
         """Calculates the sum of ZRR in starting and end points
 
         Args:
@@ -163,7 +163,7 @@ class EndPointIMFReward(Reward):
         self.trajectory_key = trajectory_key
         self.error_key = error_key
 
-    def calculate(self, point_criteria, trajectory_criteria, trajectory_results) -> float:
+    def calculate(self, point_criteria, trajectory_criteria, trajectory_results, **kwargs) -> float:
         """Calculate the sum of IMF in starting and end points
 
         Args:
@@ -201,7 +201,7 @@ class PositioningReward():
         """
         self.pos_error_key = pos_error_key
 
-    def calculate(self, point_criteria, trajectory_criteria, trajectory_results) -> float:
+    def calculate(self, point_criteria, trajectory_criteria, trajectory_results, **kwargs) -> float:
         """Just get the value for the mean positioning error
 
         Args:
@@ -228,7 +228,7 @@ class MassReward():
         """
         self.mass_key = mass_key
 
-    def calculate(self, point_criteria, trajectory_criteria, trajectory_results) -> float:
+    def calculate(self, point_criteria, trajectory_criteria, trajectory_results, **kwargs) -> float:
         """Just get the total mass from the data dictionaries
 
         Args:
@@ -242,3 +242,37 @@ class MassReward():
         # get the manipulability for each point at the trajectory
         mass = trajectory_criteria[self.mass_key]
         return -mass
+
+
+class HeavyLiftingReward(Reward):
+    def __init__(self, manipulability_key, mass_key, trajectory_key, error_key, max_effort_coef = 0.7) -> None:
+        self.max_effort_coefficient = max_effort_coef
+        self.manip_key = manipulability_key
+        self.trajectory_key = trajectory_key
+        self.error_key = error_key
+        self.mass_key = mass_key
+
+    def calculate(self, point_criteria, trajectory_criteria, trajectory_results, **kwargs) -> float:
+        if "Actuator" in kwargs:
+            pick_effort = kwargs["Actuator"].peak_effort
+        else:
+            raise KeyError("Lifting criterion requires the Actuator")
+
+        manipulability_matrices: list[np.array] = point_criteria[self.manip_key]
+        trajectory_points = trajectory_results[self.trajectory_key]
+        errors = trajectory_results[self.error_key]
+
+        n_steps = len(trajectory_points)
+        result = float('inf')
+        for i in range(n_steps-1):
+            if errors[i] > 1e-6:
+                return 0 # if at least one point is not reachable the total reward is 0
+            
+            force_matrix = np.linalg.inv(np.transpose(manipulability_matrices[i])) # maps torques to forces
+            torque_vector = np.array([pick_effort*self.max_effort_coefficient, pick_effort*self.max_effort_coefficient])
+            force_z = (force_matrix@torque_vector)[1]
+            mass = trajectory_criteria[self.mass_key]
+            additional_force = force_z - 10*mass
+            if additional_force < 0: return 0
+            if additional_force < result: result = additional_force
+        return result

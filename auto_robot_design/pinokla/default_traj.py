@@ -45,3 +45,10 @@ def get_simple_spline():
     # plt.legend()
     # plt.show()
     return (x_traj_spline, y_traj_spline)
+
+def get_vertical_trajectory(n_points = 50):
+    max_height = -1.5
+    min_height = -0.5
+    x_trajectory = np.zeros(n_points)
+    y_trajectory = np.linspace(max_height, min_height, n_points)
+    return (x_trajectory, y_trajectory)

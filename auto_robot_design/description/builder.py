@@ -78,7 +78,7 @@ def add_branch_with_attrib(
             G.add_edge(ed[0], ed[1], **ed[2])
 
 
-class URDFLinkCreater:
+class URDFLinkCreator:
     """
     Class responsible for creating URDF links and joints.
     """
@@ -421,7 +421,7 @@ class URDFLinkCreater:
         )
         return urdf.Link(*visual_n_collision, inertial, name=name)
 
-class DetalizedURDFCreater(URDFLinkCreater):
+class DetalizedURDFCreater(URDFLinkCreator):
     def __init__(self) -> None:
         super().__init__()
 
@@ -672,7 +672,7 @@ class DetalizedURDFCreater(URDFLinkCreater):
         return out
 
 
-class DetalizedURDFCreaterFixedEE(URDFLinkCreater):
+class DetailedURDFCreatorFixedEE(URDFLinkCreator):
     def __init__(self) -> None:
         super().__init__()
 
@@ -906,7 +906,7 @@ class DetalizedURDFCreaterFixedEE(URDFLinkCreater):
                     name=name_actuator_weld,
                     type="fixed",
                 )
-                urdf_actuator_link = urdf.Link(
+                urdf_actuator_link = urdf.Link(DetailedURDFCreatorFixedEE(
                     urdf.Visual(
                         urdf.Geometry(
                             urdf.Cylinder(
@@ -926,7 +926,8 @@ class DetalizedURDFCreaterFixedEE(URDFLinkCreater):
                         ),
                         urdf.Mass(float(connected_unit.mass)),
                     ),
-                    name=name_actuator_link,
+                    name=name_actuator_link
+                    )
                 )
                 out["joint"].append(urdf_actuator_weld)
                 out["joint"].append(urdf_actuator_link)
