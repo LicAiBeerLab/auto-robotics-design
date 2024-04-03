@@ -261,7 +261,7 @@ class HeavyLiftingReward(Reward):
         manipulability_matrices: list[np.array] = point_criteria[self.manip_key]
         trajectory_points = trajectory_results[self.trajectory_key]
         errors = trajectory_results[self.error_key]
-
+        mass = trajectory_criteria[self.mass_key]
         n_steps = len(trajectory_points)
         result = float('inf')
         for i in range(n_steps-1):
@@ -271,8 +271,10 @@ class HeavyLiftingReward(Reward):
             force_matrix = np.linalg.inv(np.transpose(manipulability_matrices[i])) # maps torques to forces
             torque_vector = np.array([pick_effort*self.max_effort_coefficient, pick_effort*self.max_effort_coefficient])
             force_z = (force_matrix@torque_vector)[1]
-            mass = trajectory_criteria[self.mass_key]
-            additional_force = force_z - 10*mass
-            if additional_force < 0: return 0
-            if additional_force < result: result = additional_force
+            
+            additional_force = abs(force_z) - 10*mass
+            if additional_force < 0:
+                return 0
+            if additional_force < result: 
+                result = additional_force
         return result

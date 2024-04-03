@@ -76,7 +76,7 @@ if __name__ == '__main__':
     for i in topology_list:
         for j in actuator_list:
             # create builder
-            thickness = 0.04
+            thickness = 0.01
             ParametrizedBuilder(DetailedURDFCreatorFixedEE, size_ground=np.array(
                 [thickness*5, thickness*10, thickness*2]), actuator=j)
             # get the graph from the generator
