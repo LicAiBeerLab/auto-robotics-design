@@ -198,12 +198,24 @@ class KinematicGraph(nx.Graph):
 
 
 def JointPoint2KinematicGraph(jp_graph: nx.Graph):
+    """
+    Converts a joint point graph to a kinematic graph.
+
+    Args:
+        jp_graph (nx.Graph): The joint point graph to convert.
+
+    Returns:
+        KinematicGraph: The converted kinematic graph.
+    """
+    
+    # Change JP nodes to external nodes with kinematic and dynamic properties
     JP2Joint = {}
     for jp in jp_graph.nodes():
         JP2Joint[jp] = Joint(jp)
     jps_graph = deepcopy(jp_graph)
     joint_graph: nx.Graph = nx.relabel_nodes(jp_graph, JP2Joint)
-
+    
+    # Create ground and end-effector links
     ground_joints = set([JP2Joint[jp] for jp in get_ground_joints(jp_graph)])
     ee_joints = set([JP2Joint[jp] for jp in get_endeffector_joints(jp_graph)])
 
@@ -215,30 +227,39 @@ def JointPoint2KinematicGraph(jp_graph: nx.Graph):
     for joint in ee_joints:
         joint.link_out = ee_link
 
+    # Create stack of joints and add ground joints
     stack_joints: deque[Joint] = deque(maxlen=len(JP2Joint.values()))
-
     stack_joints += list(ground_joints)
-    # j2link: dict[JointPoint, set[Link]] = {j: set() for j in jp_graph.nodes()}
 
+    # Create expedited set of joints
     exped_j = set()
+    # Create list of links
     links: list[Link] = [ee_link, ground_link]
-
+    
     while stack_joints:
+        # Get the current joint
         current_joint = stack_joints.pop()
         # current_joint = JP2Joint[curr_jp]
+        # Get the link that the current joint is connected to
         L = next(iter(current_joint.links))
+        # Add the current joint to the expedited set
         exped_j.add(current_joint)
         L1 = joint_graph.subgraph(L.joints)
+        # Get the neighbors of the current joint that are not in the link
         N = set(joint_graph.neighbors(current_joint)) - L.joints
         nextN = {}
         lenNN = {}
+        # Get the neighors of the neighbors of the current joint.
+        # And calculate the number of neighbors that are in the link
         for n in N:
             nextN[n] = set(joint_graph.neighbors(n))
             lenNN[n] = len(nextN[n] & L.joints)
-        if len(L.joints) <= 2:
+        if len(L.joints) <= 2: # If the link has less than or equal to 2 joints
+            # Create a new link with the current joint and the neighbors
             L2 = Link(joints=(N | set([current_joint])))
             for j in L2.joints:
                 j.links.add(L2)
+        # If the link has more than 2 joints and number of neighbors is 1
         elif len(N) == 1:
             N = N.pop()
             if lenNN[N] == 1:
@@ -249,6 +270,7 @@ def JointPoint2KinematicGraph(jp_graph: nx.Graph):
                 L.joints.add(N)
                 N.links.add(L)
                 continue
+        # Otherwise
         else:
             more_one_adj_L1 = set(filter(lambda n: lenNN[n] > 1, N))
             for n in more_one_adj_L1:
@@ -265,6 +287,7 @@ def JointPoint2KinematicGraph(jp_graph: nx.Graph):
                 L2 = Link(joints=set([N, current_joint]))
                 N.links.add(L2)
         links.append(L2)
+        # Add the neighbors to the stack
         if isinstance(N, set):
             intersting_joints = set(filter(lambda n: len(n.links) < 2, N))
             stack_joints += list(intersting_joints)
@@ -278,6 +301,7 @@ def JointPoint2KinematicGraph(jp_graph: nx.Graph):
     kin_graph.G = ground_link
     kin_graph.joint_graph = joint_graph
     kin_graph.jps_graph = jps_graph
+    # Add edges to the kinematic graph
     for joint in joint_graph.nodes():
         connected_links = list(joint.links)
         if len(connected_links) == 2:
