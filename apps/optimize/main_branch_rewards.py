@@ -74,9 +74,9 @@ for jp in graph.nodes:
 result_vector = []
 for j in actuator_list:
     # create builder
-    thickness = 10
+    thickness = 0.08
     ParametrizedBuilder(DetailedURDFCreatorFixedEE, size_ground=np.array(
-        [thickness*5, thickness*10, thickness*2]), actuator=j)
+        [thickness*5, thickness*10, thickness*2]), actuator=j, thickness=thickness)
     
     urdf, joint_description, loop_description = jps_graph2urdf(graph)
     crag = CriteriaAggregator(dict_point_criteria, dict_trajectory_criteria, traj_6d)

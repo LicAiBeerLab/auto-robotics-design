@@ -421,7 +421,7 @@ class URDFLinkCreator:
         )
         return urdf.Link(*visual_n_collision, inertial, name=name)
 
-class DetalizedURDFCreater(URDFLinkCreator):
+class DetailedURDFCreator(URDFLinkCreator):
     def __init__(self) -> None:
         super().__init__()
 
@@ -502,16 +502,11 @@ class DetalizedURDFCreater(URDFLinkCreator):
                 ),
                 name=name_link_out,
             )
-
             H_in_j = joint.frame
             H_w_in = joint.link_in.frame
-
             H_w_out = joint.link_out.frame
-
             H_out_j = mr.TransInv(H_w_out) @ H_w_in @ H_in_j
-
             out_origin = cls.trans_matrix2xyz_rpy(H_out_j)
-
             urdf_joint_out = urdf.Joint(
                 urdf.Parent(link=joint.link_out.name),
                 urdf.Child(link=name_link_out),
@@ -756,13 +751,9 @@ class DetailedURDFCreatorFixedEE(URDFLinkCreator):
 
             H_in_j = joint.frame
             H_w_in = joint.link_in.frame
-
             H_w_out = joint.link_out.frame
-
             H_out_j = mr.TransInv(H_w_out) @ H_w_in @ H_in_j
-
             out_origin = cls.trans_matrix2xyz_rpy(H_out_j)
-
             urdf_joint_out = urdf.Joint(
                 urdf.Parent(link=joint.link_out.name),
                 urdf.Child(link=name_link_out),
@@ -917,7 +908,7 @@ class DetailedURDFCreatorFixedEE(URDFLinkCreator):
                         urdf.Material(
                             urdf.Color(rgba=color),
                             name=name_actuator_link + "_Material",
-                        ),
+                        )
                         # name=name_actuator_link + "_Visual",
                     ),
                     urdf.Inertial(
@@ -1017,7 +1008,7 @@ class ParametrizedBuilder(Builder):
         self.attributes = ["density", "joint_damping", "joint_friction", "joint_limits", "actuator", "thickness"]
         self.joint_attributes = ["joint_damping", "joint_friction", "actuator", "joint_limits"]
         self.link_attributes = ["density", "thickness"]
-    
+
     def create_kinematic_graph(self, kinematic_graph: KinematicGraph, name="Robot"):
         # kinematic_graph = deepcopy(kinematic_graph)
         # kinematic_graph.G = list(filter(lambda n: n.name == "G", kinematic_graph.nodes()))[0]
@@ -1030,9 +1021,9 @@ class ParametrizedBuilder(Builder):
         links = kinematic_graph.nodes()
         for link in links:
             self._set_link_attributes(link)
-        
+
         return super().create_kinematic_graph(kinematic_graph, name)
-        
+
     def _set_joint_attributes(self, joint):
         if joint.jp.active:
             joint.actuator = self.actuator[joint.jp.name] if joint.jp.name in self.actuator else self.actuator["default"]
@@ -1041,7 +1032,7 @@ class ParametrizedBuilder(Builder):
         limits = self.joint_limits[joint.jp.name] if joint.jp.name in self.joint_limits else self.joint_limits["default"]
         joint.damphing_friction = (damping, friction)
         joint.pos_limits = limits
-        
+
     def _set_link_attributes(self, link):
         if link.name == "G" and self.size_ground.any():
             link.geometry.size = list(self.size_ground)
@@ -1052,7 +1043,6 @@ class ParametrizedBuilder(Builder):
             link.thickness = self.thickness[link.name] if link.name in self.thickness else self.thickness["default"]
         link.geometry.density = self.density[link.name] if link.name in self.density else self.density["default"]
 
-    
     def check_default(self, params, name):
         if not isinstance(params, dict):
             setattr(self, name, {"default": params})
@@ -1077,7 +1067,7 @@ def jps_graph2urdf(graph: nx.Graph):
             j.actuator = TMotor_AK80_9()
         j.damphing_friction = (0.05, 0)
     kinematic_graph.define_link_frames()
-    builder = Builder(DetalizedURDFCreater)
+    builder = Builder(DetailedURDFCreator)
 
     robot, ative_joints, constraints = builder.create_kinematic_graph(kinematic_graph)
 
@@ -1114,8 +1104,8 @@ def jps_graph2urdf_parametrized(
             j.actuator = actuator
         j.damphing_friction = (0.05, 0)
     kinematic_graph.define_link_frames()
-    # builder = Builder(DetalizedURDFCreater)
-    builder = Builder(DetalizedURDFCreaterFixedEE)
+    # builder = Builder(DetailedURDFCreator)
+    builder = Builder(DetailedURDFCreatorFixedEE)
 
     robot, ative_joints, constraints = builder.create_kinematic_graph(kinematic_graph)
 
