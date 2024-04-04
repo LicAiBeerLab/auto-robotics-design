@@ -897,7 +897,7 @@ class DetailedURDFCreatorFixedEE(URDFLinkCreator):
                     name=name_actuator_weld,
                     type="fixed",
                 )
-                urdf_actuator_link = urdf.Link(DetailedURDFCreatorFixedEE(
+                urdf_actuator_link = urdf.Link(
                     urdf.Visual(
                         urdf.Geometry(
                             urdf.Cylinder(
@@ -918,7 +918,6 @@ class DetailedURDFCreatorFixedEE(URDFLinkCreator):
                         urdf.Mass(float(connected_unit.mass)),
                     ),
                     name=name_actuator_link
-                    )
                 )
                 out["joint"].append(urdf_actuator_weld)
                 out["joint"].append(urdf_actuator_link)
