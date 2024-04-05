@@ -3,9 +3,10 @@ from matplotlib.scale import scale_factory
 import numpy as np
 import numpy.linalg as la
 
-from auto_robot_design.description.actuators import TMotor_AK60_6
+from auto_robot_design.description.actuators import TMotor_AK60_6, TMotor_AK80_64
 
 # from auto_robot_design.generator_functions import generate_graph
+from auto_robot_design.description.utils import set_actuator_to_all_joints
 from auto_robot_design.generator.respawn_algorithm import generate_graph
 from auto_robot_design.description.mechanism import JointPoint2KinematicGraph
 from auto_robot_design.description.builder import DetalizedURDFCreaterFixedEE, ParametrizedBuilder, jps_graph2urdf_by_bulder
@@ -19,12 +20,12 @@ graph, constrain_dict = gen.get_standard_set()[4]
 
 
 
-max_node = sorted(list(graph.nodes()), key=lambda x: la.norm(x.r), reverse=True)[0]
-is_not_active = lambda x: not x.active
-not_active_nodes = list(filter(is_not_active, graph.nodes()))
-high_node = sorted(list(graph.nodes()), key=lambda x: x.r[2], reverse=True)[0]
-#high_node.active = True
-mot2_name = high_node.name
+# max_node = sorted(list(graph.nodes()), key=lambda x: la.norm(x.r), reverse=True)[0]
+# is_not_active = lambda x: not x.active
+# not_active_nodes = list(filter(is_not_active, graph.nodes()))
+# high_node = sorted(list(graph.nodes()), key=lambda x: x.r[2], reverse=True)[0]
+# #high_node.active = True
+# mot2_name = high_node.name
 # print(max_node.r)
 
 
