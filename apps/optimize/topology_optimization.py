@@ -78,7 +78,7 @@ if __name__ == '__main__':
             # create builder
             thickness = 0.01
             ParametrizedBuilder(DetailedURDFCreatorFixedEE, size_ground=np.array(
-                [thickness*5, thickness*10, thickness*2]), actuator=j)
+                [thickness*5, thickness*10, thickness*2]), actuator=j,thickness=thickness)
             # get the graph from the generator
             graph, constrain_dict = all_graphs[i]
             # filter the joints to be optimized
