@@ -8,7 +8,7 @@ from auto_robot_design.optimization.optimizer import jps_graph2urdf
 from auto_robot_design.description.utils import draw_joint_frames, draw_joint_point, draw_link_frames
 from auto_robot_design.generator.two_link_generator import TwoLinkGenerator
 from auto_robot_design.description.mechanism import JointPoint2KinematicGraph
-from auto_robot_design.description.builder import Builder, DetalizedURDFCreater, add_branch, jps_graph2urdf, jps_graph2urdf_parametrized
+from auto_robot_design.description.builder import Builder, URDFLinkCreater, add_branch, jps_graph2urdf, jps_graph2urdf_parametrized
 import networkx as nx
 import pinocchio as pin
 import numpy as np
@@ -28,7 +28,7 @@ sys.path.append(mymodule_dir)
 
 # Load robot
 gen = TwoLinkGenerator()
-builder = Builder(DetalizedURDFCreater)
+builder = Builder(URDFLinkCreater)
 graphs_and_cons = gen.get_standard_set()
 np.set_printoptions(precision=3, linewidth=300, suppress=True, threshold=10000)
 

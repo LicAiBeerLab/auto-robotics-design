@@ -160,283 +160,6 @@ class URDFLinkCreater:
             color2[3] = 0.5
 
             name_link_in = joint.jp.name + "_" + joint.link_in.name + "Pseudo"
-            urdf_pseudo_link_in = urdf.Link(
-                urdf.Visual(
-                    urdf.Geometry(urdf.Sphere(joint.link_in.thickness / 1.4)),
-                    urdf.Material(urdf.Color(rgba=color1)),
-                ),
-                name=name_link_in,
-            )
-            urdf_joint_in = urdf.Joint(
-                urdf.Parent(link=joint.link_in.name),
-                urdf.Child(link=name_link_in),
-                urdf.Origin(
-                    xyz=origin[0],
-                    rpy=origin[1],
-                ),
-                urdf.Axis(joint.jp.w.tolist()),
-                urdf.Limit(
-                    lower=joint.pos_limits[0],
-                    upper=joint.pos_limits[1],
-                    effort=joint.actuator.get_max_effort(),
-                    velocity=joint.actuator.get_max_vel(),
-                ),
-                urdf.Dynamics(
-                    damping=joint.damphing_friction[0],
-                    friction=joint.damphing_friction[1],
-                ),
-                name=joint.jp.name + "_" + joint.link_in.name + "_revolute",
-                type="revolute",
-            )
-
-            name_link_out = joint.jp.name + "_" + joint.link_out.name + "Pseudo"
-            urdf_pseudo_link_out = urdf.Link(
-                urdf.Visual(
-                    urdf.Geometry(urdf.Sphere(joint.link_out.thickness / 1.4)),
-                    urdf.Material(urdf.Color(rgba=color2)),
-                ),
-                name=name_link_out,
-            )
-
-            H_in_j = joint.frame
-            H_w_in = joint.link_in.frame
-
-            H_w_out = joint.link_out.frame
-
-            H_out_j = mr.TransInv(H_w_out) @ H_w_in @ H_in_j
-
-            out_origin = cls.trans_matrix2xyz_rpy(H_out_j)
-
-            urdf_joint_out = urdf.Joint(
-                urdf.Parent(link=joint.link_out.name),
-                urdf.Child(link=name_link_out),
-                urdf.Origin(
-                    xyz=out_origin[0],
-                    rpy=out_origin[1],
-                ),
-                name=joint.jp.name + "_" + joint.link_in.name + "_fix",
-                type="fixed",
-            )
-
-            out = {
-                "joint": [
-                    urdf_pseudo_link_in,
-                    urdf_joint_in,
-                    urdf_joint_out,
-                    urdf_pseudo_link_out,
-                ],
-                "constraint": [name_link_in, name_link_out],
-            }
-        else:
-
-            urdf_joint = urdf.Joint(
-                urdf.Parent(link=joint.link_in.name),
-                urdf.Child(link=joint.link_out.name),
-                urdf.Origin(
-                    xyz=origin[0],
-                    rpy=origin[1],
-                ),
-                urdf.Axis(joint.jp.w.tolist()),
-                urdf.Limit(
-                    lower=joint.pos_limits[0],
-                    upper=joint.pos_limits[1],
-                    effort=joint.actuator.get_max_effort(),
-                    velocity=joint.actuator.get_max_vel(),
-                ),
-                urdf.Dynamics(
-                    damping=joint.damphing_friction[0],
-                    friction=joint.damphing_friction[1],
-                ),
-                name=joint.jp.name,
-                type="revolute",
-            )
-            out = {"joint": [urdf_joint]}
-        if joint.jp.active:
-            out["active"] = joint.jp.name
-        return out
-
-    @classmethod
-    def trans_matrix2xyz_rpy(cls, H):
-        """
-        Convert a transformation matrix to XYZ and RPY representation.
-
-        Args:
-            H: The transformation matrix.
-
-        Returns:
-            tuple: A tuple containing the XYZ position and RPY orientation.
-        """
-        Rp = mr.TransToRp(H)
-        rpy = R.from_matrix(Rp[0]).as_euler("xyz").tolist()
-        return (Rp[1].tolist(), rpy)
-
-    @classmethod
-    def convert_inertia(cls, tensor_inertia):
-        """
-        Convert the tensor inertia to a dictionary representation.
-
-        Args:
-            tensor_inertia: The tensor inertia.
-
-        Returns:
-            dict: A dictionary containing the converted inertia values.
-        """
-        x, y, z = tuple(range(3))
-        Ixx = tensor_inertia[x][x]
-        Iyy = tensor_inertia[y][y]
-        Izz = tensor_inertia[z][z]
-        Ixy = tensor_inertia[x][y]
-        Ixz = tensor_inertia[x][z]
-        Iyz = tensor_inertia[y][z]
-        return {"ixx": Ixx, "ixy": Ixy, "ixz": Ixz, "iyy": Iyy, "iyz": Iyz, "izz": Izz}
-
-    @classmethod
-    def _create_box(cls, geometry: Box, name, origin, inertia_origin):
-        """
-        Create a URDF box based on the given Box geometry.
-
-        Args:
-            geometry (Box): The Box geometry object.
-            name: The name of the box.
-            origin: The origin of the box.
-            inertia_origin: The origin of the inertia.
-
-        Returns:
-            urdf.Link: The created URDF link.
-        """
-        name_m = name + "_" + "Material"
-        urdf_material = urdf.Material(urdf.Color(rgba=geometry.color), name=name_m)
-        name_c = name + "_" + "Collision"
-        name_v = name + "_" + "Visual"
-        urdf_geometry = urdf.Geometry(urdf.Box(geometry.size))
-        urdf_inertia_origin = urdf.Origin(
-            xyz=inertia_origin[0],
-            rpy=inertia_origin[1],
-        )
-        urdf_origin = urdf.Origin(
-            xyz=origin[0],
-            rpy=origin[1],
-        )
-
-        visual = urdf.Visual(
-            urdf_origin,
-            urdf_geometry,
-            urdf_material,
-            # name = name_v
-        )
-        collision = urdf.Collision(urdf_origin, urdf_geometry, name=name_c)
-        inertial = urdf.Inertial(
-            urdf_inertia_origin,
-            urdf.Mass(float(geometry.mass)),
-            urdf.Inertia(**cls.convert_inertia(geometry.inertia)),
-        )
-
-        return urdf.Link(visual, collision, inertial, name=name)
-
-    @classmethod
-    def _create_sphere(cls, geometry: Sphere, name, origin, inertia_origin):
-        """
-        Create a URDF sphere based on the given Sphere geometry.
-
-        Args:
-            geometry (Sphere): The Sphere geometry object.
-            name: The name of the sphere.
-            origin: The origin of the sphere.
-            inertia_origin: The origin of the inertia.
-
-        Returns:
-            urdf.Link: The created URDF link.
-        """
-        name_m = name + "_" + "Material"
-        urdf_material = urdf.Material(urdf.Color(rgba=geometry.color), name=name_m)
-
-        name_c = name + "_" + "Collision"
-        name_v = name + "_" + "Visual"
-        urdf_geometry = urdf.Geometry(urdf.Sphere(geometry.size[0]))
-        urdf_inertia_origin = urdf.Origin(
-            xyz=inertia_origin[0],
-            rpy=inertia_origin[1],
-        )
-        urdf_origin = urdf.Origin(
-            xyz=origin[0],
-            rpy=origin[1],
-        )
-
-        visual = urdf.Visual(
-            urdf_origin,
-            urdf_geometry,
-            urdf_material,
-            # name = name_v
-        )
-        collision = urdf.Collision(urdf_origin, urdf_geometry, name=name_c)
-        inertial = urdf.Inertial(
-            urdf_inertia_origin,
-            urdf.Mass(geometry.mass),
-            urdf.Inertia(**cls.convert_inertia(geometry.inertia)),
-        )
-
-        return urdf.Link(visual, collision, inertial, name=name)
-
-    @classmethod
-    def _create_mesh(cls, geometry: Mesh, name, inertia, body_origins):
-        """
-        Create a URDF mesh based on the given Mesh geometry.
-
-        Args:
-            geometry (Mesh): The Mesh geometry object.
-            name: The name of the mesh.
-            inertia: The inertia of the mesh.
-            body_origins: The origins of the mesh bodies.
-
-        Returns:
-            urdf.Link: The created URDF link.
-        """
-        name_m = name + "_" + "Material"
-        urdf_material = urdf.Material(urdf.Color(rgba=geometry.color), name=name_m)
-        origin_I = cls.trans_matrix2xyz_rpy(inertia[0])
-        urdf_inertia_origin = urdf.Origin(xyz=origin_I[0], rpy=origin_I[1])
-        visual_n_collision = []
-        for id, origin in enumerate(body_origins):
-            name_c = name + "_" + str(id) + "_Collision"
-            name_v = name + "_" + str(id) + "_Visual"
-            thickness = geometry.get_thickness()
-            urdf_geometry = urdf.Geometry(urdf.Box([thickness, thickness, origin[2]]))
-            urdf_origin = urdf.Origin(
-                xyz=origin[0],
-                rpy=origin[1],
-            )
-            visual = urdf.Visual(
-                urdf_origin,
-                urdf_geometry,
-                urdf_material,
-                # name = name_v
-            )
-
-            collision = urdf.Collision(urdf_origin, urdf_geometry, name=name_c)
-            visual_n_collision += [visual, collision]
-        inertial = urdf.Inertial(
-            urdf_inertia_origin,
-            urdf.Mass(float(geometry.size.mass)),
-            urdf.Inertia(**cls.convert_inertia(inertia[1])),
-        )
-        return urdf.Link(*visual_n_collision, inertial, name=name)
-
-class DetalizedURDFCreater(URDFLinkCreater):
-    def __init__(self) -> None:
-        super().__init__()
-
-    @classmethod
-    def create_joint(cls, joint: Joint):
-        if joint.link_in is None or joint.link_out is None:
-            return {"joint": []}
-        origin = cls.trans_matrix2xyz_rpy(joint.frame)
-        if joint.is_constraint:
-            color1 = joint.link_in.geometry.color
-            color1[3] = 0.5
-            color2 = joint.link_out.geometry.color
-            color2[3] = 0.5
-
-            name_link_in = joint.jp.name + "_" + joint.link_in.name + "Pseudo"
             rad_in = joint.link_in.geometry.get_thickness() / 1.4
             urdf_pseudo_link_in = urdf.Link(
                 urdf.Visual(
@@ -649,7 +372,7 @@ class DetalizedURDFCreater(URDFLinkCreater):
                         urdf.Inertia(
                             **cls.convert_inertia(joint.actuator.calculate_inertia())
                         ),
-                        urdf.Mass(float(connected_unit.mass)),
+                        urdf.Mass(float(joint.actuator.mass)),
                     ),
                     name=name_actuator_link,
                 )
@@ -658,18 +381,173 @@ class DetalizedURDFCreater(URDFLinkCreater):
 
             out["joint"].append(urdf_unit_link)
             out["joint"].append(urdf_joint_weld)
-        # if joint.jp.attach_ground:
-        #     ground = list(filter(lambda l: l.name == "G", joint.links))[0]
-        #     urdf_ground_link = urdf.Link(
-        #         urdf.Visual(
-        #             urdf.Origin(xyz=joint.jp.r.tolist()),
-        #             urdf.Geometry(urdf.Box(ground.geometry.size)),
-        #             urdf.Material(urdf.Color(rgba=ground.geometry.color)),
-        #         ),
-        #         name=joint.jp.name + "_G",
-        #     )
-        #     out["joint"].append(urdf_ground_link)
         return out
+
+    @classmethod
+    def trans_matrix2xyz_rpy(cls, H):
+        """
+        Convert a transformation matrix to XYZ and RPY representation.
+
+        Args:
+            H: The transformation matrix.
+
+        Returns:
+            tuple: A tuple containing the XYZ position and RPY orientation.
+        """
+        Rp = mr.TransToRp(H)
+        rpy = R.from_matrix(Rp[0]).as_euler("xyz").tolist()
+        return (Rp[1].tolist(), rpy)
+
+    @classmethod
+    def convert_inertia(cls, tensor_inertia):
+        """
+        Convert the tensor inertia to a dictionary representation.
+
+        Args:
+            tensor_inertia: The tensor inertia.
+
+        Returns:
+            dict: A dictionary containing the converted inertia values.
+        """
+        x, y, z = tuple(range(3))
+        Ixx = tensor_inertia[x][x]
+        Iyy = tensor_inertia[y][y]
+        Izz = tensor_inertia[z][z]
+        Ixy = tensor_inertia[x][y]
+        Ixz = tensor_inertia[x][z]
+        Iyz = tensor_inertia[y][z]
+        return {"ixx": Ixx, "ixy": Ixy, "ixz": Ixz, "iyy": Iyy, "iyz": Iyz, "izz": Izz}
+
+    @classmethod
+    def _create_box(cls, geometry: Box, name, origin, inertia_origin):
+        """
+        Create a URDF box based on the given Box geometry.
+
+        Args:
+            geometry (Box): The Box geometry object.
+            name: The name of the box.
+            origin: The origin of the box.
+            inertia_origin: The origin of the inertia.
+
+        Returns:
+            urdf.Link: The created URDF link.
+        """
+        name_m = name + "_" + "Material"
+        urdf_material = urdf.Material(urdf.Color(rgba=geometry.color), name=name_m)
+        name_c = name + "_" + "Collision"
+        name_v = name + "_" + "Visual"
+        urdf_geometry = urdf.Geometry(urdf.Box(geometry.size))
+        urdf_inertia_origin = urdf.Origin(
+            xyz=inertia_origin[0],
+            rpy=inertia_origin[1],
+        )
+        urdf_origin = urdf.Origin(
+            xyz=origin[0],
+            rpy=origin[1],
+        )
+
+        visual = urdf.Visual(
+            urdf_origin,
+            urdf_geometry,
+            urdf_material,
+            # name = name_v
+        )
+        collision = urdf.Collision(urdf_origin, urdf_geometry, name=name_c)
+        inertial = urdf.Inertial(
+            urdf_inertia_origin,
+            urdf.Mass(float(geometry.mass)),
+            urdf.Inertia(**cls.convert_inertia(geometry.inertia)),
+        )
+
+        return urdf.Link(visual, collision, inertial, name=name)
+
+    @classmethod
+    def _create_sphere(cls, geometry: Sphere, name, origin, inertia_origin):
+        """
+        Create a URDF sphere based on the given Sphere geometry.
+
+        Args:
+            geometry (Sphere): The Sphere geometry object.
+            name: The name of the sphere.
+            origin: The origin of the sphere.
+            inertia_origin: The origin of the inertia.
+
+        Returns:
+            urdf.Link: The created URDF link.
+        """
+        name_m = name + "_" + "Material"
+        urdf_material = urdf.Material(urdf.Color(rgba=geometry.color), name=name_m)
+
+        name_c = name + "_" + "Collision"
+        name_v = name + "_" + "Visual"
+        urdf_geometry = urdf.Geometry(urdf.Sphere(geometry.size[0]))
+        urdf_inertia_origin = urdf.Origin(
+            xyz=inertia_origin[0],
+            rpy=inertia_origin[1],
+        )
+        urdf_origin = urdf.Origin(
+            xyz=origin[0],
+            rpy=origin[1],
+        )
+
+        visual = urdf.Visual(
+            urdf_origin,
+            urdf_geometry,
+            urdf_material,
+            # name = name_v
+        )
+        collision = urdf.Collision(urdf_origin, urdf_geometry, name=name_c)
+        inertial = urdf.Inertial(
+            urdf_inertia_origin,
+            urdf.Mass(geometry.mass),
+            urdf.Inertia(**cls.convert_inertia(geometry.inertia)),
+        )
+
+        return urdf.Link(visual, collision, inertial, name=name)
+
+    @classmethod
+    def _create_mesh(cls, geometry: Mesh, name, inertia, body_origins):
+        """
+        Create a URDF mesh based on the given Mesh geometry.
+
+        Args:
+            geometry (Mesh): The Mesh geometry object.
+            name: The name of the mesh.
+            inertia: The inertia of the mesh.
+            body_origins: The origins of the mesh bodies.
+
+        Returns:
+            urdf.Link: The created URDF link.
+        """
+        name_m = name + "_" + "Material"
+        urdf_material = urdf.Material(urdf.Color(rgba=geometry.color), name=name_m)
+        origin_I = cls.trans_matrix2xyz_rpy(inertia[0])
+        urdf_inertia_origin = urdf.Origin(xyz=origin_I[0], rpy=origin_I[1])
+        visual_n_collision = []
+        for id, origin in enumerate(body_origins):
+            name_c = name + "_" + str(id) + "_Collision"
+            name_v = name + "_" + str(id) + "_Visual"
+            thickness = geometry.get_thickness()
+            urdf_geometry = urdf.Geometry(urdf.Box([thickness, thickness, origin[2]]))
+            urdf_origin = urdf.Origin(
+                xyz=origin[0],
+                rpy=origin[1],
+            )
+            visual = urdf.Visual(
+                urdf_origin,
+                urdf_geometry,
+                urdf_material,
+                # name = name_v
+            )
+
+            collision = urdf.Collision(urdf_origin, urdf_geometry, name=name_c)
+            visual_n_collision += [visual, collision]
+        inertial = urdf.Inertial(
+            urdf_inertia_origin,
+            urdf.Mass(float(geometry.size.mass)),
+            urdf.Inertia(**cls.convert_inertia(inertia[1])),
+        )
+        return urdf.Link(*visual_n_collision, inertial, name=name)
 
 
 class DetalizedURDFCreaterFixedEE(URDFLinkCreater):
@@ -924,7 +802,7 @@ class DetalizedURDFCreaterFixedEE(URDFLinkCreater):
                         urdf.Inertia(
                             **cls.convert_inertia(joint.actuator.calculate_inertia())
                         ),
-                        urdf.Mass(float(connected_unit.mass)),
+                        urdf.Mass(float(joint.actuator.mass)),
                     ),
                     name=name_actuator_link,
                 )
@@ -1076,7 +954,7 @@ def jps_graph2urdf(graph: nx.Graph):
             j.actuator = TMotor_AK80_9()
         j.damphing_friction = (0.05, 0)
     kinematic_graph.define_link_frames()
-    builder = Builder(DetalizedURDFCreater)
+    builder = Builder(URDFLinkCreater)
 
     robot, ative_joints, constraints = builder.create_kinematic_graph(kinematic_graph)
 
