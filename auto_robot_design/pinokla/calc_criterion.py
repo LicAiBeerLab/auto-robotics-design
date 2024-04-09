@@ -247,6 +247,12 @@ def iterate_over_q_space(robot: Robot, q_space: np.ndarray,
 class ComputeInterfaceMoment:
     """Abstract class for calculate criterion on each step of simulation."""
 
+    def __init__(self) -> None:
+        """Determine what type of data is needed for the calculation. 
+        From an free model or fixed base model 
+        """
+        self.is_fixed = True
+
     def __call__(
         self, data_frame: dict[str, np.ndarray], robo: Robot = None
     ) -> np.ndarray:
@@ -270,6 +276,12 @@ class ComputeInterfaceMoment:
 
 class ComputeInterface:
     """Abstract class for calculate criterion on data trajectory of simulation."""
+
+    def __init__(self) -> None:
+        """Determine what type of data is needed for the calculation. 
+        From an free model or fixed base model 
+        """
+        self.is_fixed = True
 
     def __call__(self, data_dict: DataDict, robo: Robot = None):
         """Call on output data_dict, that sonatain whole simualtion data. See iterate_over_q_space and psedo_static_step.
