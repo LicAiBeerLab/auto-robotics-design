@@ -279,7 +279,7 @@ def ForwardK(
     Lid = actuation_model.idMotJoints
     Lid_q = actuation_model.idqmot
 
-    (reduced_model, reduced_constraint_models) = freezeJointsWithoutVis(
+    (reduced_model, reduced_constraint_models, reduced_actuation_model) = freezeJointsWithoutVis(
         model, constraint_model, None, Lid, q_prec
     )
 
