@@ -14,7 +14,7 @@ from auto_robot_design.optimization.saver import (
 
 from auto_robot_design.description.utils import (
     draw_joint_point, )
-from auto_robot_design.optimization.problems import CalculateCriteriaProblemByWeigths
+from auto_robot_design.optimization.problems import CalculateCriteriaProblemByWeigths, get_optimizing_joints
 from auto_robot_design.optimization.optimizer import PymooOptimizer
 from auto_robot_design.pinokla.calc_criterion import ForceCapabilityProjectionCompute, ImfCompute, ManipCompute, MovmentSurface, NeutralPoseMass, TranslationErrorMSE
 from auto_robot_design.pinokla.criterion_agregator import CriteriaAggregator
@@ -30,23 +30,9 @@ if __name__ == '__main__':
     draw_joint_point(graph)
     plt.show()
     plt.close()
+    
+    optimizing_joints = get_optimizing_joints(graph, constrain_dict)
 
-    optimizing_joints = dict(
-        filter(lambda x: x[1]["optim"], constrain_dict.items()))
-    name2jp = dict(map(lambda x: (x.name, x), graph.nodes()))
-    optimizing_joints = dict(
-        map(
-            lambda x: (
-                name2jp[x[0]],
-                (
-                    x[1]["x_range"][0],
-                    x[1].get("z_range", [-0.01, 0.01])[0],
-                    x[1]["x_range"][1],
-                    x[1].get("z_range", [0, 0])[1],
-                ),
-            ),
-            optimizing_joints.items(),
-        ))
     # set the criteria to be calculated for each mechanism using the dictionaries 
     # criteria that either calculated without any reference to points, or calculated through the aggregation of values from all points on trajectory
     dict_along_criteria = {
