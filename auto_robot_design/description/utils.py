@@ -1,3 +1,5 @@
+import grp
+from itertools import permutations
 import networkx as nx
 import numpy as np
 import numpy.linalg as la
@@ -9,6 +11,28 @@ from scipy.spatial.transform import Rotation as R
 import modern_robotics as mr
 
 # from auto_robot_design.description.mechanism import KinematicGraph
+
+def all_combinations_active_joints_n_actuator(graph: nx.Graph, actuators):
+    """
+    Generates all possible combinations of active joints and actuators.
+
+    Args:
+        graph (nx.Graph): The graph representing the robot design.
+        actuators (list): List of available actuators.
+
+    Returns:
+        list: List of tuples representing pairs of name of active joints and actuators.
+    """
+    try:
+        active_joints = graph.active_joints
+    except AttributeError:
+        active_joints = [j.name for j in graph.nodes() if j.active]
+
+    combination_actuator = permutations(actuators, len(active_joints))
+    pairs_joint_actuator = []
+    for combination in combination_actuator:
+        pairs_joint_actuator.append(tuple(zip(active_joints, combination))) 
+    return pairs_joint_actuator
 
 
 def trans2_xyz_rpy(trans: np.ndarray) -> tuple[list[float]]:
@@ -269,15 +293,3 @@ def calculate_inertia(length):
     Iyy = 1 / 12 * 1 * (0.001**2 * length**2)
     Izz = 1 / 12 * 1 * (0.001**2 * 0.001**2)
     return {"ixx": Ixx, "ixy": 0, "ixz": 0, "iyy": Iyy, "iyz": 0, "izz": Izz}
-
-def set_random_actuators(graph: nx.Graph, actuators: list):
-    active_joints = [j for j in graph.joint_graph.nodes() if j.jp.active]
-    list_actuators = np.random.choice(actuators, len(active_joints))
-    
-    for joint, actuator in zip(active_joints, list_actuators):
-        joint.actuator = actuator
-        
-def set_actuator_to_all_joints(graph: nx.Graph, actuator):
-    active_joints = [j for j in graph.joint_graph.nodes() if j.jp.active]
-    for joint in active_joints:
-        joint.actuator = actuator
