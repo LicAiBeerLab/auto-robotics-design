@@ -8,7 +8,7 @@ from auto_robot_design.description.kinematics import JointPoint
 from auto_robot_design.description.builder import add_branch
 from auto_robot_design.description.utils import draw_joint_point
 import itertools
-from utilities import set_circle_points
+from auto_robot_design.generator.utilities import set_circle_points
 
 
 class TwoLinkGenerator():

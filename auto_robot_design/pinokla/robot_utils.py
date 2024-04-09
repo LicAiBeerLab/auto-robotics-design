@@ -238,7 +238,8 @@ def freezeJointsWithoutVis(rmodel, rconstraint_model, actuation_model, indexToLo
                 print(f'Remove constraint {n1}//{n2} (during freeze)')
 
         reduced_constraint_models = constraint_models
-    
+        
+    reduced_actuation_model = actuation_model  
     if actuation_model is not None:
         print('Reducing the actuation model')
         list_names = [model.names[idMot] for idMot in actuation_model.idMotJoints]
