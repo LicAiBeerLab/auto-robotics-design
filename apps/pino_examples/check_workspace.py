@@ -63,7 +63,7 @@ workspace_xyz, available_q = search_workspace(robo.model, robo.data, EFFECTOR_NA
     q_mot_double_space), robo.actuation_model, robo.constraint_models)
 
 
-print("Coverage q " + str(len(available_q)/(100*100)))
+print("Coverage q " + str(len(available_q)/(len(q_mot_double_space))))
 
 
 plt.figure()
