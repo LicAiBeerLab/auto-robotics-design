@@ -1012,7 +1012,7 @@ def jps_graph2urdf_by_bulder(
 
     Args:
         graph (nx.Graph): The graph representation of the robot's kinematic structure.
-        builder (ParametrizedBuilder): The builder object used to create the kinematic graph.
+        builder (ParametrizedBuilder): The builder object used to create the URDF.
 
     Returns:
         tuple: A tuple containing the URDF representation of the robot, the actuator description, and the constraints descriptions.
