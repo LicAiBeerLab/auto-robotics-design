@@ -39,6 +39,22 @@ class KinematicGraph(nx.Graph):
         self.joint_graph: nx.Graph = nx.Graph()
         self.jps_graph: nx.Graph = nx.Graph()
 
+    @property
+    def name2joint(self):
+        return {j.jp.name: j for j in self.joint_graph.nodes()}
+    
+    @property
+    def name2jp(self):
+        return {j.jp.name: j.jp for j in self.jps_graph.nodes()}
+    
+    @property
+    def name2link(self):
+        return {l.name: l for l in self.nodes()}
+    
+    @property
+    def active_joints(self):
+        return set(filter(lambda j: j.jp.active, self.joint_graph.nodes()))
+    
     def define_main_branch(self):
         ground_joints = sorted(
             list(get_ground_joints(self.joint_graph)),
@@ -194,7 +210,61 @@ class KinematicGraph(nx.Graph):
             pos = mr.TransInv(prev_link.frame) @ np.r_[joint.jp.r, 1]
 
             joint.frame = mr.RpToTrans(rot, pos[:3])
+            
+    def set_random_actuators(self, actuators: list):
+        """
+        Sets random actuators for the active joints in the mechanism.
+
+        Parameters:
+        - actuators (list): A list of available actuators.
+
+        Returns:
+        - None
+
+        Example usage:
+        >>> from auto_robot_design.description.mechanism import KinematicGraph
+        >>> from auto_robot_design.description.actuators import t_motor_actuators
+        >>> mechanism = KinematicGraph()
+        >>> mechanism.set_random_actuators(t_motor_actuators)
+        """
+        active_joints = [j for j in self.joint_graph.nodes() if j.jp.active]
+        list_actuators = np.random.choice(actuators, len(active_joints))
         
+        for joint, actuator in zip(active_joints, list_actuators):
+            joint.actuator = actuator
+        
+    def set_actuator_to_all_joints(self, actuator):
+        """
+        Sets the actuator for all active joints in the mechanism.
+
+        Parameters:
+        - actuator: The actuator object to be set for all joints.
+
+        Returns:
+        None
+        """
+        active_joints = [j for j in self.nodes() if j.jp.active]
+        for joint in active_joints:
+            joint.actuator = actuator
+    
+    def set_joint2actuator(self, joint2actuator):
+        """
+        Sets the actuator for each joint in the mechanism.
+
+        Parameters:
+        - joint2actuator (dict): A dictionary with the joint as the key and the actuator as the value.
+
+        Returns:
+        None
+        """
+        if isinstance(joint2actuator, dict):
+            for joint, actuator in joint2actuator.items():
+                joint.actuator = actuator
+        elif isinstance(joint2actuator, (tuple, list)):
+            for joint, actuator in joint2actuator:
+                joint.actuator = actuator
+        else:
+            raise ValueError("joint2actuator must be a dictionary or a tuple(list) of tuples(lists).")
 
 
 def JointPoint2KinematicGraph(jp_graph: nx.Graph):

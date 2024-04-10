@@ -194,10 +194,10 @@ if draw_joints:
 
 # %%
 
-from auto_robot_design.description.builder import Builder, URDFLinkCreater, DetalizedURDFCreater
+from auto_robot_design.description.builder import Builder, URDFLinkCreater, URDFLinkCreater
 
 # builder = Builder(URDFLinkCreater)
-builder = Builder(DetalizedURDFCreater)
+builder = Builder(URDFLinkCreater)
 
 robot, ative_joints, constraints = builder.create_kinematic_graph(kinematic_graph)
 
