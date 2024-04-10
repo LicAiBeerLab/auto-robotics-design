@@ -1002,6 +1002,16 @@ def jps_graph2urdf_by_bulder(
     graph: nx.Graph,
     builder: ParametrizedBuilder
 ):
+    """
+    Converts a graph representation of a robot's kinematic structure to a URDF file using a builder.
+
+    Args:
+        graph (nx.Graph): The graph representation of the robot's kinematic structure.
+        builder (ParametrizedBuilder): The builder object used to create the URDF.
+
+    Returns:
+        tuple: A tuple containing the URDF representation of the robot, the actuator description, and the constraints descriptions.
+    """
     kinematic_graph = JointPoint2KinematicGraph(graph)
     kinematic_graph.define_main_branch()
     kinematic_graph.define_span_tree()
