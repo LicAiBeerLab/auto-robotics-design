@@ -12,6 +12,7 @@ from auto_robot_design.description.mechanism import JointPoint2KinematicGraph
 from auto_robot_design.description.builder import DetalizedURDFCreaterFixedEE, ParametrizedBuilder, jps_graph2urdf_by_bulder
 from auto_robot_design.generator.two_link_generator import TwoLinkGenerator
 from auto_robot_design.pino_adapter.pino_adapter import get_pino_description
+from auto_robot_design.pinokla.loader_tools import build_model_with_extensions
 
 
 gen = TwoLinkGenerator()
@@ -40,9 +41,14 @@ builder = ParametrizedBuilder(DetalizedURDFCreaterFixedEE,
                               size_ground=np.array([thickness*5, thickness*10, thickness*2]),
 )
 
-robo_urdf, __, __ = jps_graph2urdf_by_bulder(graph, builder)
+robo_urdf, joint_description, loop_description = jps_graph2urdf_by_bulder(graph, builder)
 
 
-with open("parametrized_builder_test.urdf", "w") as f:
-    f.write(robo_urdf)
+# with open("parametrized_builder_test.urdf", "w") as f:
+#     f.write(robo_urdf)
 
+robo = build_model_with_extensions(robo_urdf,
+                                joint_description=joint_description,
+                                loop_description=loop_description,
+                                actuator_context=pairs[0],
+                                fixed=True)

@@ -4,7 +4,6 @@ from auto_robot_design.pinokla.criterion_agregator import ComputeConfg, calc_cri
 from auto_robot_design.pinokla.closed_loop_jacobian import dq_dqmot, inverseConstraintKinematicsSpeed
 from auto_robot_design.pinokla.calc_criterion import calc_IMF, calc_foot_inertia, calc_manipulability, convert_full_J_to_planar_xz
 from auto_robot_design.pino_adapter import pino_adapter
-from auto_robot_design.optimization.optimizer import jps_graph2urdf
 from auto_robot_design.description.utils import draw_joint_frames, draw_joint_point, draw_link_frames
 from auto_robot_design.generator.two_link_generator import TwoLinkGenerator
 from auto_robot_design.description.mechanism import JointPoint2KinematicGraph
