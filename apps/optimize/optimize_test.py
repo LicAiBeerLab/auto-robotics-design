@@ -20,7 +20,7 @@ from auto_robot_design.pinokla.calc_criterion import ForceCapabilityProjectionCo
 from auto_robot_design.pinokla.criterion_agregator import CriteriaAggregator
 from auto_robot_design.pinokla.criterion_math import ImfProjections
 from auto_robot_design.pinokla.default_traj import convert_x_y_to_6d_traj_xz, get_simple_spline
-from auto_robot_design.optimization.reward import VelocityReward, EndPointZRRReward, EndPointIMFReward, PositioningReward, MassReward, ForceEllipsoidReward
+from auto_robot_design.optimization.rewards.reward_base import VelocityReward, EndPointZRRReward, EndPointIMFReward, PositioningReward, MassReward, ForceEllipsoidReward
 
 
 if __name__ == '__main__':

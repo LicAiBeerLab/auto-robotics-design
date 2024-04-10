@@ -20,13 +20,14 @@ from auto_robot_design.pinokla.calc_criterion import ForceCapabilityProjectionCo
 from auto_robot_design.pinokla.criterion_agregator import CriteriaAggregator
 from auto_robot_design.pinokla.criterion_math import ImfProjections
 from auto_robot_design.pinokla.default_traj import convert_x_y_to_6d_traj_xz, get_simple_spline, get_vertical_trajectory
-from auto_robot_design.optimization.reward import VelocityReward, EndPointZRRReward, EndPointIMFReward, PositioningReward, MassReward, ForceEllipsoidReward,HeavyLiftingReward
+from auto_robot_design.optimization.rewards.reward_base import PositioningReward
+from auto_robot_design.optimization.rewards.jacobian_and_inertia_rewards import HeavyLiftingReward
 from auto_robot_design.description.actuators import TMotor_AK10_9, TMotor_AK60_6, TMotor_AK70_10, TMotor_AK80_64, TMotor_AK80_9
 from auto_robot_design.description.builder import ParametrizedBuilder, DetailedURDFCreatorFixedEE
 
 
 if __name__ == '__main__':
-    # set the optimisation task
+    # set the optimization task
     # 1) trajectories
     x_traj, y_traj = get_simple_spline()
     x_traj, y_traj = get_vertical_trajectory(3)
@@ -49,16 +50,7 @@ if __name__ == '__main__':
     crag = CriteriaAggregator(
         dict_point_criteria, dict_trajectory_criteria, traj_6d)
     # set the rewards and weights for the optimization task
-    rewards = [(VelocityReward(manipulability_key='MANIP', trajectory_key="traj_6d", error_key="error"), 1),
-               (ForceEllipsoidReward(manipulability_key='MANIP',
-                trajectory_key="traj_6d", error_key="error"), 1),
-               (EndPointIMFReward(imf_key='IMF',
-                trajectory_key="traj_6d", error_key="error"), 1),
-               (EndPointZRRReward(manipulability_key='MANIP',
-                trajectory_key="traj_6d", error_key="error"), 1),
-               (PositioningReward(pos_error_key="POS_ERR"),
-                1), (MassReward(mass_key="MASS"), 1)
-               ]
+
     rewards = [(HeavyLiftingReward(manipulability_key='MANIP', trajectory_key="traj_6d", error_key="error", mass_key="MASS"),1)]
     # activate multiprocessing
     N_PROCESS = 4
@@ -120,8 +112,9 @@ if __name__ == '__main__':
 
             best_id = np.argmin(optimizer.history["F"])
             best_x = optimizer.history["X"][best_id]
+            best_reward = optimizer.history["F"][best_id]
             problem.mutate_JP_by_xopt(best_x)
-            best_vector.append(problem.graph)
+            best_vector.append((problem.graph, j, best_reward))
 
-    draw_joint_point(best_vector[2])
+    draw_joint_point(best_vector[2][0])
     plt.show()

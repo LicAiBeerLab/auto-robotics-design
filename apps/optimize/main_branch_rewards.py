@@ -19,11 +19,11 @@ from auto_robot_design.pinokla.calc_criterion import ForceCapabilityProjectionCo
 from auto_robot_design.pinokla.criterion_agregator import CriteriaAggregator
 from auto_robot_design.pinokla.criterion_math import ImfProjections
 from auto_robot_design.pinokla.default_traj import convert_x_y_to_6d_traj_xz, get_simple_spline, get_vertical_trajectory
-from auto_robot_design.optimization.reward import VelocityReward, EndPointZRRReward, EndPointIMFReward, PositioningReward, MassReward, ForceEllipsoidReward,HeavyLiftingReward
+from auto_robot_design.optimization.rewards.reward_base import VelocityReward, EndPointZRRReward, EndPointIMFReward, PositioningReward, MassReward, ForceEllipsoidReward,HeavyLiftingReward
 from auto_robot_design.description.actuators import TMotor_AK10_9, TMotor_AK60_6, TMotor_AK70_10, TMotor_AK80_64, TMotor_AK80_9
 from auto_robot_design.description.builder import ParametrizedBuilder, DetailedURDFCreatorFixedEE, jps_graph2urdf_by_bulder
 
-# set the optimisation task
+# set the optimization task
 # 1) trajectories
 x_traj, y_traj = get_simple_spline()
 x_traj, y_traj = get_vertical_trajectory(3)
@@ -57,7 +57,6 @@ rewards = [(VelocityReward(manipulability_key='MANIP', trajectory_key="traj_6d",
             ]
 rewards = [(HeavyLiftingReward(manipulability_key='MANIP', trajectory_key="traj_6d", error_key="error", mass_key="MASS"),1)]
 
-
 # set the list of graphs that should be tested
 topology_list = list(range(3))
 best_vector = []
@@ -74,11 +73,11 @@ result_vector = []
 for j in actuator_list:
     # create builder
     thickness = 0.04
-    # builder = ParametrizedBuilder(DetailedURDFCreatorFixedEE, size_ground=np.array(
-    # [thickness*5, thickness*10, thickness*2]), actuator=j, thickness=thickness)
-
     builder = ParametrizedBuilder(DetailedURDFCreatorFixedEE, size_ground=np.array(
-        [thickness*10, thickness*20, thickness*4]), actuator=j, thickness=thickness)
+    [thickness*5, thickness*10, thickness*2]), actuator=j, thickness=thickness)
+
+    # builder = ParametrizedBuilder(DetailedURDFCreatorFixedEE, size_ground=np.array(
+    #     [thickness*10, thickness*20, thickness*4]), actuator=j, thickness=thickness)
 
     urdf, joint_description, loop_description = jps_graph2urdf_by_bulder(graph, builder)
     crag = CriteriaAggregator(dict_point_criteria, dict_trajectory_criteria, traj_6d)

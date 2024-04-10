@@ -949,7 +949,7 @@ def jps_graph2urdf(graph: nx.Graph):
             j.actuator = TMotor_AK80_9()
         j.damphing_friction = (0.05, 0)
     kinematic_graph.define_link_frames()
-    builder = Builder(URDFLinkCreater)
+    builder = Builder(URDFLinkCreator)
 
     robot, ative_joints, constraints = builder.create_kinematic_graph(kinematic_graph)
 

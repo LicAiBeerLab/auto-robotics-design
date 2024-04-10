@@ -16,7 +16,7 @@ from auto_robot_design.generator.respawn_algorithm import generate_graph
 from auto_robot_design.description.mechanism import JointPoint2KinematicGraph
 from auto_robot_design.description.utils import draw_links
 from auto_robot_design.description.utils import draw_joint_frames, draw_joint_point, draw_link_frames
-from auto_robot_design.description.builder import Builder, URDFLinkCreater, DetalizedURDFCreater
+from auto_robot_design.description.builder import Builder, URDFLinkCreator, DetalizedURDFCreater
 from auto_robot_design.pino_adapter.pino_adapter import get_pino_description
 
 
