@@ -8,7 +8,7 @@ from auto_robot_design.description.kinematics import JointPoint
 from auto_robot_design.description.builder import add_branch
 from auto_robot_design.description.utils import draw_joint_point
 import itertools
-from auto_robot_design.generator.utilities import set_circle_points
+from auto_robot_design.generator.restricted_generator.utilities import set_circle_points
 
 
 class TwoLinkGenerator():
@@ -226,6 +226,11 @@ class TwoLinkGenerator():
 
             add_branch(self.graph, secondary_branch)
 
+    def filter_constrain_dict(self):
+        list_names = list(map(lambda x: x.name, self.graph.nodes))
+        self.constrain_dict = dict(
+            filter(lambda x: x[0] in list_names, self.constrain_dict.items()))
+
     def get_standard_set(self, knee_pos=-0.5, shift=0.5):
         result_list = []
         for inner in [True, False]:
@@ -233,11 +238,13 @@ class TwoLinkGenerator():
                 self.reset()
                 self.build_standard_two_linker(knee_pos=knee_pos)
                 self.add_2l_branch(inner=inner, ground=ground, shift=shift)
+                self.filter_constrain_dict()
                 result_list.append((self.graph, self.constrain_dict))
             for i in self.variants:
                 self.reset()
                 self.build_standard_two_linker(knee_pos=knee_pos)
                 self.add_4l_branch(inner=inner, variant=i, shift=shift)
+                self.filter_constrain_dict()
                 result_list.append((self.graph, self.constrain_dict))
         return result_list
 

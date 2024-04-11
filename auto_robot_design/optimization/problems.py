@@ -8,18 +8,47 @@ from auto_robot_design.description.builder import jps_graph2urdf
 
 from pymoo.core.problem import ElementwiseProblem
 
-from auto_robot_design.pinokla.criterion_agregator import (
-    CriteriaAggregator,
-)
+from auto_robot_design.pinokla.criterion_agregator import CriteriaAggregator
 
+def get_optimizing_joints(graph, constrain_dict):
+    """
+    Retrieves the optimizing joints from a graph based on the given constraint dictionary.
+    Adapter constraints from generator to the optimization problem.
+
+    Parameters:
+    - graph (Graph): The graph containing the joints.
+    - constrain_dict (dict): A dictionary containing the constraints for each joint.
+
+    Returns:
+    - optimizing_joints (dict): A dictionary containing the optimizing joints and their corresponding ranges.
+
+    """
+    name2jp = dict(map(lambda x: (x.name, x), graph.nodes()))
+    optimizing_joints = dict(
+        filter(lambda x: x[1]["optim"] and x[0] in name2jp, constrain_dict.items()))
+    optimizing_joints = dict(
+        map(
+            lambda x: (
+                name2jp[x[0]],
+                (
+                    x[1]["x_range"][0],
+                    x[1].get("z_range", [-0.01, 0.01])[0],
+                    x[1]["x_range"][1],
+                    x[1].get("z_range", [0, 0])[1],
+                ),
+            ),
+            optimizing_joints.items(),
+        ))
+    return optimizing_joints
 
 class CalculateCriteriaProblemByWeigths(ElementwiseProblem):
-    def __init__(self, graph, jp2limits, criteria : CriteriaAggregator, weights, **kwargs):
+    def __init__(self, graph, jp2limits, criteria : CriteriaAggregator, weights, rewards=[], **kwargs):
         self.graph = graph
         self.jp2limits = jp2limits
         self.opt_joints = list(self.jp2limits.keys())
         self.weights = weights
         self.criteria = criteria
+        self.rewards = rewards
         self.initial_xopt, __, upper_bounds, lower_bounds = self.convert_joints2x_opt()
         super().__init__(
             n_var=len(self.initial_xopt),
@@ -29,18 +58,26 @@ class CalculateCriteriaProblemByWeigths(ElementwiseProblem):
             **kwargs,
         )
 
+    def add_reward(self, reward, weight=1.0):
+        self.rewards.append((reward, weight))
+        
     def _evaluate(self, x, out, *args, **kwargs):
         self.mutate_JP_by_xopt(x)
         urdf, joint_description, loop_description = jps_graph2urdf(self.graph)
 
-        moment_critria_trj, along_critria_trj, res_dict_fixed = self.criteria.get_criteria_data(urdf, joint_description, loop_description)
-        imf_start_fin = -(moment_critria_trj["IMF"][0] +  moment_critria_trj["IMF"][-1]) / 2
-        mass = along_critria_trj["MASS"]
-        pos_err = along_critria_trj["POS_ERR"]
-        F = [imf_start_fin, mass, pos_err]
-        final_F = sum([w * crit for w, crit in zip(self.weights, F)])
-        out["F"] = final_F
-        out["Fs"] = F
+        #calculates all characteristics declared in the CriteriaAggregator
+        point_criteria_vector, trajectory_criteria, res_dict_fixed = self.criteria.get_criteria_data(urdf, joint_description, loop_description)
+
+        # all rewards are calculated and added to the result
+        total_result = 0
+        partial_results = []
+        for reward, weight in self.rewards:
+            partial_results.append(reward.calculate(point_criteria_vector, trajectory_criteria, res_dict_fixed))
+            total_result+= weight*partial_results[-1]
+        
+        # the form of the output required by the pymoo lib
+        out["F"] = -total_result
+        out["Fs"] = partial_results
 
     def convert_joints2x_opt(self):
         x_opt = np.zeros(len(self.opt_joints) * 2)

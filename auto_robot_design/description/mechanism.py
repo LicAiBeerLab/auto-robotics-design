@@ -192,7 +192,7 @@ class KinematicGraph(nx.Graph):
             
             rot, __ = mr.TransToRp(prev_in_joint.frame)
             pos = mr.TransInv(prev_link.frame) @ np.r_[joint.jp.r, 1]
-            
+
             joint.frame = mr.RpToTrans(rot, pos[:3])
         
 
