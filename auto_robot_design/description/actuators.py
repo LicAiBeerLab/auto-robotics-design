@@ -240,4 +240,4 @@ all_actuators = (
     t_motor_actuators + unitree_actuators + [MyActuator_RMD_MT_RH_17_100_N()]
 )
 
-main_actuators = [unitree_actuators, Unitree_B2_Motor, Unitree_H1_Motor]
+main_actuators = [*t_motor_actuators, Unitree_B2_Motor(), Unitree_H1_Motor()]

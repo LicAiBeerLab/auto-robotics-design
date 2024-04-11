@@ -22,6 +22,7 @@ from auto_robot_design.description.kinematics import (
 from auto_robot_design.description.mechanism import JointPoint2KinematicGraph, KinematicGraph
 from auto_robot_design.description.utils import tensor_inertia_sphere_by_mass
 from auto_robot_design.pino_adapter.pino_adapter import get_pino_description
+from auto_robot_design.pinokla.loader_tools import build_model_with_extensions
 
 DEFAULT_DENSITY = 2700 / 2.8
 DEFAULT_THICKNESS = 0.04
@@ -931,73 +932,6 @@ class ParametrizedBuilder(Builder):
         if "default" not in getattr(self, name):
             getattr(self, name)["default"] = DEFAULT_PARAMS_DICT[name]
 
-
-def jps_graph2urdf(graph: nx.Graph):
-    kinematic_graph = JointPoint2KinematicGraph(graph)
-    kinematic_graph.define_main_branch()
-    kinematic_graph.define_span_tree()
-    thickness = 0.04
-    density = 2700 / 2.8
-
-    for n in kinematic_graph.nodes():
-        n.thickness = thickness
-        n.density = density
-
-    for j in kinematic_graph.joint_graph.nodes():
-        j.pos_limits = (-np.pi, np.pi)
-        if j.jp.active:
-            j.actuator = TMotor_AK80_9()
-        j.damphing_friction = (0.05, 0)
-    kinematic_graph.define_link_frames()
-    builder = Builder(URDFLinkCreator)
-
-    robot, ative_joints, constraints = builder.create_kinematic_graph(kinematic_graph)
-
-    act_description, constraints_descriptions = get_pino_description(
-        ative_joints, constraints
-    )
-
-    return robot.urdf(), act_description, constraints_descriptions
-
-
-def jps_graph2urdf_parametrized(
-    graph: nx.Graph,
-    density_EE: float = 2700 / 2.8,
-    density_G: float = 2700 / 2.8,
-    actuator=TMotor_AK80_9(),
-):
-    kinematic_graph = JointPoint2KinematicGraph(graph)
-    kinematic_graph.define_main_branch()
-    kinematic_graph.define_span_tree()
-    thickness = 0.04
-    density = 2700 / 2.8
-
-    for n in kinematic_graph.nodes():
-        n.thickness = thickness
-        n.density = density
-        if n.name == "EE":
-            n.density = density_EE
-        if n.name == "G":
-            n.density = density_G
-
-    for j in kinematic_graph.joint_graph.nodes():
-        j.pos_limits = (-np.pi, np.pi)
-        if j.jp.active:
-            j.actuator = actuator
-        j.damphing_friction = (0.05, 0)
-    kinematic_graph.define_link_frames()
-    # builder = Builder(DetailedURDFCreator)
-    builder = Builder(DetailedURDFCreatorFixedEE)
-
-    robot, ative_joints, constraints = builder.create_kinematic_graph(kinematic_graph)
-
-    act_description, constraints_descriptions = get_pino_description(
-        ative_joints, constraints
-    )
-
-    return robot.urdf(), act_description, constraints_descriptions
-
-
 def jps_graph2urdf_by_bulder(
     graph: nx.Graph,
     builder: ParametrizedBuilder
@@ -1026,6 +960,47 @@ def jps_graph2urdf_by_bulder(
 
     return robot.urdf(), act_description, constraints_descriptions
 
+
+def jps_graph2pinocchio_robot(
+    graph: nx.Graph,
+    builder: ParametrizedBuilder
+):
+    """
+    Converts a Joint Point Structure (JPS) graph to a Pinocchio robot model.
+
+    Args:
+        graph (nx.Graph): The Joint Point Structure (JPS) graph representing the robot's kinematic structure.
+        builder (ParametrizedBuilder): The builder object used to create the kinematic graph.
+
+    Returns:
+        tuple: A tuple containing the robot model with fixed base and free base.
+    """
+    
+    kinematic_graph = JointPoint2KinematicGraph(graph)
+    kinematic_graph.define_main_branch()
+    kinematic_graph.define_span_tree()
+
+    kinematic_graph.define_link_frames()
+
+    robot, ative_joints, constraints = builder.create_kinematic_graph(kinematic_graph)
+
+    act_description, constraints_descriptions = get_pino_description(
+        ative_joints, constraints
+    )
+
+    fixed_robot = build_model_with_extensions(robot.urdf(),
+                                joint_description=act_description,
+                                loop_description=constraints_descriptions,
+                                actuator_context=kinematic_graph,
+                                fixed=True)
+
+    free_robot = build_model_with_extensions(robot.urdf(),
+                                joint_description=act_description,
+                                loop_description=constraints_descriptions,
+                                actuator_context=kinematic_graph,
+                                fixed=False)
+    
+    return fixed_robot, free_robot
 
 def create_dict_jp_limit(joints, limit):
     jp2limits = {}

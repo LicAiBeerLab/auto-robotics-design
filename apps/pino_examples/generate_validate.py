@@ -2,9 +2,9 @@
 import matplotlib.pyplot as plt
 
 
-from auto_robot_design.description.builder import Builder, URDFLinkCreator, add_branch, jps_graph2urdf
+from auto_robot_design.description.builder import Builder, URDFLinkCreater, add_branch, jps_graph2urdf
 from auto_robot_design.description.mechanism import JointPoint2KinematicGraph
-from auto_robot_design.generator.restricted_generator.two_link_generator import TwoLinkGenerator
+from auto_robot_design.generator.two_link_generator import TwoLinkGenerator
 from auto_robot_design.description.utils import draw_joint_point
 from auto_robot_design.optimization.optimizer import jps_graph2urdf
 

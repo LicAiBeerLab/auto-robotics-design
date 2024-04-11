@@ -53,7 +53,7 @@ class KinematicGraph(nx.Graph):
     
     @property
     def active_joints(self):
-        return set(filter(lambda j: j.jp.active, self.joint_graph.nodes()))
+        return set(map(lambda x: x.jp.name, filter(lambda j: j.jp.active, self.joint_graph.nodes())))
     
     def define_main_branch(self):
         ground_joints = sorted(
@@ -243,7 +243,7 @@ class KinematicGraph(nx.Graph):
         Returns:
         None
         """
-        active_joints = [j for j in self.nodes() if j.jp.active]
+        active_joints = [j for j in self.joint_graph.nodes() if j.jp.active]
         for joint in active_joints:
             joint.actuator = actuator
     
@@ -252,17 +252,17 @@ class KinematicGraph(nx.Graph):
         Sets the actuator for each joint in the mechanism.
 
         Parameters:
-        - joint2actuator (dict): A dictionary with the joint as the key and the actuator as the value.
+        - joint2actuator (dict): A dictionary with the joint name as the key and the actuator as the value.
 
         Returns:
         None
         """
         if isinstance(joint2actuator, dict):
             for joint, actuator in joint2actuator.items():
-                joint.actuator = actuator
+                self.name2joint[joint].actuator = actuator
         elif isinstance(joint2actuator, (tuple, list)):
             for joint, actuator in joint2actuator:
-                joint.actuator = actuator
+                self.name2joint[joint].actuator = actuator
         else:
             raise ValueError("joint2actuator must be a dictionary or a tuple(list) of tuples(lists).")
 
@@ -376,7 +376,7 @@ def JointPoint2KinematicGraph(jp_graph: nx.Graph):
         connected_links = list(joint.links)
         if len(connected_links) == 2:
             kin_graph.add_edge(connected_links[0], connected_links[1], joint=joint)
-
+    Link.instance_counter = 0
     return kin_graph
 
 
