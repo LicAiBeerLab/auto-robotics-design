@@ -181,7 +181,7 @@ for j in kinematic_graph.joint_graph.nodes():
 kinematic_graph.define_link_frames()
 
 pairs = all_combinations_active_joints_n_actuator(kinematic_graph, main_actuators)
-
+print(pairs[4])
 kinematic_graph.set_joint2actuator(pairs[4])
 
 if draw_joints:
