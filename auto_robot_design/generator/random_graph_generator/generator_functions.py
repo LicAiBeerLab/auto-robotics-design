@@ -1,7 +1,7 @@
-    """Functions for generating random graph for a mechanism with two DoF
-    
+"""Functions for generating random graph for a mechanism with two DoF
+
     The link lengths and joint positions are randomly sampled from the parametrized ranges.
-    """
+"""
 import networkx as nx
 import numpy as np
 from typing import Tuple, List

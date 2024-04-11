@@ -5,7 +5,7 @@ from auto_robot_design.pinokla.closed_loop_jacobian import dq_dqmot, inverseCons
 from auto_robot_design.pinokla.calc_criterion import calc_IMF, calc_foot_inertia, calc_manipulability, convert_full_J_to_planar_xz
 from auto_robot_design.pino_adapter import pino_adapter
 from auto_robot_design.description.utils import draw_joint_frames, draw_joint_point, draw_link_frames
-from auto_robot_design.generator.two_link_generator import TwoLinkGenerator
+from auto_robot_design.generator.restricted_generator.two_link_generator import TwoLinkGenerator
 from auto_robot_design.description.mechanism import JointPoint2KinematicGraph
 from auto_robot_design.description.builder import Builder, URDFLinkCreator, add_branch, jps_graph2urdf, jps_graph2urdf_parametrized
 import networkx as nx

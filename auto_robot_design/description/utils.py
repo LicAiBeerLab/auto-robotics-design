@@ -1,4 +1,3 @@
-import grp
 from itertools import permutations
 import networkx as nx
 import numpy as np

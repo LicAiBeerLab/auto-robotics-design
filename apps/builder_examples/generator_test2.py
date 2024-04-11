@@ -12,7 +12,7 @@ from auto_robot_design.description.kinematics import JointPoint
 
 from auto_robot_design.description.utils import draw_joint_point
 # from auto_robot_design.generator_functions import generate_graph
-from auto_robot_design.generator.respawn_algorithm import generate_graph
+from auto_robot_design.generator.respawn_algorithm.respawn_algorithm import generate_graph
 from auto_robot_design.description.mechanism import JointPoint2KinematicGraph
 from auto_robot_design.description.utils import draw_links
 from auto_robot_design.description.utils import draw_joint_frames, draw_joint_point, draw_link_frames
