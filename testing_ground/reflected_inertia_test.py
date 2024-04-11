@@ -41,6 +41,7 @@ q = closedLoopProximalMount(robo.model, robo.data, robo.constraint_models, robo.
 nominal_M = pin.crba(robo.model, robo.data, q)
 nominal_names = np.array(robo.model.names)[1:]
 for pair_j_act in pairs:
+    builder.actuator.update(dict(pair_j_act))
     robo_urdf, joint_description, loop_description = jps_graph2urdf_by_bulder(graph, builder)
 
     robo = build_model_with_extensions(robo_urdf,
