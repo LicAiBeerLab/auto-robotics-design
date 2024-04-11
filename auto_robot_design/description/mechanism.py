@@ -376,7 +376,7 @@ def JointPoint2KinematicGraph(jp_graph: nx.Graph):
         connected_links = list(joint.links)
         if len(connected_links) == 2:
             kin_graph.add_edge(connected_links[0], connected_links[1], joint=joint)
-
+    Link.instance_counter = 0
     return kin_graph
 
 
