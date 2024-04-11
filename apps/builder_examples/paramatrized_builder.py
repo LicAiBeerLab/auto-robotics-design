@@ -20,7 +20,7 @@ density = 2700 / 2.8
 
 print(pairs[0])
 builder = ParametrizedBuilder(DetalizedURDFCreaterFixedEE,
-                              density=density,
+                              density={"default": density, "G":10000},
                               thickness={"default": thickness, "EE":0.08},
                               actuator=dict(pairs[0]),
                               size_ground=np.array([thickness*5, thickness*10, thickness*2]),
