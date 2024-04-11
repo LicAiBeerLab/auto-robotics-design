@@ -252,17 +252,17 @@ class KinematicGraph(nx.Graph):
         Sets the actuator for each joint in the mechanism.
 
         Parameters:
-        - joint2actuator (dict): A dictionary with the joint as the key and the actuator as the value.
+        - joint2actuator (dict): A dictionary with the joint name as the key and the actuator as the value.
 
         Returns:
         None
         """
         if isinstance(joint2actuator, dict):
             for joint, actuator in joint2actuator.items():
-                joint.actuator = actuator
+                self.name2joint[joint].actuator = actuator
         elif isinstance(joint2actuator, (tuple, list)):
             for joint, actuator in joint2actuator:
-                joint.actuator = actuator
+                self.name2joint[joint].actuator = actuator
         else:
             raise ValueError("joint2actuator must be a dictionary or a tuple(list) of tuples(lists).")
 
