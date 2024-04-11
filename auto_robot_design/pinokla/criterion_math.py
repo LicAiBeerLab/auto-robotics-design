@@ -62,6 +62,17 @@ def calc_IMF(M: np.ndarray,
 
     return ret_IMF
 
+def calc_effective_inertia(M: np.ndarray,
+             dq: np.ndarray,
+             J_closed: np.ndarray,
+             projection: ImfProjections = ImfProjections.Z):
+
+    Mmot = dq.T @ M @ dq
+    Lambda = np.linalg.inv(
+        J_closed @ np.linalg.inv(Mmot) @ J_closed.T)
+
+    return Lambda
+
 
 def calc_force_ellips_space(jacob: np.ndarray):
     try:

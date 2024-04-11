@@ -10,6 +10,7 @@ from auto_robot_design.pinokla.criterion_math import (
     calculate_mass,
     calc_manipulability,
     convert_full_J_to_planar_xz,
+    calc_effective_inertia
 )
 from auto_robot_design.pinokla.loader_tools import (
     build_model_with_extensions,
@@ -299,6 +300,19 @@ class ImfCompute(ComputeInterfaceMoment):
         )
         return imf
 
+class EffectiveInertiaCompute(ComputeInterfaceMoment):
+    """Wrapper for Effective Inertia. Criterion implementation src is criterion_math"""
+
+    def __init__(self, projection: ImfProjections) -> None:
+        self.is_fixed = False
+
+    def __call__(
+        self, data_frame: dict[str, np.ndarray], robo: Robot = None
+    ) -> np.ndarray:
+        eff_inertia = calc_effective_inertia(
+            data_frame["M"], data_frame["dq"], data_frame["J_closed"]
+        )
+        return eff_inertia
 
 class ManipCompute(ComputeInterfaceMoment):
     """Wrapper for manipulability. Criterion implementation src is criterion_math"""
