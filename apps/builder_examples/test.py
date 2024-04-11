@@ -1,5 +1,4 @@
 # %%
-from matplotlib.scale import scale_factory
 import numpy as np
 import numpy.linalg as la
 
@@ -181,7 +180,7 @@ for j in kinematic_graph.joint_graph.nodes():
     j.damphing_friction = (0.05, 0)
 kinematic_graph.define_link_frames()
 
-set_actuator_to_all_joints(kinematic_graph, TMotor_AK60_6())
+kinematic_graph.set_actuator_to_all_joints(TMotor_AK60_6())
 
 if draw_joints:
     draw_link_frames(kinematic_graph)
