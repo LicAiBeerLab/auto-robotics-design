@@ -229,6 +229,7 @@ class TwoLinkGenerator():
     def filter_constrain_dict(self):
         list_names = list(map(lambda x: x.name, self.graph.nodes))
         self.constrain_dict = dict(filter(lambda x:x[0] in list_names, self.constrain_dict.items()))
+
     def get_standard_set(self, knee_pos=-0.5, shift=0.5):
         result_list = []
         for inner in [True, False]:

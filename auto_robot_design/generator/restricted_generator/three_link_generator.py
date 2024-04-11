@@ -359,6 +359,10 @@ class ThreeLinkGenerator():
                                      self.variants_2l-self.variants_4l_t1, shift=outer_shift, branch_idx=1)
         return self.graph, self.constrain_dict
 
+    def filter_constrain_dict(self):
+        list_names = list(map(lambda x: x.name, self.graph.nodes))
+        self.constrain_dict = dict(filter(lambda x:x[0] in list_names, self.constrain_dict.items()))
+
     def get_all_topologies(self, main_shift=0.2, main_length=0.4, main_pos=0.5,inner_shift=0.5,outer_shift=0.5, nominal_length = 1):
         result = []
         for inner_variant in range(self.total_variants):
@@ -386,6 +390,7 @@ class ThreeLinkGenerator():
                                             self.variants_2l-self.variants_4l_t1, shift=outer_shift, branch_idx=1)
                 
                 if top_in!=top_out and bot_in!=bot_out:
+                    self.filter_constrain_dict()
                     result.append((self.graph, self.constrain_dict))
 
         return result
