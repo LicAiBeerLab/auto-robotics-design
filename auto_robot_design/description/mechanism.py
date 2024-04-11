@@ -243,7 +243,7 @@ class KinematicGraph(nx.Graph):
         Returns:
         None
         """
-        active_joints = [j for j in self.nodes() if j.jp.active]
+        active_joints = [j for j in self.joint_graph.nodes() if j.jp.active]
         for joint in active_joints:
             joint.actuator = actuator
     

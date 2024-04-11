@@ -1,18 +1,7 @@
-from copy import deepcopy
-from dataclasses import dataclass
-import time
 import odio_urdf
-from auto_robot_design.pinokla.loader_tools import completeRobotLoader
-from pinocchio.visualize import MeshcatVisualizer, GepettoVisualizer
-import meshcat
-import os
-import pinocchio as pin
 import numpy as np
-from pinocchio.robot_wrapper import RobotWrapper
 import random
 import os
-import sys
-import xml 
  
 def create_box_link(
     name: str, mass: float, x_size_length: float, y_size: float, z_size: float

@@ -132,7 +132,7 @@ draw_joints = False
 draw_links_repr = False
 
 # %%
-from auto_robot_design.description.utils import draw_joint_frames, draw_joint_point, draw_link_frames, set_actuator_to_all_joints
+from auto_robot_design.description.utils import draw_joint_frames, draw_joint_point, draw_link_frames
 
 if draw_joints:
     draw_joint_point(graph) 
