@@ -362,7 +362,8 @@ def build_model_with_extensions(
     if actuator_context is not None:
         # Perform additional operations based on the actuator context
         if isinstance(actuator_context, dict):
-            actuator_context = tuple(actuator_context.items())
+            
+            actuator_context = tuple(filter(lambda x: x[0] != "default", actuator_context.items()))
         elif isinstance(actuator_context, nx.Graph):
             active_joints = actuator_context.active_joints
             actuator_context = []

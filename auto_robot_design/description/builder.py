@@ -1063,13 +1063,13 @@ def jps_graph2pinocchio_robot(
     fixed_robot = build_model_with_extensions(robot.urdf(),
                                 joint_description=act_description,
                                 loop_description=constraints_descriptions,
-                                actuator_context=builder.actuator,
+                                actuator_context=kinematic_graph,
                                 fixed=True)
 
     free_robot = build_model_with_extensions(robot.urdf(),
                                 joint_description=act_description,
                                 loop_description=constraints_descriptions,
-                                actuator_context=builder.actuator,
+                                actuator_context=kinematic_graph,
                                 fixed=False)
     
     return fixed_robot, free_robot
