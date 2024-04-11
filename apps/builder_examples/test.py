@@ -5,7 +5,7 @@ import numpy.linalg as la
 import matplotlib.pyplot as plt
 
 import networkx as nx
-from auto_robot_design.description.actuators import TMotor_AK60_6, TMotor_AK80_9
+from auto_robot_design.description.actuators import TMotor_AK60_6, TMotor_AK80_9, main_actuators
 
 from auto_robot_design.description.kinematics import JointPoint
 from auto_robot_design.description.builder import add_branch
@@ -132,7 +132,7 @@ draw_joints = False
 draw_links_repr = False
 
 # %%
-from auto_robot_design.description.utils import draw_joint_frames, draw_joint_point, draw_link_frames
+from auto_robot_design.description.utils import all_combinations_active_joints_n_actuator, draw_joint_frames, draw_joint_point, draw_link_frames
 
 if draw_joints:
     draw_joint_point(graph) 
@@ -180,7 +180,9 @@ for j in kinematic_graph.joint_graph.nodes():
     j.damphing_friction = (0.05, 0)
 kinematic_graph.define_link_frames()
 
-kinematic_graph.set_actuator_to_all_joints(TMotor_AK60_6())
+pairs = all_combinations_active_joints_n_actuator(kinematic_graph, main_actuators)
+
+kinematic_graph.set_joint2actuator(pairs[4])
 
 if draw_joints:
     draw_link_frames(kinematic_graph)
