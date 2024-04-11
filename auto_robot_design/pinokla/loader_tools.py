@@ -362,7 +362,7 @@ def build_model_with_extensions(
     if actuator_context is not None:
         # Perform additional operations based on the actuator context
         if isinstance(actuator_context, dict):
-            actuator_context = tuple(actuator_context)
+            actuator_context = tuple(actuator_context.items())
         elif isinstance(actuator_context, nx.Graph):
             active_joints = actuator_context.active_joints
             actuator_context = []
@@ -370,10 +370,8 @@ def build_model_with_extensions(
                 actuator_context.append((act_j.jp.name, act_j.actuator))
         for joint, actuator in actuator_context:
             # It works if motname and idvmot in actuation_model are in the same order
-            place_mot = np.argwhere(
-                np.array(actuation_model.motname) == joint
-            ).squeeze()
-            model.armature[actuation_model.idvmot[place_mot]] = (
+            place_mot = actuation_model.motname2id_v[joint]
+            model.armature[place_mot] = (
                 actuator.inertia * actuator.reduction_ratio**-2
             )
 
