@@ -932,33 +932,33 @@ class ParametrizedBuilder(Builder):
         if "default" not in getattr(self, name):
             getattr(self, name)["default"] = DEFAULT_PARAMS_DICT[name]
 
-def jps_graph2urdf_by_bulder(
-    graph: nx.Graph,
-    builder: ParametrizedBuilder
-):
-    """
-    Converts a graph representation of a robot's kinematic structure to a URDF file using a builder.
+# def jps_graph2urdf_by_bulder(
+#     graph: nx.Graph,
+#     builder: ParametrizedBuilder
+# ):
+#     """
+#     Converts a graph representation of a robot's kinematic structure to a URDF file using a builder.
 
-    Args:
-        graph (nx.Graph): The graph representation of the robot's kinematic structure.
-        builder (ParametrizedBuilder): The builder object used to create the URDF.
+#     Args:
+#         graph (nx.Graph): The graph representation of the robot's kinematic structure.
+#         builder (ParametrizedBuilder): The builder object used to create the URDF.
 
-    Returns:
-        tuple: A tuple containing the URDF representation of the robot, the actuator description, and the constraints descriptions.
-    """
-    kinematic_graph = JointPoint2KinematicGraph(graph)
-    kinematic_graph.define_main_branch()
-    kinematic_graph.define_span_tree()
+#     Returns:
+#         tuple: A tuple containing the URDF representation of the robot, the actuator description, and the constraints descriptions.
+#     """
+#     kinematic_graph = JointPoint2KinematicGraph(graph)
+#     kinematic_graph.define_main_branch()
+#     kinematic_graph.define_span_tree()
 
-    kinematic_graph.define_link_frames()
+#     kinematic_graph.define_link_frames()
 
-    robot, ative_joints, constraints = builder.create_kinematic_graph(kinematic_graph)
+#     robot, ative_joints, constraints = builder.create_kinematic_graph(kinematic_graph)
 
-    act_description, constraints_descriptions = get_pino_description(
-        ative_joints, constraints
-    )
+#     act_description, constraints_descriptions = get_pino_description(
+#         ative_joints, constraints
+#     )
 
-    return robot.urdf(), act_description, constraints_descriptions
+#     return robot.urdf(), act_description, constraints_descriptions
 
 
 def jps_graph2pinocchio_robot(

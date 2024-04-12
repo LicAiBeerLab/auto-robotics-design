@@ -1,40 +1,23 @@
-from copy import deepcopy
-from enum import Enum, IntFlag, auto
 
-from typing import NamedTuple, Optional
-from auto_robot_design.pinokla.criterion_math import (
-    ImfProjections,
-    calc_IMF,
-    calc_force_ell_projection_along_trj,
-    calc_force_ellips_space,
-    calculate_mass,
-    calc_manipulability,
-    convert_full_J_to_planar_xz,
-    calc_effective_inertia,
-    calc_actuated_mass
-)
-from auto_robot_design.pinokla.loader_tools import (
-    build_model_with_extensions,
-    Robot,
-    completeRobotLoader,
-    completeRobotLoaderFromStr,
-)
 import time
-from matplotlib.pylab import LinAlgError
+from collections import UserDict
+from enum import IntFlag, auto
+from typing import NamedTuple, Optional
+
+import numpy as np
 import pinocchio as pin
 from numpy.linalg import norm
-import numpy as np
+
 from auto_robot_design.pinokla.closed_loop_jacobian import (
-    dq_dqmot,
-    inverseConstraintKinematicsSpeed,
-    closedLoopInverseKinematicsProximal,
-)
+    closedLoopInverseKinematicsProximal, dq_dqmot,
+    inverseConstraintKinematicsSpeed)
 from auto_robot_design.pinokla.closed_loop_kinematics import (
-    ForwardK,
-    closedLoopProximalMount,
-)
-import numpy.typing as npt
-from collections import UserDict
+    ForwardK, closedLoopProximalMount)
+from auto_robot_design.pinokla.criterion_math import (
+    ImfProjections, calc_actuated_mass, calc_effective_inertia,
+    calc_force_ell_projection_along_trj, calc_IMF, calculate_mass,
+    convert_full_J_to_planar_xz)
+from auto_robot_design.pinokla.loader_tools import Robot
 
 
 class MovmentSurface(IntFlag):
@@ -50,8 +33,7 @@ class PsedoStepResault(NamedTuple):
 
 
 class DataDict(UserDict):
-    """Dict to srote simulation data. Each value is np.array with same size.
-
+    """Dict to store simulation data. Each value is np.array with same size.
 
     Args:
         UserDict (_type_): _description_
@@ -85,7 +67,7 @@ def search_workspace(
     constraint_models,
     viz=None,
 ):
-    """Iterate forward kinamatics over q_space and try to minimize constain value.
+    """Iterate forward kinematics over q_space and try to minimize constrain value.
 
     Args:
         model (_type_): _description_
@@ -133,7 +115,6 @@ def search_workspace(
             available_q[c] = q3
             c += 1
     return (workspace_xyz[0:c], available_q[0:c])
-
 
 def folow_traj_by_proximal_inv_k(
     model,
@@ -274,10 +255,10 @@ class ComputeInterface:
     """Abstract class for calculate criterion on data trajectory of simulation."""
 
     def __call__(self, data_dict: DataDict, robo: Robot = None):
-        """Call on output data_dict, that sonatain whole simualtion data. See iterate_over_q_space and psedo_static_step.
+        """Call on output data_dict, that contain whole simulation data. See iterate_over_q_space and pseudo_static_step.
 
         Args:
-            data_dict (DataDict): simualtion data dict
+            data_dict (DataDict): simulation data dict
             robo (Robot, optional): model description. Defaults to None.
 
         Raises:
@@ -301,6 +282,7 @@ class ImfCompute(ComputeInterfaceMoment):
         )
         return imf
 
+
 class EffectiveInertiaCompute(ComputeInterfaceMoment):
     """Wrapper for Effective Inertia. Criterion implementation src is criterion_math"""
 
@@ -315,7 +297,7 @@ class EffectiveInertiaCompute(ComputeInterfaceMoment):
         )
         return eff_inertia
 
-class Actuated_Mass(ComputeInterfaceMoment):
+class ActuatedMass(ComputeInterfaceMoment):
     """Wrapper for Actuated_Mass. Criterion implementation src is criterion_math"""
 
     def __init__(self) -> None:
