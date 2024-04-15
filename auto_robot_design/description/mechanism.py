@@ -53,7 +53,7 @@ class KinematicGraph(nx.Graph):
     
     @property
     def active_joints(self):
-        return set(map(lambda x: x.jp.name, filter(lambda j: j.jp.active, self.joint_graph.nodes())))
+        return set(map(lambda x: x, filter(lambda j: j.jp.active, self.joint_graph.nodes())))
     
     def define_main_branch(self):
         ground_joints = sorted(
