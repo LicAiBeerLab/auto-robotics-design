@@ -1,3 +1,4 @@
+from copy import deepcopy
 import unittest
 from typing import Optional, Tuple, Union
 import pinocchio as pin
@@ -25,6 +26,26 @@ Robot = namedtuple(
     ],
 )
 
+
+def make_Robot_copy(robo: Robot):
+    # Make real copy
+    copied_constrains = []
+    for con in robo.constraint_models:
+        copied_con = pin.RigidConstraintModel(con)
+        copied_constrains.append(copied_con)
+        pass
+
+    copied_con_dates = []
+    for con in copied_constrains:
+        copied_con_data =  con.createData()
+        copied_con_dates.append(copied_con_data)
+        pass
+
+    copied_model = pin.Model(robo.model)
+    copied_data = copied_model.createData()
+    copied_actuator_model = deepcopy(robo.actuation_model)
+    copied_visual_model = pin.GeometryModel(robo.visual_model)
+    return copied_model, copied_constrains, copied_actuator_model, copied_visual_model, copied_con_dates, copied_data
 
 def nameFrameConstraint(model, nomferme="fermeture", Lid=[]):
     """
@@ -221,7 +242,7 @@ def completeRobotLoader(
 
 
 def completeRobotLoaderFromStr(
-    udf_str: str, joint_description: dict, loop_description: dict, fixed=True
+    udf_str: str, joint_description: dict, loop_description: dict, fixed=True, root_joint_type=pin.JointModelFreeFlyer()
 ):
     """
     Return  model and constraint model associated to a directory, where the name od the urdf is robot.urdf and the name of the yam is robot.yaml
@@ -230,7 +251,7 @@ def completeRobotLoaderFromStr(
     if fixed:
         model = pin.buildModelFromXML(udf_str)
     else:
-        model = pin.buildModelFromXML(udf_str, root_joint=pin.JointModelFreeFlyer())
+        model = pin.buildModelFromXML(udf_str, root_joint=root_joint_type)
         model.names[1] = "root_joint"
 
     visual_model = pin.buildGeomFromUrdfString(
@@ -325,7 +346,7 @@ def completeRobotLoaderFromStr(
         actuation_model = ActuationModel(model, joint_description["name_mot"])
     else:
         Lmot = joint_description["name_mot"]
-        Lmot.append("root_joint")
+        # Lmot.append("root_joint")
         actuation_model = ActuationModel(model, Lmot)
 
     return (model, constraint_models, actuation_model, visual_model)
@@ -337,6 +358,8 @@ def build_model_with_extensions(
     loop_description: dict,
     actuator_context: Union[None, tuple, dict, nx.Graph] = None,
     fixed=True,
+    root_joint_type = pin.JointModelFreeFlyer(),
+    
 ):
     """
     Builds a robot model with extensions based on the provided URDF string, joint description, loop description,
@@ -355,7 +378,7 @@ def build_model_with_extensions(
     """
 
     model, constraint_models, actuation_model, visual_model = (
-        completeRobotLoaderFromStr(urdf_str, joint_description, loop_description, fixed)
+        completeRobotLoaderFromStr(urdf_str, joint_description, loop_description, fixed, root_joint_type)
     )
     constraint_data = [c.createData() for c in constraint_models]
     data = model.createData()

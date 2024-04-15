@@ -11,6 +11,8 @@ import numpy as np
 import pinocchio as pin
 from auto_robot_design.pinokla.actuation_model import ActuationModel
 from typing import Tuple
+
+from auto_robot_design.pinokla.loader_tools import Robot, make_Robot_copy
 # from pinocchio import casadi as caspin
 
 
@@ -342,6 +344,34 @@ def buildModelsFromUrdf(filename, package_dirs=None, root_joint=None, verbose=Fa
 
     return tuple(lst)
 
+def add_3d_constrain_current_q(fixed_robo: Robot, end_effector_name, q):
+    copied_model, copied_con, copied_actuator_model, copied_visual_model, \
+    copied_con_dates, copied_data = make_Robot_copy(
+        fixed_robo)
+
+    ee_id = copied_model.getFrameId(end_effector_name)
+    target_SE3 = pin.SE3.Identity()
+
+    pin.forwardKinematics(copied_model, copied_data, q)
+
+    place = copied_data.oMf[ee_id].translation
+    target_SE3.translation = np.array(place)
+    frame_constraint = copied_model.frames[ee_id]
+    parent_joint = frame_constraint.parentJoint
+    placement = frame_constraint.placement
+
+    final_constraint = pin.RigidConstraintModel(pin.ContactType.CONTACT_3D,
+                                                copied_model, parent_joint,
+                                                placement, 0, target_SE3,
+                                                pin.ReferenceFrame.LOCAL)
+ 
+
+    constraint_data_EE = final_constraint.createData()
+    copied_con.append(final_constraint)
+    copied_con_dates.append(constraint_data_EE)
+    fixed_ee_robo = Robot(copied_model, copied_con, copied_actuator_model,
+                        copied_visual_model, copied_con_dates, copied_data)
+    return fixed_ee_robo
 
 if __name__ == "__main__":
     from loader_tools import completeRobotLoader
