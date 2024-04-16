@@ -53,15 +53,15 @@ if __name__ == '__main__':
     crag_vertical = CriteriaAggregator(
         dict_point_criteria, dict_trajectory_criteria, traj_6d_vertical)
     # set the rewards and weights for the optimization task
-    rewards_step = [(PositioningReward(pos_error_key="POS_ERR"), 1)
-           #(AccelerationCapability(manipulability_key='MANIP', trajectory_key="traj_6d", error_key="error", actuated_mass_key="Actuated_Mass"), 1)
+    rewards_step = [(PositioningReward(pos_error_key="POS_ERR"), 1),
+           (AccelerationCapability(manipulability_key='MANIP', trajectory_key="traj_6d", error_key="error", actuated_mass_key="Actuated_Mass"), 1)
            ]
     
-    rewards_vertical = [(PositioningReward(pos_error_key="POS_ERR"), 1)
-                        #(HeavyLiftingReward(manipulability_key='MANIP', trajectory_key="traj_6d", error_key="error", mass_key="MASS"),1)
+    rewards_vertical = [(PositioningReward(pos_error_key="POS_ERR"), 1),
+                        (HeavyLiftingReward(manipulability_key='MANIP', trajectory_key="traj_6d", error_key="error", mass_key="MASS"),1)
                         ]
     # activate multiprocessing
-    N_PROCESS = 4
+    N_PROCESS = 12
     pool = multiprocessing.Pool(N_PROCESS)
     runner = StarmapParallelization(pool.starmap)
 
@@ -73,6 +73,7 @@ if __name__ == '__main__':
     best_vector = []
     actuator_list = [TMotor_AK10_9(), TMotor_AK60_6(
     ), TMotor_AK70_10(), TMotor_AK80_64(), TMotor_AK80_9()]
+    actuator_list = [TMotor_AK10_9(), TMotor_AK60_6(), TMotor_AK70_10()]
     criteria_and_rewards = [(crag_step, rewards_step),(crag_vertical, rewards_vertical)]
     for i in topology_list:
         for j in actuator_list:
