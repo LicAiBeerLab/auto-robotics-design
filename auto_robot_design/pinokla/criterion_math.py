@@ -68,7 +68,7 @@ def calc_effective_inertia(M: np.ndarray,
              projection: ImfProjections = ImfProjections.Z):
 
     Mmot = dq.T @ M @ dq
-
+    J_closed = J_closed[[0,2]]
     Lambda = np.linalg.inv(
         J_closed @ np.linalg.inv(Mmot) @ J_closed.T)
 
