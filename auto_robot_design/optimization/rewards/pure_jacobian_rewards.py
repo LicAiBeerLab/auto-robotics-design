@@ -1,6 +1,6 @@
 import numpy as np
 
-from reward_base import Reward
+from auto_robot_design.optimization.rewards.reward_base import Reward
 
 class VelocityReward(Reward):
     """Reward the mech for the value of the manipulability along the trajectory

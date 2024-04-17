@@ -1,6 +1,6 @@
 import numpy as np
 
-from reward_base import Reward
+from auto_robot_design.optimization.rewards.reward_base import Reward
 
 class EndPointIMFReward(Reward):
     """IMF in the trajectory edge points"""

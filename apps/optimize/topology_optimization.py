@@ -14,7 +14,7 @@ from auto_robot_design.description.utils import (
     draw_joint_point, )
 from auto_robot_design.optimization.problems import CalculateCriteriaProblemByWeigths
 from auto_robot_design.optimization.optimizer import PymooOptimizer
-from auto_robot_design.pinokla.calc_criterion import ActuatedMass, EffectiveInertiaCompute, ImfCompute, ManipCompute, MovmentSurface, NeutralPoseMass, TranslationErrorMSE
+from auto_robot_design.pinokla.calc_criterion import ActuatedMass, EffectiveInertiaCompute, ImfCompute, ManipCompute, MovmentSurface, NeutralPoseMass, TranslationErrorMSE, ManipJacobian
 from auto_robot_design.pinokla.criterion_agregator import CriteriaAggregator
 from auto_robot_design.pinokla.criterion_math import ImfProjections
 from auto_robot_design.pinokla.default_traj import convert_x_y_to_6d_traj_xz, get_simple_spline, get_vertical_trajectory
@@ -43,7 +43,8 @@ if __name__ == '__main__':
         "IMF": ImfCompute(ImfProjections.Z),
         "MANIP": ManipCompute(MovmentSurface.XZ),
         "Effective_Inertia": EffectiveInertiaCompute(),
-        "Actuated_Mass": ActuatedMass()
+        "Actuated_Mass": ActuatedMass(),
+        "Manip_Jacobian":ManipJacobian(MovmentSurface.XZ)
     }
 
     # class that enables calculating of criteria along the trajectory for the urdf description of the mechanism
@@ -54,14 +55,14 @@ if __name__ == '__main__':
         dict_point_criteria, dict_trajectory_criteria, traj_6d_vertical)
     # set the rewards and weights for the optimization task
     rewards_step = [(PositioningReward(pos_error_key="POS_ERR"), 1),
-           (AccelerationCapability(manipulability_key='MANIP', trajectory_key="traj_6d", error_key="error", actuated_mass_key="Actuated_Mass"), 1)
+           (AccelerationCapability(manipulability_key='Manip_Jacobian', trajectory_key="traj_6d", error_key="error", actuated_mass_key="Actuated_Mass"), 1)
            ]
     
     rewards_vertical = [(PositioningReward(pos_error_key="POS_ERR"), 1),
-                        (HeavyLiftingReward(manipulability_key='MANIP', trajectory_key="traj_6d", error_key="error", mass_key="MASS"),1)
+                        (HeavyLiftingReward(manipulability_key='Manip_Jacobian', trajectory_key="traj_6d", error_key="error", mass_key="MASS"),1)
                         ]
     # activate multiprocessing
-    N_PROCESS = 12
+    N_PROCESS = 1
     pool = multiprocessing.Pool(N_PROCESS)
     runner = StarmapParallelization(pool.starmap)
 
