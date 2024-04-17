@@ -23,7 +23,7 @@ def all_combinations_active_joints_n_actuator(graph: nx.Graph, actuators):
         list: List of tuples representing pairs of name of active joints and actuators.
     """
     try:
-        active_joints = graph.active_joints
+        active_joints = [j.jp.name for j in graph.active_joints]
     except AttributeError:
         active_joints = [j.name for j in graph.nodes() if j.active]
 
