@@ -2,14 +2,16 @@
 import numpy as np
 from auto_robot_design.generator.restricted_generator.two_link_generator import TwoLinkGenerator
 from auto_robot_design.pinokla.calc_criterion import (ActuatedMass, ImfCompute, ManipCompute,
-                MovmentSurface, NeutralPoseMass, TranslationErrorMSE, EffectiveInertiaCompute, ManipJacobian)
+                                                      MovmentSurface, NeutralPoseMass, TranslationErrorMSE, EffectiveInertiaCompute, ManipJacobian)
 from auto_robot_design.pinokla.criterion_agregator import CriteriaAggregator
 from auto_robot_design.pinokla.criterion_math import ImfProjections
-from auto_robot_design.pinokla.default_traj import (convert_x_y_to_6d_traj_xz, 
-                                    get_simple_spline, get_vertical_trajectory)
+from auto_robot_design.pinokla.default_traj import (convert_x_y_to_6d_traj_xz,
+                                                    get_simple_spline, get_vertical_trajectory)
 from auto_robot_design.optimization.rewards.reward_base import PositioningReward
 from auto_robot_design.optimization.rewards.jacobian_and_inertia_rewards import HeavyLiftingReward, AccelerationCapability
-from auto_robot_design.optimization.rewards.pure_jacobian_rewards import EndPointZRRReward
+from auto_robot_design.optimization.rewards.pure_jacobian_rewards import EndPointZRRReward, VelocityReward, ForceEllipsoidReward
+from auto_robot_design.optimization.rewards.inertia_rewards import EndPointIMFReward, MassReward
+
 from auto_robot_design.description.actuators import TMotor_AK10_9, TMotor_AK60_6, TMotor_AK70_10, TMotor_AK80_64, TMotor_AK80_9
 from auto_robot_design.description.builder import ParametrizedBuilder, DetailedURDFCreatorFixedEE
 from auto_robot_design.description.builder import jps_graph2pinocchio_robot
@@ -17,7 +19,7 @@ from auto_robot_design.description.builder import jps_graph2pinocchio_robot
 # set the optimization task
 # 1) trajectories
 x_traj, y_traj = get_simple_spline()
-x_traj, y_traj = get_vertical_trajectory(3)
+# x_traj, y_traj = get_vertical_trajectory(3)
 traj_6d = convert_x_y_to_6d_traj_xz(x_traj, y_traj)
 # 2) characteristics to be calculated
 # criteria that either calculated without any reference to points, or calculated through
@@ -33,7 +35,7 @@ dict_point_criteria = {
     "MANIP": ManipCompute(MovmentSurface.XZ),
     "Effective_Inertia": EffectiveInertiaCompute(),
     "Actuated_Mass": ActuatedMass(),
-    "Manip_Jacobian":ManipJacobian(MovmentSurface.XZ)
+    "Manip_Jacobian": ManipJacobian(MovmentSurface.XZ)
 }
 
 # class that enables calculating of criteria along the trajectory
@@ -42,9 +44,19 @@ crag = CriteriaAggregator(
     dict_point_criteria, dict_trajectory_criteria, traj_6d)
 # set the rewards and weights for the optimization task
 rewards = [(PositioningReward(pos_error_key="POS_ERR"), 1),
-           (HeavyLiftingReward(manipulability_key='Manip_Jacobian', trajectory_key="traj_6d", error_key="error", mass_key="MASS"), 1),
-           (AccelerationCapability(manipulability_key='Manip_Jacobian', trajectory_key="traj_6d", error_key="error", actuated_mass_key="Actuated_Mass"), 1),
-           (EndPointZRRReward(manipulability_key='Manip_Jacobian', trajectory_key="traj_6d", error_key="error"),1)
+           (HeavyLiftingReward(manipulability_key='Manip_Jacobian',
+            trajectory_key="traj_6d", error_key="error", mass_key="MASS"), 1),
+           (AccelerationCapability(manipulability_key='Manip_Jacobian',
+            trajectory_key="traj_6d", error_key="error", actuated_mass_key="Actuated_Mass"), 1),
+           (EndPointZRRReward(manipulability_key='Manip_Jacobian',
+            trajectory_key="traj_6d", error_key="error"), 1),
+           (VelocityReward(manipulability_key='Manip_Jacobian',
+            trajectory_key="traj_6d", error_key="error"), 1),
+           (EndPointIMFReward(imf_key='IMF',
+            trajectory_key="traj_6d", error_key="error"), 1),
+           (ForceEllipsoidReward(manipulability_key='Manip_Jacobian',
+            trajectory_key="traj_6d", error_key="error"), 1),
+           (MassReward(mass_key="MASS"), 1)
            ]
 
 # set the list of graphs that should be tested
@@ -75,8 +87,8 @@ for j in actuator_list:
     crag = CriteriaAggregator(
         dict_point_criteria, dict_trajectory_criteria, traj_6d)
 
-
-    point_criteria_vector, trajectory_criteria, res_dict_fixed = crag.get_criteria_data(fixed_robot, free_robot)
+    point_criteria_vector, trajectory_criteria, res_dict_fixed = crag.get_criteria_data(
+        fixed_robot, free_robot)
 
     # all rewards are calculated and added to the result
     total_result = 0
