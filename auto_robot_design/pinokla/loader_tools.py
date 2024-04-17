@@ -1,16 +1,30 @@
 import unittest
-from typing import Tuple
+from typing import Optional, Tuple, Union
 import pinocchio as pin
+import numpy as np
 from pinocchio.robot_wrapper import RobotWrapper
+import networkx as nx
 import re
 import yaml
 from yaml.loader import SafeLoader
 from warnings import warn
 
+
 from auto_robot_design.pinokla.actuation_model import ActuationModel
 from collections import namedtuple
 
-Robot = namedtuple('Robot', ["model", "constraint_models", "actuation_model", "visual_model", "constraint_data", "data"])
+Robot = namedtuple(
+    "Robot",
+    [
+        "model",
+        "constraint_models",
+        "actuation_model",
+        "visual_model",
+        "constraint_data",
+        "data",
+    ],
+)
+
 
 def nameFrameConstraint(model, nomferme="fermeture", Lid=[]):
     """
@@ -24,12 +38,14 @@ def nameFrameConstraint(model, nomferme="fermeture", Lid=[]):
 
     Argument:
         model - Pinocchio robot model
-        nom_ferme - nom de la fermeture  
+        nom_ferme - nom de la fermeture
         Lid - List of kinematic loop indexes to select
     Return:
         Lnames - List of frame names that should be in contact
     """
-    warn("Function nameFrameConstraint depreceated - prefer using a YAML file as complement to the URDF. Should only be used to generate a YAML file")
+    warn(
+        "Function nameFrameConstraint depreceated - prefer using a YAML file as complement to the URDF. Should only be used to generate a YAML file"
+    )
     if Lid == []:
         Lid = range(len(model.frames) // 2)
     Lnames = []
@@ -46,10 +62,12 @@ def nameFrameConstraint(model, nomferme="fermeture", Lid=[]):
     return Lnames
 
 
-def generateYAML(path, name_mot="mot", name_spherical="to_rotule", nomferme="fermeture", file=None):
+def generateYAML(
+    path, name_mot="mot", name_spherical="to_rotule", nomferme="fermeture", file=None
+):
     """
     if robot.urdf inside the path, write a yaml file associate to the the robot.
-    Write the name of the frame constrained, the type of the constraint, the presence of rotule articulation, 
+    Write the name of the frame constrained, the type of the constraint, the presence of rotule articulation,
     the name of the motor, idq and idv (with the sphrical joint).
     """
 
@@ -68,30 +86,32 @@ def generateYAML(path, name_mot="mot", name_spherical="to_rotule", nomferme="fer
 
     name_frame_constraint = nameFrameConstraint(rob.model, nomferme)
     # Constraint is default to 6D... that is not very general...
-    constraint_type = ["6d"]*len(name_frame_constraint)
+    constraint_type = ["6d"] * len(name_frame_constraint)
 
     if file is None:
-        with open(path + '/robot.yaml', 'w') as f:
-            f.write('closed_loop: ' + str(name_frame_constraint)+'\n')
-            f.write('type: '+str(constraint_type)+'\n')
-            f.write('name_mot: '+str(Lmot)+'\n')
-            f.write('joint_name: '+str(Ljoint)+'\n')
-            f.write('joint_type: '+str(Ltype)+'\n')
+        with open(path + "/robot.yaml", "w") as f:
+            f.write("closed_loop: " + str(name_frame_constraint) + "\n")
+            f.write("type: " + str(constraint_type) + "\n")
+            f.write("name_mot: " + str(Lmot) + "\n")
+            f.write("joint_name: " + str(Ljoint) + "\n")
+            f.write("joint_type: " + str(Ltype) + "\n")
     else:
-        file.write('closed_loop: ' + str(name_frame_constraint)+'\n')
-        file.write('type: '+str(constraint_type)+'\n')
-        file.write('name_mot: '+str(Lmot)+'\n')
-        file.write('joint_name: '+str(Ljoint)+'\n')
-        file.write('joint_type: '+str(Ltype)+'\n')
+        file.write("closed_loop: " + str(name_frame_constraint) + "\n")
+        file.write("type: " + str(constraint_type) + "\n")
+        file.write("name_mot: " + str(Lmot) + "\n")
+        file.write("joint_name: " + str(Ljoint) + "\n")
+        file.write("joint_type: " + str(Ltype) + "\n")
 
 
-def getYAMLcontents(path, name_yaml='robot.yaml'):
-    with open(path+"/"+name_yaml, 'r') as yaml_file:
+def getYAMLcontents(path, name_yaml="robot.yaml"):
+    with open(path + "/" + name_yaml, "r") as yaml_file:
         contents = yaml.load(yaml_file, Loader=SafeLoader)
-    return (contents)
+    return contents
 
 
-def completeRobotLoader(path, name_urdf="robot.urdf", name_yaml="robot.yaml", fixed=True):
+def completeRobotLoader(
+    path, name_urdf="robot.urdf", name_yaml="robot.yaml", fixed=True
+):
     """
     Return  model and constraint model associated to a directory, where the name od the urdf is robot.urdf and the name of the yam is robot.yaml
     if no type assiciated, 6D type is applied
@@ -101,7 +121,8 @@ def completeRobotLoader(path, name_urdf="robot.urdf", name_yaml="robot.yaml", fi
         robot = RobotWrapper.BuildFromURDF(path + "/" + name_urdf, path)
     else:
         robot = RobotWrapper.BuildFromURDF(
-            path + "/robot.urdf", path, root_joint=pin.JointModelFreeFlyer())
+            path + "/robot.urdf", path, root_joint=pin.JointModelFreeFlyer()
+        )
         robot.model.names[1] = "root_joint"
 
     model = robot.model
@@ -109,15 +130,23 @@ def completeRobotLoader(path, name_urdf="robot.urdf", name_yaml="robot.yaml", fi
     yaml_content = getYAMLcontents(path, name_yaml)
 
     # try to update model
-    update_joint = yaml_content['joint_name']
-    joints_types = yaml_content['joint_type']
+    update_joint = yaml_content["joint_name"]
+    joints_types = yaml_content["joint_type"]
     LjointFixed = []
     new_model = pin.Model()
     visual_model = robot.visual_model
-    for place, iner, name, parent, joint in list(zip(model.jointPlacements, model.inertias, model.names, model.parents, model.joints))[1:]:
+    for place, iner, name, parent, joint in list(
+        zip(
+            model.jointPlacements,
+            model.inertias,
+            model.names,
+            model.parents,
+            model.joints,
+        )
+    )[1:]:
         if name in update_joint:
             joint_type = joints_types[update_joint.index(name)]
-            if joint_type == 'SPHERICAL':
+            if joint_type == "SPHERICAL":
                 jm = pin.JointModelSpherical()
             if joint_type == "FIXED":
                 jm = joint
@@ -134,14 +163,15 @@ def completeRobotLoader(path, name_urdf="robot.urdf", name_yaml="robot.yaml", fi
 
     new_model.frames.__delitem__(0)
     new_model, visual_model = pin.buildReducedModel(
-        new_model, visual_model, LjointFixed, pin.neutral(new_model))
+        new_model, visual_model, LjointFixed, pin.neutral(new_model)
+    )
 
     model = new_model
 
     # check if type is associated,else 6D is used
     try:
-        name_frame_constraint = yaml_content['closed_loop']
-        constraint_type = yaml_content['type']
+        name_frame_constraint = yaml_content["closed_loop"]
+        constraint_type = yaml_content["type"]
 
         # construction of constraint model
         Lconstraintmodel = []
@@ -163,7 +193,7 @@ def completeRobotLoader(path, name_urdf="robot.urdf", name_yaml="robot.yaml", fi
                     Se3joint2,
                     pin.ReferenceFrame.LOCAL,
                 )
-                constraint.name = name1+"C"+name2
+                constraint.name = name1 + "C" + name2
             else:
                 constraint = pin.RigidConstraintModel(
                     pin.ContactType.CONTACT_6D,
@@ -174,23 +204,25 @@ def completeRobotLoader(path, name_urdf="robot.urdf", name_yaml="robot.yaml", fi
                     Se3joint2,
                     pin.ReferenceFrame.LOCAL,
                 )
-                constraint.name = name1+"C"+name2
+                constraint.name = name1 + "C" + name2
             Lconstraintmodel.append(constraint)
 
         constraint_models = Lconstraintmodel
     except:
         print("no constraint")
     if fixed:
-        actuation_model = ActuationModel(model, yaml_content['name_mot'])
+        actuation_model = ActuationModel(model, yaml_content["name_mot"])
     else:
-        Lmot = yaml_content['name_mot']
-        Lmot.append('root_joint')
+        Lmot = yaml_content["name_mot"]
+        Lmot.append("root_joint")
         actuation_model = ActuationModel(model, Lmot)
 
     return (model, constraint_models, actuation_model, visual_model)
 
 
-def completeRobotLoaderFromStr(udf_str: str, joint_description: dict, loop_description: dict, fixed=True):
+def completeRobotLoaderFromStr(
+    udf_str: str, joint_description: dict, loop_description: dict, fixed=True
+):
     """
     Return  model and constraint model associated to a directory, where the name od the urdf is robot.urdf and the name of the yam is robot.yaml
     if no type assiciated, 6D type is applied
@@ -198,8 +230,7 @@ def completeRobotLoaderFromStr(udf_str: str, joint_description: dict, loop_descr
     if fixed:
         model = pin.buildModelFromXML(udf_str)
     else:
-        model = pin.buildModelFromXML(
-            udf_str, root_joint=pin.JointModelFreeFlyer())
+        model = pin.buildModelFromXML(udf_str, root_joint=pin.JointModelFreeFlyer())
         model.names[1] = "root_joint"
 
     visual_model = pin.buildGeomFromUrdfString(
@@ -210,15 +241,23 @@ def completeRobotLoaderFromStr(udf_str: str, joint_description: dict, loop_descr
     model = robot.model
 
     # try to update model
-    update_joint = joint_description['joint_name']
-    joints_types = joint_description['joint_type']
+    update_joint = joint_description["joint_name"]
+    joints_types = joint_description["joint_type"]
     LjointFixed = []
     new_model = pin.Model()
     visual_model = robot.visual_model
-    for place, iner, name, parent, joint in list(zip(model.jointPlacements, model.inertias, model.names, model.parents, model.joints))[1:]:
+    for place, iner, name, parent, joint in list(
+        zip(
+            model.jointPlacements,
+            model.inertias,
+            model.names,
+            model.parents,
+            model.joints,
+        )
+    )[1:]:
         if name in update_joint:
             joint_type = joints_types[update_joint.index(name)]
-            if joint_type == 'SPHERICAL':
+            if joint_type == "SPHERICAL":
                 jm = pin.JointModelSpherical()
             if joint_type == "FIXED":
                 jm = joint
@@ -235,14 +274,15 @@ def completeRobotLoaderFromStr(udf_str: str, joint_description: dict, loop_descr
 
     new_model.frames.__delitem__(0)
     new_model, visual_model = pin.buildReducedModel(
-        new_model, visual_model, LjointFixed, pin.neutral(new_model))
+        new_model, visual_model, LjointFixed, pin.neutral(new_model)
+    )
 
     model = new_model
 
     # check if type is associated,else 6D is used
     try:
-        name_frame_constraint = loop_description['closed_loop']
-        constraint_type = loop_description['type']
+        name_frame_constraint = loop_description["closed_loop"]
+        constraint_type = loop_description["type"]
 
         # construction of constraint model
         Lconstraintmodel = []
@@ -264,7 +304,7 @@ def completeRobotLoaderFromStr(udf_str: str, joint_description: dict, loop_descr
                     Se3joint2,
                     pin.ReferenceFrame.LOCAL,
                 )
-                constraint.name = name1+"C"+name2
+                constraint.name = name1 + "C" + name2
             else:
                 constraint = pin.RigidConstraintModel(
                     pin.ContactType.CONTACT_6D,
@@ -275,35 +315,83 @@ def completeRobotLoaderFromStr(udf_str: str, joint_description: dict, loop_descr
                     Se3joint2,
                     pin.ReferenceFrame.LOCAL,
                 )
-                constraint.name = name1+"C"+name2
+                constraint.name = name1 + "C" + name2
             Lconstraintmodel.append(constraint)
 
         constraint_models = Lconstraintmodel
     except:
         print("no constraint")
     if fixed:
-        actuation_model = ActuationModel(model, joint_description['name_mot'])
+        actuation_model = ActuationModel(model, joint_description["name_mot"])
     else:
-        Lmot = joint_description['name_mot']
-        Lmot.append('root_joint')
+        Lmot = joint_description["name_mot"]
+        Lmot.append("root_joint")
         actuation_model = ActuationModel(model, Lmot)
 
     return (model, constraint_models, actuation_model, visual_model)
 
 
-def build_model_with_extensions(udf_str: str, joint_description: dict, loop_description: dict, fixed=True):
-    model, constraint_models, actuation_model, visual_model = completeRobotLoaderFromStr(
-        udf_str, joint_description, loop_description, fixed)
+def build_model_with_extensions(
+    urdf_str: str,
+    joint_description: dict,
+    loop_description: dict,
+    actuator_context: Union[None, tuple, dict, nx.Graph] = None,
+    fixed=True,
+):
+    """
+    Builds a robot model with extensions based on the provided URDF string, joint description, loop description,
+    actuator context, and fixed flag. If the actuator_context is not None,
+    an armature is set for each active connection based on the actuator rotor inertia and reduction ratio.
+
+    Args:
+        urdf_str (str): The URDF string representing the robot model.
+        joint_description (dict): A dictionary describing the active joints of the robot.
+        loop_description (dict): A dictionary describing the kinematics loops of the robot.
+        actuator_context (Union[None, tuple, dict, nx.Graph], optional): Field, which have information about what actuator is used for each joint. Defaults to None.
+        fixed (bool, optional): A flag indicating whether the base robot is fixed. Defaults to True.
+
+    Returns:
+        Robot: The built robot model with extensions.
+    """
+
+    model, constraint_models, actuation_model, visual_model = (
+        completeRobotLoaderFromStr(urdf_str, joint_description, loop_description, fixed)
+    )
     constraint_data = [c.createData() for c in constraint_models]
     data = model.createData()
+    if actuator_context is not None:
+        # Perform additional operations based on the actuator context
+        if isinstance(actuator_context, dict):
+            
+            actuator_context = tuple(filter(lambda x: x[0] != "default", actuator_context.items()))
+        elif isinstance(actuator_context, nx.Graph):
+            active_joints = actuator_context.active_joints
+            actuator_context = []
+            for act_j in active_joints:
+                actuator_context.append((act_j.jp.name, act_j.actuator))
+        for joint, actuator in actuator_context:
+            # It works if motname and idvmot in actuation_model are in the same order
+            place_mot = actuation_model.motname2id_v[joint]
+            model.armature[place_mot] = (
+                actuator.inertia * actuator.reduction_ratio**-2
+            )
 
-    return Robot(model, constraint_models, actuation_model, visual_model, constraint_data, data)
+    return Robot(
+        model, constraint_models, actuation_model, visual_model, constraint_data, data
+    )
 
 
 nle = pin.nonLinearEffects
 
 
-def buildModelsFromUrdf(filename, package_dirs=None, root_joint=None, verbose=False, meshLoader=None, geometry_types=[pin.GeometryType.COLLISION, pin.GeometryType.VISUAL]) -> Tuple[pin.Model, pin.GeometryModel, pin.GeometryModel]:
+def buildModelsFromUrdf(
+    filename,
+    package_dirs=None,
+    root_joint=None,
+    verbose=False,
+    meshLoader=None,
+    geometry_types=[pin.GeometryType.COLLISION, pin.GeometryType.VISUAL],
+) -> Tuple[pin.Model, pin.GeometryModel, pin.GeometryModel]:
     """Parse the URDF file given in input and return a Pinocchio Model followed by corresponding GeometryModels of types specified by geometry_types, in the same order as listed.
     Examples of usage:
         # load model, collision model, and visual model, in this order (default)
@@ -324,27 +412,38 @@ def buildModelsFromUrdf(filename, package_dirs=None, root_joint=None, verbose=Fa
         model = pin.buildModelFromUrdf(filename, root_joint)
 
     if verbose and not WITH_HPP_FCL and meshLoader is not None:
-        print('Info: MeshLoader is ignored. Pinocchio has not been compiled with HPP-FCL.')
+        print(
+            "Info: MeshLoader is ignored. Pinocchio has not been compiled with HPP-FCL."
+        )
     if verbose and not WITH_HPP_FCL_BINDINGS and meshLoader is not None:
-        print('Info: MeshLoader is ignored. The HPP-FCL Python bindings have not been installed.')
+        print(
+            "Info: MeshLoader is ignored. The HPP-FCL Python bindings have not been installed."
+        )
     if package_dirs is None:
         package_dirs = []
 
     lst = [model]
 
-    if not hasattr(geometry_types, '__iter__'):
+    if not hasattr(geometry_types, "__iter__"):
         geometry_types = [geometry_types]
 
     for geometry_type in geometry_types:
         if meshLoader is None or (not WITH_HPP_FCL and not WITH_HPP_FCL_BINDINGS):
             geom_model = pin.buildGeomFromUrdf(
-                model, filename, geometry_type, package_dirs=package_dirs)
+                model, filename, geometry_type, package_dirs=package_dirs
+            )
         else:
             geom_model = pin.buildGeomFromUrdf(
-                model, filename, geometry_type, package_dirs=package_dirs, mesh_loader=meshLoader)
+                model,
+                filename,
+                geometry_type,
+                package_dirs=package_dirs,
+                mesh_loader=meshLoader,
+            )
         lst.append(geom_model)
 
     return tuple(lst)
+
 
 ########## TEST ZONE ##########################
 
@@ -352,49 +451,72 @@ def buildModelsFromUrdf(filename, package_dirs=None, root_joint=None, verbose=Fa
 class TestRobotLoader(unittest.TestCase):
     def test_complete_loader(self):
         import io
-        robots_paths = [['robot_simple_iso3D', 'unittest_iso3D.txt'],
-                        ['robot_simple_iso6D', 'unittest_iso6D.txt']]
+
+        robots_paths = [
+            ["robot_simple_iso3D", "unittest_iso3D.txt"],
+            ["robot_simple_iso6D", "unittest_iso6D.txt"],
+        ]
 
         for rp in robots_paths:
-            path = "robots/"+rp[0]
+            path = "robots/" + rp[0]
             m, cm, am, vm, collm = completeRobotLoader(path)
-            joints_info = [(j.id, j.shortname(), j.idx_q, j.idx_v)
-                           for j in m.joints[1:]]
-            frames_info = [(f.name, f.inertia, f.parentJoint,
-                            f.parentFrame, f.type) for f in m.frames]
-            constraint_info = [(cmi.name, cmi.joint1_id, cmi.joint2_id,
-                                cmi.joint1_placement, cmi.joint2_placement, cmi.type) for cmi in cm]
+            joints_info = [
+                (j.id, j.shortname(), j.idx_q, j.idx_v) for j in m.joints[1:]
+            ]
+            frames_info = [
+                (f.name, f.inertia, f.parentJoint, f.parentFrame, f.type)
+                for f in m.frames
+            ]
+            constraint_info = [
+                (
+                    cmi.name,
+                    cmi.joint1_id,
+                    cmi.joint2_id,
+                    cmi.joint1_placement,
+                    cmi.joint2_placement,
+                    cmi.type,
+                )
+                for cmi in cm
+            ]
             mot_info = [(am.idqfree, am.idqmot, am.idvfree, am.idvmot)]
 
             results = io.StringIO()
             results.write(
-                '\n'.join(f'{x[0]} {x[1]} {x[2]} {x[3]}' for x in joints_info))
+                "\n".join(f"{x[0]} {x[1]} {x[2]} {x[3]}" for x in joints_info)
+            )
             results.write(
-                '\n'.join(f'{x[0]} {x[1]} {x[2]} {x[3]} {x[4]}' for x in frames_info))
-            results.write('\n'.join(
-                f'{x[0]} {x[1]} {x[2]} {x[3]} {x[4]} {x[5]}' for x in constraint_info))
+                "\n".join(f"{x[0]} {x[1]} {x[2]} {x[3]} {x[4]}" for x in frames_info)
+            )
             results.write(
-                '\n'.join(f'{x[0]} {x[1]} {x[2]} {x[3]}' for x in mot_info))
+                "\n".join(
+                    f"{x[0]} {x[1]} {x[2]} {x[3]} {x[4]} {x[5]}"
+                    for x in constraint_info
+                )
+            )
+            results.write("\n".join(f"{x[0]} {x[1]} {x[2]} {x[3]}" for x in mot_info))
             results.seek(0)
 
             # Ground truth is defined from a known good result
-            with open('unittest/'+rp[1], 'r') as truth:
+            with open("unittest/" + rp[1], "r") as truth:
                 assert truth.read() == results.read()
 
     def test_generate_yaml(self):
         import io
-        robots_paths = [['robot_simple_iso3D', 'unittest_iso3D_yaml.txt'],
-                        ['robot_simple_iso6D', 'unittest_iso6D_yaml.txt'],
-                        ['robot_delta', 'unittest_delta_yaml.txt']]
+
+        robots_paths = [
+            ["robot_simple_iso3D", "unittest_iso3D_yaml.txt"],
+            ["robot_simple_iso6D", "unittest_iso6D_yaml.txt"],
+            ["robot_delta", "unittest_delta_yaml.txt"],
+        ]
 
         for rp in robots_paths:
-            path = "robots/"+rp[0]
+            path = "robots/" + rp[0]
             results = io.StringIO()
             generateYAML(path, file=results)
             results.seek(0)
 
             # Ground truth is defined from a known good result
-            with open('unittest/'+rp[1], 'r') as truth:
+            with open("unittest/" + rp[1], "r") as truth:
                 assert truth.read() == results.read()
 
 

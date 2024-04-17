@@ -1,3 +1,5 @@
+import grp
+from itertools import permutations
 import networkx as nx
 import numpy as np
 import numpy.linalg as la
@@ -9,6 +11,28 @@ from scipy.spatial.transform import Rotation as R
 import modern_robotics as mr
 
 # from auto_robot_design.description.mechanism import KinematicGraph
+
+def all_combinations_active_joints_n_actuator(graph: nx.Graph, actuators):
+    """
+    Generates all possible combinations of active joints and actuators.
+
+    Args:
+        graph (nx.Graph): The graph representing the robot design.
+        actuators (list): List of available actuators.
+
+    Returns:
+        list: List of tuples representing pairs of name of active joints and actuators.
+    """
+    try:
+        active_joints = [j.jp.name for j in graph.active_joints]
+    except AttributeError:
+        active_joints = [j.name for j in graph.nodes() if j.active]
+
+    combination_actuator = permutations(actuators, len(active_joints))
+    pairs_joint_actuator = []
+    for combination in combination_actuator:
+        pairs_joint_actuator.append(tuple(zip(active_joints, combination))) 
+    return pairs_joint_actuator
 
 
 def trans2_xyz_rpy(trans: np.ndarray) -> tuple[list[float]]:

@@ -1,6 +1,7 @@
 from auto_robot_design.pinokla.loader_tools import build_model_with_extensions
 from auto_robot_design.generator.two_link_generator import TwoLinkGenerator
-from auto_robot_design.description.builder import Builder, DetalizedURDFCreater, jps_graph2urdf_parametrized
+from auto_robot_design.description.builder import Builder, URDFLinkCreater, jps_graph2urdf_by_bulder
+import networkx as nx
 import pinocchio as pin
 import numpy as np
 import meshcat
@@ -19,13 +20,13 @@ sys.path.append(mymodule_dir)
 
 # Load robot
 gen = TwoLinkGenerator()
-builder = Builder(DetalizedURDFCreater)
+builder = Builder(URDFLinkCreater)
 graphs_and_cons = gen.get_standard_set()
 np.set_printoptions(precision=3, linewidth=300, suppress=True, threshold=10000)
 
 graph_jp, constrain = graphs_and_cons[0]
 
-robot_urdf, ative_joints, constraints = jps_graph2urdf_parametrized(graph_jp)
+robot_urdf, ative_joints, constraints = jps_graph2urdf_by_bulder(graph_jp, builder)
 robo = build_model_with_extensions(robot_urdf, ative_joints, constraints)
 
 # Visualizer
@@ -43,13 +44,13 @@ viz.display(q)
 
 # free fall dynamics
 pin.initConstraintDynamics(robo.model, robo.data, robo.constraint_models)
-DT = 1e-4
+DT = 1e-3
 N_it = 10000
 tauq = np.zeros(robo.model.nv)
 id_mt1 = robo.actuation_model.idMotJoints[0]
 id_mt2 = robo.actuation_model.idqmot[1]
-tauq[id_mt1] = 1
-tauq[id_mt2] = 1
+tauq[id_mt1] = 0
+tauq[id_mt2] = 0
 vq = np.zeros(robo.model.nv)
 
 accuracy = 1e-8
