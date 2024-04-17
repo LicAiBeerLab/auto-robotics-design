@@ -230,6 +230,12 @@ def iterate_over_q_space(robot: Robot, q_space: np.ndarray,
 class ComputeInterfaceMoment:
     """Abstract class for calculate criterion on each step of simulation."""
 
+    def __init__(self) -> None:
+        """Determine what type of data is needed for the calculation. 
+        From an free model or fixed base model 
+        """
+        self.is_fixed = True
+
     def __call__(
         self, data_frame: dict[str, np.ndarray], robo: Robot = None
     ) -> np.ndarray:
@@ -253,6 +259,12 @@ class ComputeInterfaceMoment:
 
 class ComputeInterface:
     """Abstract class for calculate criterion on data trajectory of simulation."""
+
+    def __init__(self) -> None:
+        """Determine what type of data is needed for the calculation. 
+        From an free model or fixed base model 
+        """
+        self.is_fixed = True
 
     def __call__(self, data_dict: DataDict, robo: Robot = None):
         """Call on output data_dict, that contain whole simulation data. See iterate_over_q_space and pseudo_static_step.
@@ -327,8 +339,26 @@ class ManipCompute(ComputeInterfaceMoment):
             target_J = target_J[:2, :2]
         else:
             raise NotImplemented
-        #manip_space = calc_manipulability(target_J)
-        #return manip_space
+        manip_space = calc_manipulability(target_J)
+        return manip_space
+
+class ManipJacobian(ComputeInterfaceMoment):
+    """Wrapper for manipulability. Criterion implementation src is criterion_math"""
+
+    def __init__(self, surface: MovmentSurface) -> None:
+        self.surface = surface
+        self.is_fixed = True
+
+    def __call__(
+        self, data_frame: dict[str, np.ndarray], robo: Robot = None
+    ) -> np.ndarray:
+        if self.surface == MovmentSurface.XZ:
+            target_J = data_frame["J_closed"]
+            target_J = convert_full_J_to_planar_xz(target_J)
+            target_J = target_J[:2, :2]
+        else:
+            raise NotImplemented
+
         return target_J
 
 

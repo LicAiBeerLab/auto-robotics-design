@@ -10,6 +10,36 @@ from pymoo.core.problem import ElementwiseProblem
 
 from auto_robot_design.pinokla.criterion_agregator import CriteriaAggregator
 from auto_robot_design.optimization.rewards.reward_base import Reward 
+def get_optimizing_joints(graph, constrain_dict):
+    """
+    Retrieves the optimizing joints from a graph based on the given constraint dictionary.
+    Adapter constraints from generator to the optimization problem.
+
+    Parameters:
+    - graph (Graph): The graph containing the joints.
+    - constrain_dict (dict): A dictionary containing the constraints for each joint.
+
+    Returns:
+    - optimizing_joints (dict): A dictionary containing the optimizing joints and their corresponding ranges.
+
+    """
+    name2jp = dict(map(lambda x: (x.name, x), graph.nodes()))
+    optimizing_joints = dict(
+        filter(lambda x: x[1]["optim"] and x[0] in name2jp, constrain_dict.items()))
+    optimizing_joints = dict(
+        map(
+            lambda x: (
+                name2jp[x[0]],
+                (
+                    x[1]["x_range"][0],
+                    x[1].get("z_range", [-0.01, 0.01])[0],
+                    x[1]["x_range"][1],
+                    x[1].get("z_range", [0, 0])[1],
+                ),
+            ),
+            optimizing_joints.items(),
+        ))
+    return optimizing_joints
 
 class CalculateCriteriaProblemByWeigths(ElementwiseProblem):
     def __init__(self, graph, builder, jp2limits, criteria_and_rewards : list, **kwargs):
