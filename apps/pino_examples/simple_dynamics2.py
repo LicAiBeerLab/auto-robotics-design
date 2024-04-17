@@ -8,7 +8,7 @@ import numpy as np
 import meshcat
 from pinocchio.visualize import MeshcatVisualizer
 
-from auto_robot_design.pinokla.closed_loop_kinematics import closedLoopProximalMount
+from auto_robot_design.pinokla.closed_loop_kinematics import closedLoopInverseKinematicsProximal, closedLoopProximalMount
 import numpy as np
 
 from auto_robot_design.description.actuators import t_motor_actuators
@@ -23,11 +23,24 @@ from auto_robot_design.pinokla.closed_loop_kinematics import closedLoopProximalM
 from auto_robot_design.pinokla.loader_tools import build_model_with_extensions
 from auto_robot_design.pinokla.robot_utils import add_3d_constrain_current_q
 
+def add_root_joint(fixed_base_robo: Robot, joint_type = pin.JointModelFreeFlyer()):
+    ROOT_JOINT_NAME =  "root_joint"
+    new_robot = make_Robot_copy(fixed_base_robo)
+    new_robot = Robot(*new_robot)
+    new_robot_joint_names = list(new_robot.model.names)
+    new_robot_joint_names.insert(1, ROOT_JOINT_NAME)
+    
+    
+    int = new_robot.model.inertias[0]
+    jid = new_robot.model.addJoint(0, joint_type, pin.SE3(), ROOT_JOINT_NAME)
+    #new_robot.new_model.appendBodyToJoint(jid, iner, pin.SE3.Identity())
+    return new_robot
+
 
 def get_pino_models():
     pass
     gen = TwoLinkGenerator()
-    graph, constrain_dict = gen.get_standard_set()[7]
+    graph, constrain_dict = gen.get_standard_set()[1]
 
     pairs = all_combinations_active_joints_n_actuator(graph, t_motor_actuators)
 
@@ -56,12 +69,15 @@ def get_pino_models():
         loop_description=loop_description,
         actuator_context=None,
         fixed=False,
-        root_joint_type=pin.JointModelPZ())
+        root_joint_type=pin.JointModelPZ(),
+        is_act_root_joint = False)
+    
     robo = build_model_with_extensions(robo_urdf,
                                        joint_description=joint_description,
                                        loop_description=loop_description,
                                        actuator_context=None,
                                        fixed=True)
+    
     robo_free = build_model_with_extensions(
         robo_urdf,
         joint_description=joint_description,
@@ -71,9 +87,19 @@ def get_pino_models():
     return robo, robo_planar, robo_free
 
 
-def find_squat_q(translation_fix_robo: Robot, pos):
-    pass
-
+def find_squat_q(translation_fix_robo: Robot, pos, ee_name, q_s):
+    ee_id_g = robo_planar.model.getFrameId(ee_name)
+    q, min_feas, is_reach = closedLoopInverseKinematicsProximal(
+        translation_fix_robo.model,
+        translation_fix_robo.data,
+        translation_fix_robo.constraint_models,
+        translation_fix_robo.constraint_data,
+        pos,
+        ee_id_g,
+        onlytranslation=True,
+        q_start=q_s,
+    )
+    return q, is_reach
 
 q_start_squat = np.array([
     -0.14596352, -0.34829299, 0.40971321, -0.53028812, 0.73886123, -0.27628751,
@@ -93,7 +119,26 @@ viz = MeshcatVisualizer(robo_planar.model, robo_planar.visual_model,
 viz.viewer = meshcat.Visualizer().open()
 viz.clean()
 viz.loadViewerModel()
-
+pin.framesForwardKinematics(robo.model, robo.data, q0)
+HIGHT = 0.3
+ee_id_g = robo.model.getFrameId("G")
+ee_id = robo.model.getFrameId("EE")
+default_hight = robo.data.oMf[ee_id].translation
+default_hight[2] = default_hight[2] + HIGHT
+needed_q, min_feas, is_reach = closedLoopInverseKinematicsProximal(
+        robo.model,
+        robo.data,
+        robo.constraint_models,
+        robo.constraint_data,
+        default_hight,
+        ee_id,
+        onlytranslation=True,
+    )
+koooooo  = add_root_joint(robo)
+needed_q = np.concatenate([np.array([-HIGHT]), needed_q])
+pin.framesForwardKinematics(robo_planar.model, robo_planar.data, needed_q)
+viz.display(needed_q)
+pass
 pin.initConstraintDynamics(robo_planar.model, robo_planar.data,
                            robo_planar.constraint_models)
 DT = 5e-4
@@ -111,7 +156,7 @@ dyn_set = pin.ProximalSettings(accuracy, mu_sim, max_it)
 # tauq[id_mt1] = 10  # tau[0]
 # tauq[id_mt2] = 10  # tau[1]
 
-q = q0_trans
+q = needed_q
 pin.computeGeneralizedGravity(robo_planar.model, robo_planar.data, q)
 
 ee_id_g = robo_planar.model.getFrameId("G")
@@ -152,7 +197,8 @@ for i in range(N_it):
         robo_planar.data.oMf[ee_id_g].action @ np.zeros(6),
     )
 
-    cho =  1*J_closed.T @ np.array([0, 0, o_g, 0, 0, 0])
+    cho = 1*J_closed.T @ np.array([0, 0, o_g, 0, 0, 0])
+
     tauq[id_mt1] = cho[0]
     tauq[id_mt2] = cho[1]
     viz.display(q)
