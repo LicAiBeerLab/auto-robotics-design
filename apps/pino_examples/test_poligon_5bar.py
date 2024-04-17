@@ -2,7 +2,7 @@ import numpy as np
 
 
 import pinocchio as pin
-from auto_robot_design.description.builder import Builder, DetalizedURDFCreater, jps_graph2urdf_parametrized
+from auto_robot_design.description.builder import Builder, URDFLinkCreater, jps_graph2urdf_parametrized
 from auto_robot_design.generator.two_link_generator import TwoLinkGenerator
 
 from auto_robot_design.pinokla.calc_criterion import calc_IMF, calc_manipulability, convert_full_J_to_planar_xz
@@ -33,18 +33,16 @@ def freeze_joint_robo(robo: Robot, joint_f: str):
 
 
 gen = TwoLinkGenerator()
-builder = Builder(DetalizedURDFCreaterFixedEE)
+builder = Builder(URDFLinkCreater)
 graphs_and_cons = gen.get_standard_set()
 np.set_printoptions(precision=3, linewidth=300, suppress=True, threshold=10000)
 
 graph_jp, constrain = graphs_and_cons[0]
 robot_urdf, ative_joints, constraints = jps_graph2urdf_parametrized(graph_jp)
-draw_joint_point(graph_jp)
-plt.show()
 
 robo = build_model_with_extensions(robot_urdf, ative_joints, constraints)
 free_robo = build_model_with_extensions(
-    robot_urdf, ative_joints, constraints, False)
+    robot_urdf, ative_joints, constraints, fixed=False)
 robo_fixed_EE = freeze_joint_robo(robo, "TL_ee")
 
 robo.model.armature[robo.actuation_model.idvmot[:]] = np.array([0.1, 0.1])

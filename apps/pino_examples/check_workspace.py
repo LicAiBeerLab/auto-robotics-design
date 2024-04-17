@@ -10,17 +10,16 @@ import matplotlib.pyplot as plt
 
 from scipy.spatial import ConvexHull
 
-from auto_robot_design.description.builder import Builder, DetalizedURDFCreaterFixedEE, jps_graph2urdf_parametrized
+from auto_robot_design.description.builder import ParametrizedBuilder, DetalizedURDFCreaterFixedEE, jps_graph2urdf_by_bulder
 from auto_robot_design.generator.two_link_generator import TwoLinkGenerator
 
 
 gen = TwoLinkGenerator()
-builder = Builder(DetalizedURDFCreaterFixedEE)
+builder = ParametrizedBuilder(DetalizedURDFCreaterFixedEE)
 graphs_and_cons = gen.get_standard_set()
 np.set_printoptions(precision=3, linewidth=300, suppress=True, threshold=10000)
-
 graph_jp, constrain = graphs_and_cons[0]
-robot_urdf, ative_joints, constraints = jps_graph2urdf_parametrized(graph_jp)
+robot_urdf, ative_joints, constraints = jps_graph2urdf_by_bulder(graph_jp, builder)
 
 
 robo = build_model_with_extensions(robot_urdf,
@@ -55,10 +54,9 @@ q0 = closedLoopProximalMount(
 EFFECTOR_NAME = "EE"
 BASE_FRAME = "G"
 
-q_space_mot_1 = np.linspace(-np.pi, np.pi, 10)
-q_space_mot_2 = np.linspace(-np.pi, np.pi, 10)
+q_space_mot_1 = np.linspace(-np.pi, np.pi, 100)
+q_space_mot_2 = np.linspace(-np.pi, np.pi, 100)
 q_mot_double_space = list(product(q_space_mot_1, q_space_mot_2))
-
 workspace_xyz, available_q = search_workspace(robo.model, robo.data, EFFECTOR_NAME, BASE_FRAME, np.array(
     q_mot_double_space), robo.actuation_model, robo.constraint_models)
 
