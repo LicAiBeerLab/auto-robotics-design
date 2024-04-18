@@ -16,7 +16,7 @@ from auto_robot_design.pinokla.closed_loop_kinematics import (
 from auto_robot_design.pinokla.criterion_math import (calc_manipulability,
     ImfProjections, calc_actuated_mass, calc_effective_inertia,
     calc_force_ell_projection_along_trj, calc_IMF, calculate_mass,
-    calc_manipulability, convert_full_J_to_planar_xz)
+    convert_full_J_to_planar_xz)
 from auto_robot_design.pinokla.loader_tools import Robot
 
 

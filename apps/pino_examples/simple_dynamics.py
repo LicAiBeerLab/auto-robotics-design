@@ -1,8 +1,6 @@
 from auto_robot_design.pinokla.loader_tools import build_model_with_extensions
 from auto_robot_design.generator.restricted_generator.two_link_generator import TwoLinkGenerator
-from auto_robot_design.description.mechanism import JointPoint2KinematicGraph
-from auto_robot_design.description.builder import ParametrizedBuilder, URDFLinkCreator, add_branch, jps_graph2urdf_by_bulder
-import networkx as nx
+from auto_robot_design.description.builder import ParametrizedBuilder, URDFLinkCreator, jps_graph2urdf_by_bulder
 import pinocchio as pin
 import numpy as np
 import meshcat

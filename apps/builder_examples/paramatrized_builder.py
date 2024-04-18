@@ -19,7 +19,7 @@ thickness = 0.04
 density = 2700 / 2.8
 
 print(pairs[0])
-builder = ParametrizedBuilder(DetalizedURDFCreaterFixedEE,
+builder = ParametrizedBuilder(DetailedURDFCreatorFixedEE,
                               density={"default": density, "G":10000},
                               thickness={"default": thickness, "EE":0.08},
                               actuator=dict(pairs[0]),
