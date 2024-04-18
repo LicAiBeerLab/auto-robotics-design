@@ -27,6 +27,7 @@ def get_optimizing_joints(graph, constrain_dict):
     # filter the joints to be optimized
     optimizing_joints = dict(
         filter(lambda x: x[1]["optim"] and x[0] in name2jp, constrain_dict.items()))
+    # the procedure below is rather unstable
     optimizing_joints = dict(
         map(
             lambda x: (
