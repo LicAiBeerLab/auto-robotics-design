@@ -67,7 +67,7 @@ class CriteriaAggregator:
         self.end_effector_name = "EE"
         self.traj_6d = traj_6d
 
-    def get_criteria_data(self, urdf_str: str, mot_des: dict, loop_des: dict):
+    def get_criteria_data(self, fixed_robot, free_robot):
         """Perform calculating
 
         Args:
@@ -76,24 +76,22 @@ class CriteriaAggregator:
             loop_des (dict): _description_
 
         Returns:
-            _type_: moment_critria_trj, along_critria_trj, res_dict_fixed
+            dict: data calculated for each trajectory point
+            dict: data calculated as a result of the whole simulation
+            dict: results of trajectory following for the fixed robot 
         """
-        fixed_robot = build_model_with_extensions(urdf_str, mot_des, loop_des,
-                                                  True)
-        free_robot = build_model_with_extensions(urdf_str, mot_des, loop_des,
-                                                 False)
 
         # perform calculations of the data required to calculate the fancy mech criteria
         res_dict_free, res_dict_fixed = calculate_quasi_static_simdata(
             free_robot, fixed_robot, self.end_effector_name, self.traj_6d)
         # calculate the criteria that can be assigned to each point at the trajectory 
-        point_critria_vector = moment_criteria_calc(self.dict_moment_criteria,
+        point_criteria_vector = moment_criteria_calc(self.dict_moment_criteria,
                                                   res_dict_free, res_dict_fixed)
         # calculate criteria that characterize the performance along the whole trajectory  
-        trajectory_critria = along_criteria_calc(self.dict_along_criteria,res_dict_free,
+        trajectory_criteria = along_criteria_calc(self.dict_along_criteria,res_dict_free,
                                                 res_dict_fixed, fixed_robot)
 
-        return point_critria_vector, trajectory_critria, res_dict_fixed
+        return point_criteria_vector, trajectory_criteria, res_dict_fixed
 
 
 def save_criterion_traj(

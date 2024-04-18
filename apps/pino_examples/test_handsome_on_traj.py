@@ -7,6 +7,8 @@ import os
 import os
 from pathlib import Path
 
+from auto_robot_design.pinokla.loader_tools import build_model_with_extensions
+
 DIR_NAME_FOR_LOAD = "generated_1_select"
 file_list = os.listdir(DIR_NAME_FOR_LOAD)
 
@@ -32,5 +34,8 @@ for num, path_i in enumerate(new_list):
     urdf_i = str(res_i["urdf"])
     joint_description_i = res_i["mot_description"].item()
     loop_description_i = res_i["loop_description"].item()
+    
+    robo = build_model_with_extensions(urdf_i, joint_description_i, loop_description_i, fixed=True)
+    robo_free = build_model_with_extensions(urdf_i, joint_description_i, loop_description_i, fixed=False)
     moment_critria_trj, along_critria_trj, res_dict_fixed = crag.get_criteria_data(
-        urdf_i, joint_description_i, loop_description_i)
+        robo, robo_free)

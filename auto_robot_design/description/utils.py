@@ -1,4 +1,3 @@
-import grp
 from itertools import permutations
 import networkx as nx
 import numpy as np
@@ -31,7 +30,7 @@ def all_combinations_active_joints_n_actuator(graph: nx.Graph, actuators):
     combination_actuator = permutations(actuators, len(active_joints))
     pairs_joint_actuator = []
     for combination in combination_actuator:
-        pairs_joint_actuator.append(tuple(zip(active_joints, combination))) 
+        pairs_joint_actuator.append(tuple(zip(active_joints, combination)))
     return pairs_joint_actuator
 
 

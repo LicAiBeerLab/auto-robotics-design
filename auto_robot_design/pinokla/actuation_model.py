@@ -22,7 +22,7 @@ class ActuationModel():
         self.getMotId_v(model)
         self.getFreeId_v(model)
 
-        
+
     def __str__(self):
         return(print("Id q motor: " + str(self.idqmot) + "\r" "Id v motor: " + str(self.idvmot) ))
     

@@ -1,7 +1,6 @@
 from auto_robot_design.pinokla.loader_tools import build_model_with_extensions
-from auto_robot_design.generator.two_link_generator import TwoLinkGenerator
-from auto_robot_design.description.builder import Builder, URDFLinkCreater, jps_graph2urdf_by_bulder
-import networkx as nx
+from auto_robot_design.generator.restricted_generator.two_link_generator import TwoLinkGenerator
+from auto_robot_design.description.builder import ParametrizedBuilder, URDFLinkCreator, jps_graph2urdf_by_bulder
 import pinocchio as pin
 import numpy as np
 import meshcat
@@ -20,7 +19,7 @@ sys.path.append(mymodule_dir)
 
 # Load robot
 gen = TwoLinkGenerator()
-builder = Builder(URDFLinkCreater)
+builder = ParametrizedBuilder(URDFLinkCreator)
 graphs_and_cons = gen.get_standard_set()
 np.set_printoptions(precision=3, linewidth=300, suppress=True, threshold=10000)
 

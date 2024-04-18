@@ -1,16 +1,6 @@
 import numpy as np
 
-
-class Reward():
-    """Interface for the optimization criteria"""
-
-    def __init__(self) -> None:
-        pass
-
-    def calculate(self, point_criteria, trajectory_criteria, trajectory_results) -> float:
-        """Calculate the value of the criterion from the data"""
-        pass
-
+from auto_robot_design.optimization.rewards.reward_base import Reward
 
 class VelocityReward(Reward):
     """Reward the mech for the value of the manipulability along the trajectory
@@ -28,7 +18,7 @@ class VelocityReward(Reward):
         self.trajectory_key = trajectory_key
         self.error_key = error_key
 
-    def calculate(self, point_criteria, trajectory_criteria, trajectory_results) -> float:
+    def calculate(self, point_criteria, trajectory_criteria, trajectory_results, **kwargs) -> float:
         """Calculate the length of the line from zero to the cross of the manipulability ellipsoid and trajectory direction
 
         Args:
@@ -81,7 +71,7 @@ class ForceEllipsoidReward(Reward):
         self.trajectory_key = trajectory_key
         self.error_key = error_key
 
-    def calculate(self, point_criteria, trajectory_criteria, trajectory_results) -> float:
+    def calculate(self, point_criteria, trajectory_criteria, trajectory_results, **kwargs) -> float:
         manipulability_matrices: list[np.array] = point_criteria[self.manip_key]
         trajectory_points = trajectory_results[self.trajectory_key]
         errors = trajectory_results[self.error_key]
@@ -102,7 +92,6 @@ class ForceEllipsoidReward(Reward):
 
         return result/(n_steps-1)
 
-
 class EndPointZRRReward(Reward):
     """Reduction ratio along the vertical (z) axis in the edge points of the trajectory (stance poses)"""
 
@@ -118,7 +107,7 @@ class EndPointZRRReward(Reward):
         self.trajectory_key = trajectory_key
         self.error_key = error_key
 
-    def calculate(self, point_criteria, trajectory_criteria, trajectory_results) -> float:
+    def calculate(self, point_criteria, trajectory_criteria, trajectory_results, **kwargs) -> float:
         """Calculates the sum of ZRR in starting and end points
 
         Args:
@@ -146,99 +135,3 @@ class EndPointZRRReward(Reward):
             end_result = 1/np.linalg.norm(end_pose_matrix@np.array([0, 1]))
 
         return (starting_result + end_result)/2
-
-
-class EndPointIMFReward(Reward):
-    """IMF in the trajectory edge points"""
-
-    def __init__(self, imf_key, trajectory_key, error_key) -> None:
-        """Set the dictionary keys for the data
-
-        Args:
-            imf_key (str): key for the value of the IMF
-            trajectory_key (str): key for the trajectory points
-            error_key (str): key for the pose errors 
-        """
-        self.imf_key = imf_key
-        self.trajectory_key = trajectory_key
-        self.error_key = error_key
-
-    def calculate(self, point_criteria, trajectory_criteria, trajectory_results) -> float:
-        """Calculate the sum of IMF in starting and end points
-
-        Args:
-            point_criteria (DataDict): all data of the characteristics assigned to each point
-            trajectory_criteria (DataDict): all data of the trajectory characteristics 
-            trajectory_results (DataDict): data of trajectory and trajectory following
-
-        Returns:
-            float: value of the reward
-        """
-        IMF: list[np.array] = point_criteria[self.imf_key]
-        errors = trajectory_results[self.error_key]
-
-        if errors[0] > 1e-6:
-            starting_result = 0
-        else:
-            starting_result = IMF[0]
-
-        if errors[-1] > 1e-6:
-            end_result = 0
-        else:
-            end_result = IMF[-1]
-
-        return (starting_result + end_result)/2
-
-
-class PositioningReward():
-    """Mean position error for the trajectory"""
-
-    def __init__(self,  pos_error_key) -> None:
-        """Set the dictionary keys for the data
-
-        Args:
-            pos_error_key (str): key for mean position error
-        """
-        self.pos_error_key = pos_error_key
-
-    def calculate(self, point_criteria, trajectory_criteria, trajectory_results) -> float:
-        """Just get the value for the mean positioning error
-
-        Args:
-            point_criteria (DataDict): all data of the characteristics assigned to each point
-            trajectory_criteria (DataDict): all data of the trajectory characteristics 
-            trajectory_results (DataDict): data of trajectory and trajectory following
-
-        Returns:
-            float: value of the reward
-        """
-        # get the manipulability for each point at the trajectory
-        mean_error = trajectory_criteria[self.pos_error_key]
-        return -mean_error
-
-
-class MassReward():
-    """Mass for the trajectory"""
-
-    def __init__(self, mass_key) -> None:
-        """Set the dictionary keys for the data
-
-        Args:
-            mass_key (str): key for the mech mass
-        """
-        self.mass_key = mass_key
-
-    def calculate(self, point_criteria, trajectory_criteria, trajectory_results) -> float:
-        """Just get the total mass from the data dictionaries
-
-        Args:
-            point_criteria (DataDict): all data of the characteristics assigned to each point
-            trajectory_criteria (DataDict): all data of the trajectory characteristics 
-            trajectory_results (DataDict): data of trajectory and trajectory following
-
-        Returns:
-            float: value of the reward
-        """
-        # get the manipulability for each point at the trajectory
-        mass = trajectory_criteria[self.mass_key]
-        return -mass

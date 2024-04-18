@@ -7,9 +7,7 @@ from auto_robot_design.description.builder import add_branch
 from auto_robot_design.description.utils import draw_joint_point
 import itertools
 
-from utilities import set_circle_points
-
-
+from auto_robot_design.generator.restricted_generator.utilities import set_circle_points
 class ThreeLinkGenerator():
     def __init__(self) -> None:
         self.variants_2l = 5
@@ -324,7 +322,7 @@ class ThreeLinkGenerator():
                 triangle_joints.append(joint)
 
         branch.append(third_connection)
-        branch += connection_joints[third_connection]
+        branch+=connection_joints[third_connection]
         add_branch(self.graph, branch)
 
         secondary_branch = []
@@ -363,38 +361,38 @@ class ThreeLinkGenerator():
 
     def filter_constrain_dict(self):
         list_names = list(map(lambda x: x.name, self.graph.nodes))
-        self.constrain_dict = dict(
-            filter(lambda x: x[0] in list_names, self.constrain_dict.items()))
+        self.constrain_dict = dict(filter(lambda x:x[0] in list_names, self.constrain_dict.items()))
 
-    def get_all_topologies(self, main_shift=0.2, main_length=0.4, main_pos=0.5, inner_shift=0.5, outer_shift=0.5, nominal_length=1):
+    def get_all_topologies(self, main_shift=0.2, main_length=0.4, main_pos=0.5,inner_shift=0.5,outer_shift=0.5, nominal_length = 1):
         result = []
         for inner_variant in range(self.total_variants):
             for outer_variant in range(self.total_variants):
                 self.reset()
-                self.build_standard_threelink(
-                    right_shift=main_shift, middle_length=main_length, middle_pos=main_pos, nominal_length=nominal_length)
+                self.build_standard_threelink(right_shift=main_shift,middle_length=main_length,middle_pos=main_pos, nominal_length=nominal_length)
                 if inner_variant < self.variants_2l:
                     top_in, bot_in = self.add_2l_branch(inner=True, variant=inner_variant,
-                                                        shift=inner_shift, branch_idx=0)
+                                    shift=inner_shift, branch_idx=0)
                 elif inner_variant < self.variants_2l+self.variants_4l_t1:
                     top_in, bot_in = self.add_4l_branch_type1(
                         inner=True, variant=inner_variant-self.variants_2l, shift=inner_shift, branch_idx=0)
                 else:
                     top_in, bot_in = self.add_4l_branch_type2(inner=True, variant=inner_variant-self.variants_2l -
-                                                              self.variants_4l_t1, shift=inner_shift, branch_idx=0)
+                                            self.variants_4l_t1, shift=inner_shift, branch_idx=0)
 
                 if outer_variant < self.variants_2l:
-                    top_out, bot_out = self.add_2l_branch(inner=False, variant=outer_variant,
-                                                          shift=outer_shift, branch_idx=1)
+                    top_out, bot_out =self.add_2l_branch(inner=False, variant=outer_variant,
+                                    shift=outer_shift, branch_idx=1)
                 elif outer_variant < self.variants_2l+self.variants_4l_t1:
-                    top_out, bot_out = self.add_4l_branch_type1(
+                    top_out, bot_out =self.add_4l_branch_type1(
                         inner=False, variant=outer_variant-self.variants_2l, shift=outer_shift, branch_idx=1)
                 else:
-                    top_out, bot_out = self.add_4l_branch_type2(inner=False, variant=outer_variant -
-                                                                self.variants_2l-self.variants_4l_t1, shift=outer_shift, branch_idx=1)
-
-                if top_in != top_out and bot_in != bot_out:
+                    top_out, bot_out =self.add_4l_branch_type2(inner=False, variant=outer_variant -
+                                            self.variants_2l-self.variants_4l_t1, shift=outer_shift, branch_idx=1)
+                
+                if top_in!=top_out and bot_in!=bot_out:
                     self.filter_constrain_dict()
                     result.append((self.graph, self.constrain_dict))
 
         return result
+                    
+        
