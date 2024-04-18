@@ -353,7 +353,7 @@ def add_3d_constrain_current_q(fixed_robo: Robot, end_effector_name, q):
     target_SE3 = pin.SE3.Identity()
 
     pin.forwardKinematics(copied_model, copied_data, q)
-
+    pin.framesForwardKinematics(copied_model, copied_data, q)
     place = copied_data.oMf[ee_id].translation
     target_SE3.translation = np.array(place)
     frame_constraint = copied_model.frames[ee_id]

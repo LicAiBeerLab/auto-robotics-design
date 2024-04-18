@@ -158,7 +158,7 @@ dyn_set = pin.ProximalSettings(accuracy, mu_sim, max_it)
 
 q = needed_q
 pin.computeGeneralizedGravity(robo_planar.model, robo_planar.data, q)
-
+pin.computeTotalMass(robo_planar.model)
 ee_id_g = robo_planar.model.getFrameId("G")
 vq, J_closed = inverseConstraintKinematicsSpeed(
     robo_planar.model,
@@ -197,7 +197,7 @@ for i in range(N_it):
         robo_planar.data.oMf[ee_id_g].action @ np.zeros(6),
     )
 
-    cho = 1*J_closed.T @ np.array([0, 0, o_g, 0, 0, 0])
+    cho = 1*J_closed.T @ np.array([0, 0, 0.9*o_g, 0, 0, 0])
 
     tauq[id_mt1] = cho[0]
     tauq[id_mt2] = cho[1]
