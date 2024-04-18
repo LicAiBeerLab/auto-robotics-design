@@ -2,6 +2,8 @@ import numpy as np
 
 from auto_robot_design.optimization.rewards.reward_base import Reward
 
+GRAVITY = 9.81
+
 class HeavyLiftingReward(Reward):
     """Calculate the mass that can be held still using up to 70% of the motor capacity
 
@@ -47,13 +49,13 @@ class HeavyLiftingReward(Reward):
             force_matrix = np.transpose(manipulability_matrices[i]) # maps forces to torques
             zrr = np.abs(force_matrix@np.array([0,1]))
             force_z = pick_effort*self.max_effort_coefficient/max(zrr)
-            additional_force = abs(force_z) - 10*mass
+            additional_force = abs(force_z) - GRAVITY*mass
             if additional_force < 0:
                 return 0
             if additional_force < result:
                 result = additional_force
 
-        return result/10
+        return result/GRAVITY
 
 
 class AccelerationCapability(Reward):
