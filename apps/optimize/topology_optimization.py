@@ -12,7 +12,7 @@ from auto_robot_design.optimization.saver import (
 
 from auto_robot_design.description.utils import (
     draw_joint_point, )
-from auto_robot_design.optimization.problems import CalculateCriteriaProblemByWeigths
+from auto_robot_design.optimization.problems import CalculateCriteriaProblemByWeigths, get_optimizing_joints
 from auto_robot_design.optimization.optimizer import PymooOptimizer
 from auto_robot_design.pinokla.calc_criterion import ActuatedMass, EffectiveInertiaCompute, ImfCompute, ManipCompute, MovmentSurface, NeutralPoseMass, TranslationErrorMSE, ManipJacobian
 from auto_robot_design.pinokla.criterion_agregator import CriteriaAggregator
@@ -84,25 +84,9 @@ if __name__ == '__main__':
                 [thickness*5, thickness*10, thickness*2]), actuator=j,thickness=thickness)
             # get the graph from the generator
             graph, constrain_dict = all_graphs[i]
-            # filter the joints to be optimized
-            optimizing_joints = dict(
-                filter(lambda x: x[1]["optim"], constrain_dict.items()))
-            name2jp = dict(map(lambda x: (x.name, x), graph.nodes()))
-            # the procedure below is rather unstable
-            optimizing_joints = dict(
-                map(
-                    lambda x: (
-                        name2jp[x[0]],
-                        (
-                            x[1]["x_range"][0],
-                            x[1].get("z_range", [-0.01, 0.01])[0],
-                            x[1]["x_range"][1],
-                            x[1].get("z_range", [0, 0])[1],
-                        ),
-                    ),
-                    optimizing_joints.items(),
-                ))
+
             # the result is the dict with key - joint_point, value - tuple of all possible coordinate moves
+            optimizing_joints = get_optimizing_joints(graph, constrain_dict)
 
             # create the problem for the current optimization
             problem = CalculateCriteriaProblemByWeigths(graph,builder=builder,
