@@ -419,4 +419,10 @@ sqh_p = SquatHopParameters(hop_flight_hight=0.3,
                            squatting_down_hight=-0.3,
                            total_time=0.09)
 hoppa = SimulateSquatHop(sqh_p)
+
+
+t = np.linspace(0, sqh_p.total_time, 100)
+trj_f = hoppa.create_traj_equation()
+list__234 = np.array(list(map(trj_f, t)))
+
 hoppa.simulate(robo_urdf, joint_description, loop_description)
