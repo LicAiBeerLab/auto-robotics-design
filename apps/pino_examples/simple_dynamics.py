@@ -1,7 +1,7 @@
 from auto_robot_design.pinokla.loader_tools import build_model_with_extensions
 from auto_robot_design.generator.two_link_generator import TwoLinkGenerator
 from auto_robot_design.description.mechanism import JointPoint2KinematicGraph
-from auto_robot_design.description.builder import Builder, URDFLinkCreater, add_branch, jps_graph2urdf, jps_graph2urdf_parametrized
+from auto_robot_design.description.builder import ParametrizedBuilder, URDFLinkCreater, add_branch, jps_graph2pinocchio_robot
 import networkx as nx
 import pinocchio as pin
 import numpy as np
@@ -21,13 +21,13 @@ sys.path.append(mymodule_dir)
 
 # Load robot
 gen = TwoLinkGenerator()
-builder = Builder(URDFLinkCreater)
+builder = ParametrizedBuilder(URDFLinkCreater)
 graphs_and_cons = gen.get_standard_set()
 np.set_printoptions(precision=3, linewidth=300, suppress=True, threshold=10000)
 
 graph_jp, constrain = graphs_and_cons[0]
 
-robot_urdf, ative_joints, constraints = jps_graph2urdf_parametrized(graph_jp)
+robot_urdf, ative_joints, constraints = jps_graph2pinocchio_robot(graph_jp, builder)
 robo = build_model_with_extensions(robot_urdf, ative_joints, constraints)
 
 # Visualizer

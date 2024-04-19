@@ -30,7 +30,7 @@ from auto_robot_design.pinokla.robot_utils import add_3d_constrain_current_q
 def get_pino_models():
     pass
     gen = TwoLinkGenerator()
-    graph, constrain_dict = gen.get_standard_set()[1]
+    graph, constrain_dict = gen.get_standard_set()[2]
 
 
     pairs = all_combinations_active_joints_n_actuator(graph, t_motor_actuators)
@@ -45,7 +45,7 @@ def get_pino_models():
         density=density,
         thickness={"default": thickness, "EE": 0.08},
         actuator=dict(pairs[0]),
-        size_ground=np.array([thickness * 10, thickness * 10, thickness * 10]),
+        size_ground=np.array([thickness * 5, thickness * 5, thickness * 5]),
     )
 
     robo_urdf, joint_description, loop_description = jps_graph2urdf_by_bulder(
@@ -92,11 +92,11 @@ q0_trans = np.concatenate([np.array([0]), q0])
 
 robo_planar = add_3d_constrain_current_q(robo_planar, "EE", q0_trans)
 
-# viz = MeshcatVisualizer(
-#     robo_planar.model, robo_planar.visual_model, robo_planar.visual_model)
-# viz.viewer = meshcat.Visualizer().open()
-# viz.clean()
-# viz.loadViewerModel()
+viz = MeshcatVisualizer(
+    robo_planar.model, robo_planar.visual_model, robo_planar.visual_model)
+viz.viewer = meshcat.Visualizer().open()
+viz.clean()
+viz.loadViewerModel()
 
 
 pin.initConstraintDynamics(
@@ -174,8 +174,8 @@ for i in range(N_it):
     robo_planar.constraint_data,
     robo_planar.actuation_model,
     q,
-    ee_id_g,
-    robo_planar.data.oMf[ee_id_g].action @ np.zeros(6),
+    id_body,
+    robo_planar.data.oMf[id_body].action @ np.zeros(6),
 )   
     
     q_d = np.zeros(robo_planar.model.nq)
@@ -209,26 +209,30 @@ for i in range(N_it):
 
     v_body = np.concatenate((robo_planar.data.v[id_body].linear,robo_planar.data.v[id_body].angular))
     Ma = Jda.T @ E_tau.T @ M @ E_tau @ Jda
-    b_a = Jda.T @ E_tau.T @ (b + M @ E_tau @ np.concatenate((np.zeros(nvmot),a_d)))
+    g = pin.computeGeneralizedGravity(robo_planar.model, robo_planar.data, q)
+    g_a = Jda.T @ E_tau.T @ g
+    b_a = Jda.T @ E_tau.T @ (b - g + M @ E_tau @ np.concatenate((np.zeros(nvmot),a_d)))
     q_a = q[[id_mt1, id_mt2]]
     vq_a = vq[[id_vmt1, id_vmt2]]
     a_a = a[[id_vmt1, id_vmt2]]
     K = 100
     Kd = 10
     
-    Kimp = 5000
-    Kdimp = 1000
+    Kimp = 1000
+    Kdimp = 10
     
     # q_d = np.array([0, 0.5*np.sin(2*np.pi * 2 * i*DT)])
-    # tau_a = Ma @ (K * (qa_d - q_a) + Kd * (vqa_d - vq_a)) - b_a
-    tau_a = Ma @ a_a - b_a
-    cho = J_closed.T @ (Kimp * (np.array([0, 0, -0.1, 0, 0, 0]) - x_body_curr) + Kdimp * (np.zeros(6) - v_body))
-    tauq[id_vmt1] = cho[0]# - tau_a[0]
-    tauq[id_vmt2] = cho[1]# - tau_a[1]
-    # viz.display(q)
-    # print(f"q: {q.round(2)}")
-    # print(f"tau: {tauq.round(2)}")
-    # print(f"cho: {cho.round(2)}")
+    tau_a = Ma @ (K * (qa_d - q_a) + Kd * (vqa_d - vq_a)) + g_a*0.75 - b_a
+    # tau_a = Ma @ a_a - b_a
+    cho = J_closed.T @ (Kimp * (np.array([0, 0, -0.1, 0, 0, 0]) - x_body_curr) + Kdimp * (np.zeros(6) - v_body)) + g_a*0.75 + b_a
+    # tauq[id_vmt1] = tau_a[0]
+    # tauq[id_vmt2] = tau_a[1]
+    tauq[id_vmt1] = cho[0]
+    tauq[id_vmt2] = cho[1]
+    viz.display(q)
+    print(f"q: {q.round(2)}")
+    print(f"tau: {tauq.round(2)}")
+    print(f"cho: {cho.round(2)}")
     
     t_arr[i] = i * DT
     q_arr[i] = q
@@ -238,6 +242,7 @@ for i in range(N_it):
     q_des_arr[i] = qa_d
     prev_Jmot = Jmot
     prev_Jfree = Jfree
+    print(M @ E_tau @ np.concatenate((np.zeros(nvmot),a_d)))
 
 print(q_a)
 
