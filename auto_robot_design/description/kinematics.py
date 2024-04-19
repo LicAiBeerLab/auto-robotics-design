@@ -17,6 +17,7 @@ from trimesh.convex import convex_hull
 from auto_robot_design.description.actuators import RevoluteUnit
 from typing import Union
 
+
 @dataclass
 class JointPoint:
     """Describe a point in global frame where a joint is attached"""
@@ -50,13 +51,12 @@ class JointPoint:
                 self.__instance_counter,
             )
         )
-    
-    
+
     def __eq__(self, __value: object) -> bool:
         return hash(self) == hash(__value)
 
 
-def create_mesh_from_joints(joints, thickness, frame = np.eye(4)) -> Trimesh:
+def create_mesh_from_joints(joints, thickness, frame=np.eye(4)) -> Trimesh:
     points = {}
     for j in joints:
         points[j] = ((mr.TransInv(frame) @ np.r_[j.jp.r, 1])[:3], j.jp.w)
@@ -67,13 +67,16 @@ def create_mesh_from_joints(joints, thickness, frame = np.eye(4)) -> Trimesh:
         vector = points[p2][0] - points[p1][0]
         vector = vector / la.norm(vector) if la.norm(vector) != 0 else vector
         ort_vector = np.cross(points[p1][1], vector)
-        ort_vector = ort_vector / la.norm(ort_vector) if la.norm(ort_vector) != 0 else ort_vector
+        ort_vector = ort_vector / \
+            la.norm(ort_vector) if la.norm(ort_vector) != 0 else ort_vector
         variants = product((ort_vector, -ort_vector), (1, -1))
         for v in variants:
-            link_points.append(points[p1][0] + (v[0] - v[1] * p1.jp.w) * thickness / 2)
-            link_points.append(points[p2][0] + (v[0] - v[1] * p2.jp.w) * thickness / 2)
+            link_points.append(
+                points[p1][0] + (v[0] - v[1] * p1.jp.w) * thickness / 2)
+            link_points.append(
+                points[p2][0] + (v[0] - v[1] * p2.jp.w) * thickness / 2)
         mesh = mesh.union(convex_hull(link_points))
-        
+
     return mesh
 
 
@@ -85,7 +88,7 @@ class Geometry:
         size: Union[list[float], Trimesh] = [],
         mass: float = 0,
         inertia: np.ndarray = np.zeros((3, 3)),
-        color: list[float] = [0,0,0,0]
+        color: list[float] = [0, 0, 0, 0]
     ) -> None:
         self.shape: str = ""
         self._size: list[float] | Trimesh = size
@@ -118,7 +121,7 @@ class Geometry:
     @abstractmethod
     def calculate_inertia(self) -> tuple[float, np.ndarray]:
         return self.mass, self.inertia
-    
+
     @abstractmethod
     def get_thickness(self):
         return 0
@@ -128,18 +131,18 @@ class Box(Geometry):
     def __init__(
         self,
         density: float = 0,
-        size: Union[list[float], Trimesh]  = [],
+        size: Union[list[float], Trimesh] = [],
         mass: float = 0,
         inertia: np.ndarray = np.zeros((3, 3)),
-        color: list[float] = [0,0,0,0]
+        color: list[float] = [0, 0, 0, 0]
     ) -> None:
         super().__init__(density, size, mass, inertia, color)
         self.shape = "box"
 
     def calculate_inertia(self):
-        
+
         self.mass = np.prod(self.size) * self.density
-        inertia = lambda a1, a2: 1 / 12 * self.mass * (a1**2 + a2**2)
+        def inertia(a1, a2): return 1 / 12 * self.mass * (a1**2 + a2**2)
 
         inertia_xx = inertia(*self.size[1:])
         inertia_yy = inertia(self.size[1], self.size[2])
@@ -148,7 +151,7 @@ class Box(Geometry):
         self.inertia = np.diag([inertia_xx, inertia_yy, inertia_zz])
 
         return self.mass, self.inertia
-    
+
     def get_thickness(self):
         return self.size[1]
 
@@ -160,7 +163,7 @@ class Sphere(Geometry):
         size: list[float] = [],
         mass: float = 0,
         inertia: np.ndarray = np.zeros((3, 3)),
-        color: list[float] = [0,0,0,0]
+        color: list[float] = [0, 0, 0, 0]
     ) -> None:
         super().__init__(density, size, mass, inertia, color)
         self.shape = "sphere"
@@ -172,7 +175,7 @@ class Sphere(Geometry):
         self.inertia = np.diag([central_inertia for __ in range(3)])
 
         return self.mass, self.inertia
-    
+
     def get_thickness(self):
         return self.size[0]
 
@@ -184,11 +187,11 @@ class Mesh(Geometry):
         size: Trimesh = Trimesh(),
         mass: float = 0.0,
         inertia: np.ndarray = np.zeros((3, 3)),
-        color: list[float] = [0,0,0,0]
+        color: list[float] = [0, 0, 0, 0]
     ) -> None:
         super().__init__(density, size, mass, inertia, color)
         num_points = len(self.size.vertices) / 2
-        
+
         self.density = density
         # self.density = density / (num_points - 1)
         self.shape = "mesh"
@@ -200,10 +203,12 @@ class Mesh(Geometry):
         self.inertia = self._size.moment_inertia
 
         return self.mass, self.inertia
-    
+
     def get_thickness(self):
-        thickness = max(map(lambda x: x[0][1] - x[1][1], combinations(self.size.vertices,2)))
+        thickness = max(
+            map(lambda x: x[0][1] - x[1][1], combinations(self.size.vertices, 2)))
         return thickness
+
 
 class Link:
     instance_counter: int = 0
@@ -226,9 +231,7 @@ class Link:
         self._inertial_frame: np.ndarray = deepcopy(inertial_frame)
 
         self._density: float = density
-        
-        
-        
+
         self._thickness: tuple[float] = thickness
         self.define_geometry()
 
@@ -236,11 +239,11 @@ class Link:
         self.instance_counter = Link.instance_counter
         if self.name == "":
             self.name = "L" + str(self.instance_counter)
-            
+
     @property
     def density(self):
         return self._density
-    
+
     @density.setter
     def density(self, value: float):
         self._density = value
@@ -250,7 +253,7 @@ class Link:
     @property
     def thickness(self):
         return self._thickness
-    
+
     @thickness.setter
     def thickness(self, value: float):
         self._thickness = value
@@ -259,16 +262,16 @@ class Link:
     @property
     def frame(self):
         return self._frame
-    
+
     @frame.setter
     def frame(self, value: np.ndarray):
         self._frame = value
         self.define_geometry()
-        
+
     @property
     def inertial_frame(self):
         return self._inertial_frame
-    
+
     @inertial_frame.setter
     def inertial_frame(self, value: np.ndarray):
         self._inertial_frame = value
@@ -281,7 +284,8 @@ class Link:
             size = [self._thickness * 2 for __ in range(3)]
             self.geometry = Box(self._density, size, color=color)
         elif num_joint == 1:
-            self.geometry = Sphere(self._density, [self._thickness/1.4], color=color)
+            self.geometry = Sphere(
+                self._density, [self._thickness/1.4], color=color)
         elif num_joint == 2:
             joint_list = list(self.joints)
             vector = joint_list[1].jp.r - joint_list[0].jp.r
@@ -291,7 +295,7 @@ class Link:
             # print(length)
             if length > self.thickness:
                 length = length - self._thickness
-            size =  [self._thickness, self._thickness, length]
+            size = [self._thickness, self._thickness, length]
             self.geometry = Box(self._density, size, color=color)
         elif num_joint > 2:
             # print(max_length)
@@ -304,7 +308,7 @@ class Link:
 
     def str(self):
         return {self.name: tuple(j.jp.name for j in self.joints)}
-        
+
     def __hash__(self) -> int:
         return hash((self.name, *self.joints))
 
@@ -314,9 +318,9 @@ class Link:
 
 class Joint:
     def __init__(self, joint_point: JointPoint,
-                is_constraint: bool = False,
-                links: set[Link] = set(),
-                frame: np.ndarray = np.eye(4) ) -> None:
+                 is_constraint: bool = False,
+                 links: set[Link] = set(),
+                 frame: np.ndarray = np.eye(4)) -> None:
         self.jp = joint_point
         self.is_constraint = is_constraint
         self.links = deepcopy(links)
@@ -325,21 +329,21 @@ class Joint:
         self.frame = deepcopy(frame)
         self.pos_limits = (-np.pi, np.pi)
         self.actuator = RevoluteUnit()
-        self.damphing_friction = deepcopy((0,0))
-    
+        self.damphing_friction = deepcopy((0, 0))
+
     @property
     def link_in(self):
         return self._link_in
-    
+
     @link_in.setter
     def link_in(self, value: Link):  # noqa: F811
         self._link_in = value
         self.links = self.links | set([value])
-        
+
     @property
     def link_out(self):
         return self._link_out
-    
+
     @link_out.setter
     def link_out(self, value: Link):  # noqa: F811
         self._link_out = value
@@ -348,16 +352,16 @@ class Joint:
     def str(self):
         str_repr = {self.jp.name: tuple(l.name for l in self.links)}
         if self.link_in:
-            str_repr["in"] =  self.link_in.name
+            str_repr["in"] = self.link_in.name
         if self.link_out:
-            str_repr["out"] =  self.link_out.name
+            str_repr["out"] = self.link_out.name
         return str_repr
-    
+
     def __hash__(self) -> int:
         return hash((
             self.jp,
         ))
-    
+
     def __eq__(self, __value: object) -> bool:
         return hash(self) == hash(__value)
 
@@ -378,6 +382,7 @@ def get_endeffector_joints(graph: nx.Graph):
     else:
         joint_nodes = graph.nodes()
         return filter(lambda n: n.jp.attach_endeffector, joint_nodes)
+
 
 if __name__ == "__main__":
     # print("Kinematic description of the mechanism")

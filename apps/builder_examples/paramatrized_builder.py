@@ -3,8 +3,8 @@ import numpy as np
 from auto_robot_design.description.actuators import t_motor_actuators
 
 from auto_robot_design.description.utils import all_combinations_active_joints_n_actuator
-from auto_robot_design.description.builder import DetalizedURDFCreaterFixedEE, ParametrizedBuilder, jps_graph2urdf_by_bulder
-from auto_robot_design.generator.two_link_generator import TwoLinkGenerator
+from auto_robot_design.description.builder import DetailedURDFCreatorFixedEE, ParametrizedBuilder, jps_graph2urdf_by_bulder
+from auto_robot_design.generator.restricted_generator.two_link_generator import TwoLinkGenerator
 from auto_robot_design.pinokla.loader_tools import build_model_with_extensions
 
 
@@ -19,7 +19,7 @@ thickness = 0.04
 density = 2700 / 2.8
 
 print(pairs[0])
-builder = ParametrizedBuilder(DetalizedURDFCreaterFixedEE,
+builder = ParametrizedBuilder(DetailedURDFCreatorFixedEE,
                               density={"default": density, "G":10000},
                               thickness={"default": thickness, "EE":0.08},
                               actuator=dict(pairs[0]),

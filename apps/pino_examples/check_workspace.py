@@ -1,6 +1,5 @@
 from auto_robot_design.pinokla.closed_loop_kinematics import closedLoopProximalMount
 
-from auto_robot_design.pinokla.loader_tools import build_model_with_extensions
 from auto_robot_design.pinokla.calc_criterion import search_workspace
 from pinocchio.visualize import MeshcatVisualizer
 import meshcat
@@ -8,32 +7,18 @@ import numpy as np
 from itertools import product
 import matplotlib.pyplot as plt
 
-from scipy.spatial import ConvexHull
 
-from auto_robot_design.description.builder import ParametrizedBuilder, DetalizedURDFCreaterFixedEE, jps_graph2urdf_by_bulder
-from auto_robot_design.generator.two_link_generator import TwoLinkGenerator
+from auto_robot_design.description.builder import ParametrizedBuilder, DetailedURDFCreatorFixedEE, jps_graph2pinocchio_robot
+from auto_robot_design.generator.restricted_generator.two_link_generator import TwoLinkGenerator
 
 
 gen = TwoLinkGenerator()
-builder = ParametrizedBuilder(DetalizedURDFCreaterFixedEE)
+builder = ParametrizedBuilder(DetailedURDFCreatorFixedEE)
 graphs_and_cons = gen.get_standard_set()
 np.set_printoptions(precision=3, linewidth=300, suppress=True, threshold=10000)
-graph_jp, constrain = graphs_and_cons[0]
-robot_urdf, ative_joints, constraints = jps_graph2urdf_by_bulder(graph_jp, builder)
 
-
-robo = build_model_with_extensions(robot_urdf,
-                                   joint_description=ative_joints,
-                                   loop_description=constraints,
-                                   fixed=True)
-
-
-robo_free = build_model_with_extensions(
-    robot_urdf,
-    joint_description=ative_joints,
-    loop_description=constraints,
-    fixed=False
-)
+graph_jp, __ = graphs_and_cons[0]
+robo, robo_free = jps_graph2pinocchio_robot(graph_jp, builder)
 
 q0 = closedLoopProximalMount(
     robo.model,

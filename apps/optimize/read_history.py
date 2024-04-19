@@ -23,7 +23,6 @@ from auto_robot_design.optimization.visualizer import (
 )
 from auto_robot_design.optimization.problems import CalculateCriteriaProblemByWeigths
 from auto_robot_design.optimization.optimizer import PymooOptimizer
-from auto_robot_design.pinokla.criterion_agregator import calc_traj_error
 from auto_robot_design.optimization.test_criteria import calculate_mass
 from auto_robot_design.description.utils import draw_joint_point
 

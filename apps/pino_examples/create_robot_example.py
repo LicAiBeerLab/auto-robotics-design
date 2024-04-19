@@ -1,7 +1,6 @@
 import odio_urdf
 import numpy as np
 import random
-import os
  
 def create_box_link(
     name: str, mass: float, x_size_length: float, y_size: float, z_size: float
