@@ -72,12 +72,13 @@ class CalculateCriteriaProblemByWeigths(ElementwiseProblem):
             point_criteria_vector, trajectory_criteria, res_dict_fixed = criteria_aggregator.get_criteria_data(fixed_robot, free_robot)
 
             for reward, weight in rewards:
-                partial_results.append(reward.calculate(point_criteria_vector, trajectory_criteria, res_dict_fixed, Actuator = self.motor))
+                partial_results.append(reward.calculate(point_criteria_vector, trajectory_criteria, res_dict_fixed, Actuator = self.motor)[0])
                 total_result+= weight*partial_results[-1]
 
         # the form of the output required by the pymoo lib
         out["F"] = -total_result
         out["Fs"] = partial_results
+
 
     def convert_joints2x_opt(self):
         x_opt = np.zeros(len(self.opt_joints) * 2)

@@ -43,10 +43,6 @@ class EndPointIMFReward(Reward):
 
         return (starting_result + end_result)/2
 
-
-
-
-
 class MassReward():
     """Mass of the robot"""
 
