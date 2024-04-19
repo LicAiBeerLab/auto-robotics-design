@@ -174,6 +174,10 @@ class SimulateSquatHop:
         return np.concatenate([np.array([q_base]), q_leg])
 
     def calc_start_squat_q(self):
+        nominal_q_hop_robot = self.calc_nominal_q()
+        nominal_q = nominal_q_hop_robot[1:]
+ 
+        pin.framesForwardKinematics(self.fixed_base_robo.model, self.fixed_base_robo.data, nominal_q)
         ee_name = self.squat_hop_parameters.end_effector_name
         ee_id = self.fixed_base_robo.model.getFrameId(ee_name)
         if self.squat_hop_parameters.hop_direction == HopDirection.Z:
@@ -182,7 +186,7 @@ class SimulateSquatHop:
             raise NotImplemented
 
         default_hight = self.fixed_base_robo.data.oMf[ee_id].translation
-        default_hight[id_in_vector] = default_hight[id_in_vector] + \
+        default_hight[id_in_vector] = default_hight[id_in_vector] - \
             self.squat_hop_parameters.squatting_down_hight
 
         needed_q, min_feas, is_reach = closedLoopInverseKinematicsProximal(
@@ -195,7 +199,7 @@ class SimulateSquatHop:
             onlytranslation=True,
         )
         needed_q = self.add_base_pos(
-            -self.squat_hop_parameters.squatting_down_hight, needed_q)
+            self.squat_hop_parameters.squatting_down_hight, needed_q)
         return needed_q, is_reach
 
     def setup_dynamic(self):
@@ -247,6 +251,7 @@ class SimulateSquatHop:
             print((des_vel-vq[0])/des_vel)
             viz.display(q)
 
+
     def create_traj_equation(self):
         final_v = calculate_final_v(self.squat_hop_parameters.hop_flight_hight)
         traj_fun = quartic_func_free_acc(0,
@@ -283,7 +288,7 @@ class SimulateSquatHop:
             ground_as_ee_id,
             self.hop_robo.data.oMf[ground_as_ee_id].action @ np.zeros(6),
         )
-        COMPENSATE_COEFFICIENT = 0.78
+        COMPENSATE_COEFFICIENT = 0.75
         desired_end_effector_force = COMPENSATE_COEFFICIENT * \
             grav_force + total_mass * desired_acceleration
         desired_end_effector_wrench = self.scalar_force_to_wrench(
@@ -292,9 +297,9 @@ class SimulateSquatHop:
         tau = self.act_torques_to_generalized_q(desired_q_torques)
         return tau
 
-
+ 
 gen = TwoLinkGenerator()
-graph, constrain_dict = gen.get_standard_set()[7]
+graph, constrain_dict = gen.get_standard_set()[8]
 
 pairs = all_combinations_active_joints_n_actuator(graph, t_motor_actuators)
 
@@ -311,11 +316,11 @@ builder = ParametrizedBuilder(
         "EE": 0.08
     },
     actuator=dict(pairs[0]),
-    size_ground=np.array([thickness * 5, thickness * 5, thickness * 5]),
+    size_ground=np.array([thickness * 5, thickness * 50, thickness * 5]),
 )
 
 robo_urdf, joint_description, loop_description = jps_graph2urdf_by_bulder(
     graph, builder)
-sqh_p = SquatHopParameters(squatting_down_hight=-0.2, total_time = 0.4)
+sqh_p = SquatHopParameters(hop_flight_hight = 0.3, squatting_up_hight = -0.05 , squatting_down_hight=-0.3, total_time = 0.09)
 hoppa = SimulateSquatHop(sqh_p)
 hoppa.simulate(robo_urdf, joint_description, loop_description)
