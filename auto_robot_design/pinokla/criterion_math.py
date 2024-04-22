@@ -39,9 +39,10 @@ def calc_IMF(M: np.ndarray,
              J_closed: np.ndarray,
              projection: ImfProjections = ImfProjections.Z):
 
+    x = np.array([1, 0, 0, 0, 0, 0])
     y = np.array([0, 1, 0, 0, 0, 0])
     z = np.array([0, 0, 1, 0, 0, 0])
-    x = np.array([1, 0, 0, 0, 0, 0])
+
 
     Mmot_free = dq.T @ M @ dq
     Lambda_free = np.linalg.inv(
@@ -60,6 +61,27 @@ def calc_IMF(M: np.ndarray,
             np.identity(6) - Lambda_free @ np.linalg.inv(Lambda_free_lock))
 
     return ret_IMF
+
+def calc_effective_inertia(M: np.ndarray,
+             dq: np.ndarray,
+             J_closed: np.ndarray,
+             projection: ImfProjections = ImfProjections.Z):
+
+    Mmot = dq.T @ M @ dq
+    J_closed = J_closed[[0,2]]
+    Lambda = np.linalg.inv(
+        J_closed @ np.linalg.inv(Mmot) @ J_closed.T)
+
+    return Lambda
+
+def calc_actuated_mass(M: np.ndarray,
+             dq: np.ndarray,
+             J_closed: np.ndarray,
+             projection: ImfProjections = ImfProjections.Z):
+
+    Mmot = dq.T @ M @ dq
+    Mmot = Mmot[:2, :2]
+    return Mmot
 
 
 def calc_force_ellips_space(jacob: np.ndarray):

@@ -378,9 +378,10 @@ def build_model_with_extensions(
     
 ):
     """
-    Builds a robot model with extensions based on the provided URDF string, joint description, loop description,
-    actuator context, and fixed flag. If the actuator_context is not None,
-    an armature is set for each active connection based on the actuator rotor inertia and reduction ratio.
+    Builds a robot model with extensions based on the provided URDF string, joint 
+    description, loop description,actuator context, and fixed flag. If the actuator_context 
+    is not None, an armature is set for each active connection based on the actuator rotor 
+    inertia and reduction ratio.
 
     Args:
         urdf_str (str): The URDF string representing the robot model.
@@ -402,13 +403,14 @@ def build_model_with_extensions(
     if actuator_context is not None:
         # Perform additional operations based on the actuator context
         if isinstance(actuator_context, dict):
-            
+
             actuator_context = tuple(filter(lambda x: x[0] != "default", actuator_context.items()))
         elif isinstance(actuator_context, nx.Graph):
             active_joints = actuator_context.active_joints
             actuator_context = []
             for act_j in active_joints:
                 actuator_context.append((act_j.jp.name, act_j.actuator))
+
         for joint, actuator in actuator_context:
             # It works if motname and idvmot in actuation_model are in the same order
             place_mot = actuation_model.motname2id_v[joint]

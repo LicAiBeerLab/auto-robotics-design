@@ -16,8 +16,9 @@ dependencies:
     - notebook
     - mediapy
     - tqdm
-    - trimesh
+    - trimesh==4.1.4
     - meshcat
     - joblib
     - manifold3d
     - git+https://github.com/hauptmech/odio_urdf.git
+    - pymoo

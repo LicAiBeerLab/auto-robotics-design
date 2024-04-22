@@ -53,7 +53,7 @@ class KinematicGraph(nx.Graph):
     
     @property
     def active_joints(self):
-        return set(map(lambda x: x.jp.name, filter(lambda j: j.jp.active, self.joint_graph.nodes())))
+        return set(map(lambda x: x, filter(lambda j: j.jp.active, self.joint_graph.nodes())))
     
     def define_main_branch(self):
         ground_joints = sorted(
@@ -208,7 +208,7 @@ class KinematicGraph(nx.Graph):
             
             rot, __ = mr.TransToRp(prev_in_joint.frame)
             pos = mr.TransInv(prev_link.frame) @ np.r_[joint.jp.r, 1]
-            
+
             joint.frame = mr.RpToTrans(rot, pos[:3])
             
     def set_random_actuators(self, actuators: list):

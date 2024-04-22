@@ -44,9 +44,10 @@ class ProblemSaver:
             dill.dump(self.problem.opt_joints, f)
             dill.dump(self.problem.initial_xopt, f)
             dill.dump(self.problem.jp2limits, f)
-            dill.dump(self.problem.criteria, f)
+            dill.dump(self.problem.criteria_and_rewards, f)
         draw_joint_point(self.problem.graph)
         plt.savefig(os.path.join(self.path, "initial_mechanism.png"))
+        plt.close()
 
     def save_history(self, history):
         with open(os.path.join(self.path, "history.pkl"), "wb") as f:

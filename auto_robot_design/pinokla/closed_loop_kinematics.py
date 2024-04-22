@@ -79,7 +79,7 @@ def closedLoopInverseKinematicsProximal(
 
     data = model.createData()
     constraint_data = [cm.createData() for cm in constraint_model]
- 
+
     # proximal solver (black magic)
     if q_start is None:
         q = pin.neutral(model)
