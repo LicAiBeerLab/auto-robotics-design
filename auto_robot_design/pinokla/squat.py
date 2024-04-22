@@ -1,11 +1,8 @@
-from copy import copy, deepcopy
 from dataclasses import dataclass
 from enum import IntFlag, auto
 from typing import Callable
 from auto_robot_design.pinokla.closed_loop_jacobian import inverseConstraintKinematicsSpeed
-from auto_robot_design.pinokla.loader_tools import Robot, build_model_with_extensions, make_Robot_copy
-from auto_robot_design.generator.two_link_generator import TwoLinkGenerator
-from auto_robot_design.description.builder import DetalizedURDFCreaterFixedEE
+from auto_robot_design.pinokla.loader_tools import build_model_with_extensions
 import pinocchio as pin
 import numpy as np
 import meshcat
@@ -14,14 +11,7 @@ from pinocchio.visualize import MeshcatVisualizer
 from auto_robot_design.pinokla.closed_loop_kinematics import closedLoopInverseKinematicsProximal, closedLoopProximalMount
 import numpy as np
 
-from auto_robot_design.description.actuators import t_motor_actuators
 
-from auto_robot_design.description.utils import (
-    all_combinations_active_joints_n_actuator, )
-from auto_robot_design.description.builder import (DetalizedURDFCreaterFixedEE,
-                                                   ParametrizedBuilder,
-                                                   jps_graph2urdf_by_bulder)
-from auto_robot_design.generator.two_link_generator import TwoLinkGenerator
 from auto_robot_design.pinokla.closed_loop_kinematics import closedLoopProximalMount
 from auto_robot_design.pinokla.loader_tools import build_model_with_extensions
 from auto_robot_design.pinokla.robot_utils import add_3d_constrain_current_q
@@ -410,7 +400,7 @@ class SimulateSquatHop:
             ground_as_ee_id,
             self.hop_robo.data.oMf[ground_as_ee_id].action @ np.zeros(6),
         )
-        COMPENSATE_COEFFICIENT = 0.77
+        COMPENSATE_COEFFICIENT = 0.81
         desired_end_effector_force = COMPENSATE_COEFFICIENT * \
             grav_force + total_mass * desired_acceleration
         desired_end_effector_wrench = self.scalar_force_to_wrench(
