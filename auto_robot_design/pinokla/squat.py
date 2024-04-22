@@ -121,7 +121,6 @@ class SimulateSquatHop:
                   joint_description: dict,
                   loop_description: dict,
                   actuator_context=None):
-        
         """Initialized two types of model. 
         1) simple model with fixed base 
         2) model with 3d constrained end-effector plus base on prismatic joint 
@@ -248,7 +247,8 @@ class SimulateSquatHop:
                  robo_urdf: str,
                  joint_description: dict,
                  loop_description: dict,
-                 actuator_context=None):
+                 actuator_context=None,
+                 is_vis=False):
         """Simulate squat and hop process. Uses method
         self.setup_dynamic  
         self.set_robot
@@ -260,6 +260,8 @@ class SimulateSquatHop:
 
         Raises:
             Exception: _description_
+         Returns:
+              np.ndarray, np.ndarray, np.ndarray: position, velocity, acceleration 
         """
         self.setup_dynamic()
         self.set_robot(robo_urdf, joint_description, loop_description,
@@ -282,13 +284,19 @@ class SimulateSquatHop:
         q = start_squat_q
         tau_q = np.zeros(self.hop_robo.model.nv)
 
-        viz = MeshcatVisualizer(self.hop_robo.model,
-                                self.hop_robo.visual_model,
-                                self.hop_robo.visual_model)
-        viz.viewer = meshcat.Visualizer().open()
-        viz.clean()
-        viz.loadViewerModel()
-        viz.display(q)
+        q_act = np.zeros((simulate_steps, self.hop_robo.model.nv))
+        vq_act = np.zeros((simulate_steps, self.hop_robo.model.nv))
+        acc_act = np.zeros((simulate_steps, self.hop_robo.model.nv))
+        tau_act = np.zeros((simulate_steps, 2))
+
+        if is_vis:
+            viz = MeshcatVisualizer(self.hop_robo.model,
+                                    self.hop_robo.visual_model,
+                                    self.hop_robo.visual_model)
+            viz.viewer = meshcat.Visualizer().open()
+            viz.clean()
+            viz.loadViewerModel()
+            viz.display(q)
 
         for i in range(simulate_steps):
             a = pin.constraintDynamics(self.hop_robo.model, self.hop_robo.data,
@@ -301,20 +309,26 @@ class SimulateSquatHop:
             tau_q = self.get_torques(des_acc, q, grav_force, total_mass)
             vq += a * self.time_step
             q = pin.integrate(self.hop_robo.model, q, vq * self.time_step)
-            print((des_vel - vq[0]) / des_vel)
-            viz.display(q)
+            # First coordinate is root_joint            
+            q_act[i] = q
+            vq_act[i] = vq
+            acc_act[i] = a
+            tau_act[i] = self.generalized_q_to_act_torques(tau_q)
+
+            if is_vis:
+                viz.display(q)
+        return q_act, vq_act, acc_act, tau_act
 
     def create_traj_equation(self) -> Callable:
         """Returns function(t) -> (pos, vel, acc)
-        
+
         Returns:
             Callable: _description_
         """
         final_v = calculate_final_v(self.squat_hop_parameters.hop_flight_hight)
         traj_fun = quartic_func_free_acc(
-            0,
-            self.squat_hop_parameters.squatting_up_hight -
             self.squat_hop_parameters.squatting_down_hight,
+            self.squat_hop_parameters.squatting_up_hight,
             self.squat_hop_parameters.total_time,
             qd0=0,
             qdf=final_v)
@@ -356,6 +370,21 @@ class SimulateSquatHop:
         tau[id_mt2] = torques[1]
         return tau
 
+    def generalized_q_to_act_torques(self, generalized_q: np.ndarray) -> np.ndarray:
+        """Converts a size vector equal to self.hop_robo.model.nv 
+        to an actuator size vector.
+
+        Args:
+            generalized_q (np.ndarray): Vector of generalized coordinates.
+
+        Returns:
+            np.ndarray: Vector of torques corresponding to the actuators.
+        """
+        id_mt1 = self.hop_robo.actuation_model.idqmot[0]
+        id_mt2 = self.hop_robo.actuation_model.idqmot[1]
+        torques = np.array([generalized_q[id_mt1], generalized_q[id_mt2]])
+        return torques
+
     def get_torques(self, desired_acceleration: float, current_q: np.ndarray,
                     grav_force: float, total_mass: float) -> np.ndarray:
         """Calculate actuator torques. With size self.hop_robo.model.nv.
@@ -367,7 +396,7 @@ class SimulateSquatHop:
             total_mass (float): Total mass of robot (base + leg)
 
         Returns:
-            _type_: _description_
+            np.ndarray: _description_ 
         """
         ground_as_ee_id = self.hop_robo.model.getFrameId(
             self.squat_hop_parameters.ground_link_name)
@@ -381,7 +410,7 @@ class SimulateSquatHop:
             ground_as_ee_id,
             self.hop_robo.data.oMf[ground_as_ee_id].action @ np.zeros(6),
         )
-        COMPENSATE_COEFFICIENT = 0.75
+        COMPENSATE_COEFFICIENT = 0.77
         desired_end_effector_force = COMPENSATE_COEFFICIENT * \
             grav_force + total_mass * desired_acceleration
         desired_end_effector_wrench = self.scalar_force_to_wrench(
@@ -389,40 +418,3 @@ class SimulateSquatHop:
         desired_q_torques = J_closed.T @ desired_end_effector_wrench
         tau = self.act_torques_to_generalized_q(desired_q_torques)
         return tau
-
-
-gen = TwoLinkGenerator()
-graph, constrain_dict = gen.get_standard_set()[8]
-
-pairs = all_combinations_active_joints_n_actuator(graph, t_motor_actuators)
-
-thickness = 0.04
-
-density = 2000
-
-print(pairs[0])
-builder = ParametrizedBuilder(
-    DetalizedURDFCreaterFixedEE,
-    density=density,
-    thickness={
-        "default": thickness,
-        "EE": 0.08
-    },
-    actuator=dict(pairs[0]),
-    size_ground=np.array([thickness * 5, thickness * 50, thickness * 5]),
-)
-
-robo_urdf, joint_description, loop_description = jps_graph2urdf_by_bulder(
-    graph, builder)
-sqh_p = SquatHopParameters(hop_flight_hight=0.3,
-                           squatting_up_hight=-0.05,
-                           squatting_down_hight=-0.3,
-                           total_time=0.09)
-hoppa = SimulateSquatHop(sqh_p)
-
-
-t = np.linspace(0, sqh_p.total_time, 100)
-trj_f = hoppa.create_traj_equation()
-list__234 = np.array(list(map(trj_f, t)))
-
-hoppa.simulate(robo_urdf, joint_description, loop_description)
