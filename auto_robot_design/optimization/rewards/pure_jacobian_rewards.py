@@ -103,6 +103,7 @@ class ForceEllipsoidReward(Reward):
         errors = trajectory_results[self.error_key]
         n_steps = len(trajectory_points)
         result = 0
+        reward_vector = []
         for i in range(n_steps-1):
             # the reward is none zero only if the point is reached
             if errors[i] > 1e-6:
@@ -114,9 +115,11 @@ class ForceEllipsoidReward(Reward):
                 np.linalg.norm(trajectory_shift)
             manipulability_matrix: np.array = manipulability_matrices[i]
             force_matrix = np.transpose(manipulability_matrix)
-            result += 1/np.linalg.norm(force_matrix@trajectory_direction)
+            step_result = 1/np.linalg.norm(force_matrix@trajectory_direction)
+            result += step_result
+            reward_vector.append(step_result)
 
-        return result/(n_steps-1)
+        return result/(n_steps-1), reward_vector
 
 class EndPointZRRReward(Reward):
     """Reduction ratio along the vertical (z) axis in the edge points of the trajectory (stance poses)"""
@@ -160,4 +163,4 @@ class EndPointZRRReward(Reward):
             end_pose_matrix = np.transpose(manipulability_matrices[-1])
             end_result = 1/np.linalg.norm(end_pose_matrix@np.array([0, 1]))
 
-        return (starting_result + end_result)/2
+        return (starting_result + end_result)/2, [starting_result, end_result]

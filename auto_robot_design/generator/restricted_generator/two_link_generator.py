@@ -1,4 +1,6 @@
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 from typing import Tuple, List
 import networkx as nx
 from copy import deepcopy
@@ -20,6 +22,12 @@ class TwoLinkGenerator():
         self.constrain_dict = {}  # should be updated after creating each joint
         self.current_main_branch = []
         self.graph = nx.Graph()
+        self.ground_x_movement = (-0.3, 0.3)
+        self.ground_z_movement = (-0.01,0)
+        self.free_x_movement = (-0.3, 0.3)
+        self.free_z_movement = (-0.3, 0.3)
+        self.bound_x_movement = (-0.2, 0.2)
+        self.bound_z_movement = (-0.2, 0.2)
 
     def reset(self):
         """Reset the graph builder."""
@@ -77,21 +85,21 @@ class TwoLinkGenerator():
                                   active=True,
                                   name=f"2L_ground")
         self.constrain_dict[ground_joint.name] = {
-            'optim': True, 'x_range': (-0.2, 0.2)}
+            'optim': True, 'x_range': self.ground_x_movement, 'z_range': self.ground_z_movement}
         # create connection dict
         connection_joints = {ground_joint: []}
 
         top_link_joint = JointPoint(r=link_connection_points[0], w=np.array([
                                     0, 1, 0]), active=True, name=f'2L_top')
         self.constrain_dict[top_link_joint.name] = {
-            'optim': True, 'x_range': (-0.2, 0.2), 'z_range': (-0.2, 0.2)}
+            'optim': True, 'x_range': self.bound_x_movement, 'z_range': self.bound_z_movement}
         connection_joints[top_link_joint] = [
             [self.current_main_branch[0], self.current_main_branch[1]]]
 
         bot_link_joint = JointPoint(
             r=link_connection_points[1], w=np.array([0, 1, 0]), name=f'2L_bot')
         self.constrain_dict[bot_link_joint.name] = {
-            'optim': True, 'x_range': (-0.2, 0.2), 'z_range': (-0.2, 0.2)}
+            'optim': True, 'x_range': self.bound_x_movement, 'z_range': self.bound_z_movement}
         connection_joints[bot_link_joint] = [
             [self.current_main_branch[1], self.current_main_branch[2]]]
 
@@ -112,7 +120,7 @@ class TwoLinkGenerator():
         branch_knee_joint = JointPoint(r=knee_point, w=np.array(
             [0, 1, 0]), name=f"2L_knee")
         self.constrain_dict[branch_knee_joint.name] = {
-            'optim': True, 'x_range': (-0.4, 0.4), 'z_range': (-0.4, 0.4)}
+            'optim': True, 'x_range': self.free_x_movement, 'z_range': self.free_z_movement}
 
         branch += connection_joints[top_joint]
         branch.append(top_joint)
@@ -141,21 +149,21 @@ class TwoLinkGenerator():
                                   active=True,
                                   name=f"2L_ground")
         self.constrain_dict[ground_joint.name] = {
-            'optim': True, 'x_range': (-0.2, 0.2)}
+            'optim': True, 'x_range': self.ground_x_movement, 'z_range': self.ground_z_movement}
         # create connection dict
         connection_joints = {ground_joint: []}
 
         top_link_joint = JointPoint(
             r=link_connection_points[0], w=np.array([0, 1, 0]), name=f'4L_top')
         self.constrain_dict[top_link_joint.name] = {
-            'optim': True, 'x_range': (-0.2, 0.2), 'z_range': (-0.2, 0.2)}
+            'optim': True, 'x_range': self.bound_x_movement, 'z_range': self.bound_z_movement}
         connection_joints[top_link_joint] = [
             [self.current_main_branch[0], self.current_main_branch[1]]]
 
         bot_link_joint = JointPoint(
             r=link_connection_points[1], w=np.array([0, 1, 0]), name=f'4L_bot')
         self.constrain_dict[bot_link_joint.name] = {
-            'optim': True, 'x_range': (-0.2, 0.2), 'z_range': (-0.2, 0.2)}
+            'optim': True, 'x_range': self.bound_x_movement, 'z_range': self.bound_z_movement}
         connection_joints[bot_link_joint] = [
             [self.current_main_branch[1], self.current_main_branch[2]]]
 
@@ -167,12 +175,12 @@ class TwoLinkGenerator():
                             w=np.array([0, 1, 0]),
                             name="4LT1_triplet_bot")
             self.constrain_dict[j1.name] = {
-                'optim': True, 'x_range': (-0.4, 0.4), 'z_range': (-0.4, 0.4)}
+                'optim': True, 'x_range':self.free_x_movement, 'z_range': self.free_z_movement}
             j2 = JointPoint(r=pos_2,
                             w=np.array([0, 1, 0]),
                             name="4LT1_triplet_top")
             self.constrain_dict[j2.name] = {
-                'optim': True, 'x_range': (-0.4, 0.4), 'z_range': (-0.4, 0.4)}
+                'optim': True, 'x_range':self.free_x_movement, 'z_range': self.free_z_movement}
 
             branch = []
             branch += connection_joints[bot_link_joint]
@@ -187,7 +195,7 @@ class TwoLinkGenerator():
                             w=np.array([0, 1, 0]),
                             name="4LT1_triplet_mid")
             self.constrain_dict[j3.name] = {
-                'optim': True, 'x_range': (-0.4, 0.4), 'z_range': (-0.4, 0.4)}
+                'optim': True, 'x_range':self.free_x_movement, 'z_range': self.free_z_movement}
 
             secondary_branch = []
             secondary_branch += connection_joints[top_link_joint]
@@ -212,7 +220,7 @@ class TwoLinkGenerator():
                 joint = JointPoint(r=pos, w=np.array(
                     [0, 1, 0]), name=f"4LT2_j{i}")
                 self.constrain_dict[joint.name] = {
-                    'optim': True, 'x_range': (-0.4, 0.4), 'z_range': (-0.4, 0.4)}
+                    'optim': True, 'x_range':self.free_x_movement, 'z_range': self.free_z_movement}
                 branch.append(joint)
                 if i < 2:
                     triangle_joints.append(joint)
@@ -280,6 +288,23 @@ def get_changed_graph(graph, constrain_dict, change_vector):
             node.r = node.r + vector_dict[node.name]
 
     return new_graph
+
+def visualize_constrains(graph, constrain_dict):
+    #draw_joint_point(graph)
+    name2coord = dict(map(lambda x: (x.name, (x.r[0],x.r[2])), graph.nodes()))
+    optimizing_joints = dict(
+        filter(lambda x: x[1]["optim"], constrain_dict.items()))
+    for key, value in optimizing_joints.items():
+        x, z = name2coord.get(key)
+        width = value.get('x_range',[-0.01,0.01])
+        x = x + width[0]
+        width = abs(width[0]-width[1])
+        height = value.get('z_range',[-0.01,0.01])
+        z = z + height[0]
+        height = abs(height[0]-height[1])
+        rect = patches.Rectangle((x, z), width = width, height= height, linewidth=1, edgecolor='r', facecolor='none')
+        plt.gca().add_patch(rect)
+    plt.show()
 
 
 if __name__ == '__main__':

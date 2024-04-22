@@ -41,7 +41,7 @@ class EndPointIMFReward(Reward):
         else:
             end_result = IMF[-1]
 
-        return (starting_result + end_result)/2
+        return (starting_result + end_result)/2, [starting_result, end_result]
 
 class MassReward():
     """Mass of the robot"""
@@ -67,4 +67,4 @@ class MassReward():
         """
         # get the manipulability for each point at the trajectory
         mass = trajectory_criteria[self.mass_key]
-        return -mass
+        return -mass, []

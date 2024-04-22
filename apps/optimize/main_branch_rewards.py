@@ -96,7 +96,7 @@ for j in actuator_list:
 
     for reward, weight in rewards:
         partial_results.append(reward.calculate(
-            point_criteria_vector, trajectory_criteria, res_dict_fixed, Actuator=j))
+            point_criteria_vector, trajectory_criteria, res_dict_fixed, Actuator=j)[0])
         total_result += weight*partial_results[-1]
 
     result_vector.append((total_result, partial_results))

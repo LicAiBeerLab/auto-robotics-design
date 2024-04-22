@@ -25,9 +25,9 @@ def simple_traj_derivative(traj_6d: np.ndarray, dt: float = 0.001):
 
 def get_simple_spline():
     # Sample data points
-    x = np.array([-0.5, 0, 0.25])
-    y = np.array([-0.4, -0.1, -0.4])
-    y = y - 0.5
+    x = np.array([-0.5, 0, 0.5])
+    y = np.array([-1.02, -0.8, -1.02])
+    #y = y - 0.5
     #x = x + 0.4
     # Create the cubic spline interpolator
     cs = CubicSpline(x, y)
@@ -47,7 +47,7 @@ def get_simple_spline():
     return (x_traj_spline, y_traj_spline)
 
 def get_vertical_trajectory(n_points = 50):
-    max_height = -1.
+    max_height = -1.1
     min_height = -0.6
     x_trajectory = np.zeros(n_points)
     y_trajectory = np.linspace(max_height, min_height, n_points)
