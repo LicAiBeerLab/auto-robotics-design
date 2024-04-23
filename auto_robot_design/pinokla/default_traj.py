@@ -50,5 +50,9 @@ def get_vertical_trajectory(n_points = 50):
     max_height = -1.1
     min_height = -0.6
     x_trajectory = np.zeros(n_points)
+    x_trajectory+=-0.2
     y_trajectory = np.linspace(max_height, min_height, n_points)
     return (x_trajectory, y_trajectory)
+
+if __name__ =="__main__":
+    print(get_vertical_trajectory())
