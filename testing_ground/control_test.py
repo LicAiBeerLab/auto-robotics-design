@@ -122,10 +122,13 @@ y_traj = np.polyval(cs_y, np.linspace(0, 1, N_it))
 xz_ee_des_arr = np.c_[x_traj, y_traj]
 
 # Init control
-ee_id_g = robo.model.getFrameId("EE")
+
+# Torque computed control in joint space
 # K = 500 * np.eye(2)
 # Kd = 50 * np.eye(2)
 # ctrl = TorqueComputedControl(robo, K, Kd)
+
+# Operation space PD control
 Kimp = np.eye(6) * 2000
 Kimp[3,3] = 0
 Kimp[4,4] = 0
@@ -173,8 +176,8 @@ for i in range(N_it):
 
     x_body_curr = np.concatenate(
         (
-            robo.data.oMf[ee_id_g].translation,
-            R.from_matrix(robo.data.oMf[ee_id_g].rotation).as_rotvec(),
+            robo.data.oMf[ee_id_ee].translation,
+            R.from_matrix(robo.data.oMf[ee_id_ee].rotation).as_rotvec(),
         )
     )
     # Desired traj in operational space
@@ -186,15 +189,16 @@ for i in range(N_it):
     v_body = np.concatenate(
         (
             pin.getFrameVelocity(
-                robo.model, robo.data, ee_id_g, pin.LOCAL_WORLD_ALIGNED
+                robo.model, robo.data, ee_id_ee, pin.LOCAL_WORLD_ALIGNED
             ).linear,
             pin.getFrameVelocity(
-                robo.model, robo.data, ee_id_g, pin.LOCAL_WORLD_ALIGNED
+                robo.model, robo.data, ee_id_ee, pin.LOCAL_WORLD_ALIGNED
             ).angular,
         )
     )
-
+    # Torque computed control in joint space
     # tauq = ctrl.compute(q, vq, qa_d, vqa_d, ddq_des_traj[i])
+    # Operation space PD control
     tauq = ctrl.compute(q, vq, x_body_des, np.zeros(6))
 
 
