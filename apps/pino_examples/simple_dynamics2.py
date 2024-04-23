@@ -1,7 +1,6 @@
 from auto_robot_design.pinokla.closed_loop_jacobian import inverseConstraintKinematicsSpeed, constraint_jacobian_active_to_passive, jacobian_constraint
 from auto_robot_design.pinokla.loader_tools import Robot, build_model_with_extensions, make_Robot_copy
-from auto_robot_design.generator.two_link_generator import TwoLinkGenerator
-from auto_robot_design.description.builder import DetalizedURDFCreaterFixedEE
+from auto_robot_design.generator.restricted_generator.two_link_generator import TwoLinkGenerator
 import pinocchio as pin
 import numpy as np
 import meshcat
@@ -18,11 +17,10 @@ from auto_robot_design.description.utils import (
     all_combinations_active_joints_n_actuator,
 )
 from auto_robot_design.description.builder import (
-    DetalizedURDFCreaterFixedEE,
+    DetailedURDFCreatorFixedEE,
     ParametrizedBuilder,
     jps_graph2urdf_by_bulder
 )
-from auto_robot_design.generator.two_link_generator import TwoLinkGenerator
 from auto_robot_design.pinokla.closed_loop_kinematics import closedLoopProximalMount
 from auto_robot_design.pinokla.loader_tools import build_model_with_extensions
 from auto_robot_design.pinokla.robot_utils import add_3d_constrain_current_q
@@ -41,7 +39,7 @@ def get_pino_models():
 
     print(pairs[0])
     builder = ParametrizedBuilder(
-        DetalizedURDFCreaterFixedEE,
+        DetailedURDFCreatorFixedEE,
         density=density,
         thickness={"default": thickness, "EE": 0.08},
         actuator=dict(pairs[0]),
@@ -210,8 +208,10 @@ for i in range(N_it):
     v_body = np.concatenate((robo_planar.data.v[id_body].linear,robo_planar.data.v[id_body].angular))
     Ma = Jda.T @ E_tau.T @ M @ E_tau @ Jda
     g = pin.computeGeneralizedGravity(robo_planar.model, robo_planar.data, q)
+    C = pin.computeCoriolisMatrix(robo_planar.model, robo_planar.data, q, vq)
     g_a = Jda.T @ E_tau.T @ g
-    b_a = Jda.T @ E_tau.T @ (b - g + M @ E_tau @ np.concatenate((np.zeros(nvmot),a_d)))
+    C_a = Jda.T @ E_tau.T @ C @ E_tau @ Jda
+    b_a = Jda.T @ E_tau.T @ (M @ E_tau @ np.concatenate((np.zeros(nvmot),a_d)))
     q_a = q[[id_mt1, id_mt2]]
     vq_a = vq[[id_vmt1, id_vmt2]]
     a_a = a[[id_vmt1, id_vmt2]]
@@ -222,13 +222,13 @@ for i in range(N_it):
     Kdimp = 10
     
     # q_d = np.array([0, 0.5*np.sin(2*np.pi * 2 * i*DT)])
-    tau_a = Ma @ (K * (qa_d - q_a) + Kd * (vqa_d - vq_a)) + g_a*0.75 - b_a
+    tau_a = Ma @ (K * (qa_d - q_a) + Kd * (vqa_d - vq_a)) + g_a + C_a @ vq_a + b_a
     # tau_a = Ma @ a_a - b_a
-    cho = J_closed.T @ (Kimp * (np.array([0, 0, -0.1, 0, 0, 0]) - x_body_curr) + Kdimp * (np.zeros(6) - v_body)) + g_a*0.75 + b_a
-    # tauq[id_vmt1] = tau_a[0]
-    # tauq[id_vmt2] = tau_a[1]
-    tauq[id_vmt1] = cho[0]
-    tauq[id_vmt2] = cho[1]
+    cho = J_closed.T @ (Kimp * (np.array([0, 0, -0.1, 0, 0, 0]) - x_body_curr) + Kdimp * (np.zeros(6) - v_body)) + g_a + C_a @ vq_a
+    tauq[id_vmt1] = tau_a[0]
+    tauq[id_vmt2] = tau_a[1]
+    # tauq[id_vmt1] = cho[0]
+    # tauq[id_vmt2] = cho[1]
     viz.display(q)
     print(f"q: {q.round(2)}")
     print(f"tau: {tauq.round(2)}")
