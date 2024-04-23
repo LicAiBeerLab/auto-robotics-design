@@ -1,18 +1,19 @@
 from matplotlib import pyplot as plt
-from auto_robot_design.pinokla.closed_loop_jacobian import (
-    constraint_jacobian_active_to_passive,
-    inverseConstraintKinematicsSpeed,
-    jacobian_constraint,
+
+from auto_robot_design.pinokla.default_traj import (
+    convert_x_y_to_6d_traj_xz,
+    get_trajectory,
 )
-from auto_robot_design.pinokla.default_traj import convert_x_y_to_6d_traj_xz, get_trajectory
 from auto_robot_design.generator.restricted_generator.two_link_generator import (
     TwoLinkGenerator,
 )
+
 from auto_robot_design.description.builder import (
     ParametrizedBuilder,
     URDFLinkCreator,
     jps_graph2pinocchio_robot,
 )
+
 import pinocchio as pin
 import numpy as np
 import meshcat
@@ -27,7 +28,10 @@ from auto_robot_design.pinokla.closed_loop_kinematics import (
     closedLoopProximalMount,
 )
 
-from auto_robot_design.control.model_based import TorqueComputedControl, OperationSpacePDControl
+from auto_robot_design.control.model_based import (
+    TorqueComputedControl,
+    OperationSpacePDControl,
+)
 
 script_dir = os.path.dirname(__file__)
 mymodule_dir = os.path.join(script_dir, "../utils")
@@ -63,7 +67,7 @@ traj_6d = convert_x_y_to_6d_traj_xz(x_point, y_point)
 
 
 # Trajectory by points in joint space
-q_des_points = [] 
+q_des_points = []
 for num, i_pos in enumerate(traj_6d):
     q, min_feas, is_reach = closedLoopInverseKinematicsProximal(
         robo.model,
@@ -76,7 +80,9 @@ for num, i_pos in enumerate(traj_6d):
         q_start=q,
     )
     if not is_reach:
-        q = closedLoopProximalMount(robo.model, robo.data, robo.constraint_models, robo.constraint_data, q)
+        q = closedLoopProximalMount(
+            robo.model, robo.data, robo.constraint_models, robo.constraint_data, q
+        )
     q_des_points.append(q.copy())
 
 q = q_des_points[0]
@@ -110,7 +116,9 @@ vq = np.zeros(robo.model.nv)
 
 # Trajectory generation in joint space
 q_des_points = np.array(q_des_points)
-__, q_des_traj, dq_des_traj, ddq_des_traj = get_trajectory(q_des_points.T[[id_mt1, id_mt2],:], N_it*DT, DT)
+__, q_des_traj, dq_des_traj, ddq_des_traj = get_trajectory(
+    q_des_points.T[[id_mt1, id_mt2], :], N_it * DT, DT
+)
 
 # Trajectory generation in operational space
 s_time = np.linspace(0, 1, x_point.size)
@@ -130,13 +138,13 @@ xz_ee_des_arr = np.c_[x_traj, y_traj]
 
 # Operation space PD control
 Kimp = np.eye(6) * 2000
-Kimp[3,3] = 0
-Kimp[4,4] = 0
-Kimp[5,5] = 0
+Kimp[3, 3] = 0
+Kimp[4, 4] = 0
+Kimp[5, 5] = 0
 Kdimp = np.eye(6) * 200
-Kdimp[3,3] = 0
-Kdimp[4,4] = 0
-Kdimp[5,5] = 0
+Kdimp[3, 3] = 0
+Kdimp[4, 4] = 0
+Kdimp[5, 5] = 0
 ctrl = OperationSpacePDControl(robo, Kimp, Kdimp, ee_id_ee)
 
 nvmot = len(robo.actuation_model.idvmot)
@@ -162,9 +170,8 @@ for i in range(N_it):
     )
     vq += a * DT
     q = pin.integrate(robo.model, q, vq * DT)
-    
+
     viz.display(q)
-    
 
     q_d = np.zeros(robo.model.nq)
     vq_d = np.zeros(robo.model.nv)
@@ -200,7 +207,6 @@ for i in range(N_it):
     # tauq = ctrl.compute(q, vq, qa_d, vqa_d, ddq_des_traj[i])
     # Operation space PD control
     tauq = ctrl.compute(q, vq, x_body_des, np.zeros(6))
-
 
     t_arr[i] = i * DT
     q_arr[i] = q
@@ -250,9 +256,9 @@ def name(id):
     return "dq" + str(id)
 
 
-
 def name(id):
     return "taua" + str(id)
+
 
 for i in range(2):
     ax[2].plot(t_arr, taua_arr[:, i], label=name(i))
@@ -270,9 +276,14 @@ xz_points = np.array([x_point, y_point]).T
 fig, ax = plt.subplots(2, 1)
 name_x = ["x", "z"]
 for i, name in enumerate(name_x):
-    ax[i].plot(t_arr, xz_ee_des_arr[:,i], label="des", linestyle="--", linewidth=2)
+    ax[i].plot(t_arr, xz_ee_des_arr[:, i], label="des", linestyle="--", linewidth=2)
     ax[i].plot(t_arr, xz_ee_arr[:, i], label="curr")
-    ax[i].plot(np.linspace(0, DT*N_it, xz_points.shape[0]), xz_points[:,i], "o", label="points")
+    ax[i].plot(
+        np.linspace(0, DT * N_it, xz_points.shape[0]),
+        xz_points[:, i],
+        "o",
+        label="points",
+    )
     ax[i].set_xlabel("time, s")
     ax[i].set_ylabel(name + ", m")
     ax[i].set_xlim((t_arr[0], t_arr[-1]))
@@ -281,7 +292,9 @@ for i, name in enumerate(name_x):
 plt.show()
 
 plt.figure()
-plt.plot(xz_ee_des_arr[:,0], xz_ee_des_arr[:,1], label="des", linestyle="--", linewidth=2)
+plt.plot(
+    xz_ee_des_arr[:, 0], xz_ee_des_arr[:, 1], label="des", linestyle="--", linewidth=2
+)
 plt.plot(xz_ee_arr[:, 0], xz_ee_arr[:, 1], label="curr")
 plt.xlabel("x, m")
 plt.ylabel("z, m")
