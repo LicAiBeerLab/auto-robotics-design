@@ -39,9 +39,10 @@ dict_point_criteria = {
 }
 
 # class that enables calculating of criteria along the trajectory
-# for the urdf description of the mechanism
 crag = CriteriaAggregator(
     dict_point_criteria, dict_trajectory_criteria, traj_6d)
+
+
 # set the rewards and weights for the optimization task
 rewards = [(PositioningReward(pos_error_key="POS_ERR"), 1),
            (HeavyLiftingReward(manipulability_key='Manip_Jacobian',

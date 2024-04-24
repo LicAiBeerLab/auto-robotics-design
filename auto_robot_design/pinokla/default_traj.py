@@ -46,13 +46,19 @@ def get_simple_spline():
     # plt.show()
     return (x_traj_spline, y_traj_spline)
 
-def get_vertical_trajectory(n_points = 50):
-    max_height = -1.1
-    min_height = -0.6
-    x_trajectory = np.zeros(n_points)
-    x_trajectory+=-0.2
-    y_trajectory = np.linspace(max_height, min_height, n_points)
-    return (x_trajectory, y_trajectory)
+def create_simple_step_trajectory(starting_point, step_height, step_width, n_points=75):
+    x_start = starting_point[0]
+    x_end = x_start + step_width
+    x = np.array([x_start, (x_start+x_end)/2, x_end])
+    y = [starting_point[1],starting_point[1]+step_height, starting_point[1]]
+    cs = CubicSpline(x, y)
+    x_traj_spline = np.linspace(x.min(), x.max(), n_points)
+    y_traj_spline = cs(x_traj_spline)
+    return (x_traj_spline, y_traj_spline)
 
-if __name__ =="__main__":
-    print(get_vertical_trajectory())
+
+def get_vertical_trajectory(starting_point, height, x_shift, n_points = 50):
+    x_trajectory = np.zeros(n_points)
+    x_trajectory+=x_shift
+    y_trajectory = np.linspace(starting_point, starting_point+height, n_points)
+    return (x_trajectory, y_trajectory)
