@@ -1,7 +1,10 @@
+from tkinter import N
 from matplotlib import pyplot as plt
 
+from auto_robot_design.control.trajectory_planning import trajectory_planning
 from auto_robot_design.pinokla.default_traj import (
     convert_x_y_to_6d_traj_xz,
+    get_simple_spline,
     get_trajectory,
 )
 from auto_robot_design.generator.restricted_generator.two_link_generator import (
@@ -60,6 +63,7 @@ ee_id_ee = robo.model.getFrameId("EE")
 q = np.zeros(robo.model.nq)
 
 # Trajectory by points
+
 x_point = np.array([-0.5, 0, 0.25]) * 0.5
 y_point = np.array([-0.4, -0.1, -0.4]) * 0.5
 y_point = y_point - 0.7
@@ -116,16 +120,18 @@ vq = np.zeros(robo.model.nv)
 
 # Trajectory generation in joint space
 q_des_points = np.array(q_des_points)
-__, q_des_traj, dq_des_traj, ddq_des_traj = get_trajectory(
-    q_des_points.T[[id_mt1, id_mt2], :], N_it * DT, DT
+__, q_des_traj, dq_des_traj, ddq_des_traj = trajectory_planning(
+    q_des_points.T[[id_mt1, id_mt2], :], 0, 0, 0, N_it * DT, DT, True
 )
 
 # Trajectory generation in operational space
-s_time = np.linspace(0, 1, x_point.size)
-cs_x = np.polyfit(s_time, x_point, 2)
-cs_y = np.polyfit(s_time, y_point, 2)
-x_traj = np.polyval(cs_x, np.linspace(0, 1, N_it))
-y_traj = np.polyval(cs_y, np.linspace(0, 1, N_it))
+# x_point, y_point = get_simple_spline(N_it)
+x_traj, y_traj = get_simple_spline(N_it)
+s_time = np.linspace(0, N_it * DT, x_point.size)
+# cs_x = np.polyfit(s_time, x_point, 2)
+# cs_y = np.polyfit(s_time, y_point, 2)
+# x_traj = np.polyval(cs_x, np.linspace(0, 1, N_it))
+# y_traj = np.polyval(cs_y, np.linspace(0, 1, N_it))
 
 xz_ee_des_arr = np.c_[x_traj, y_traj]
 
@@ -180,7 +186,7 @@ for i in range(N_it):
 
     q_d[[id_mt1, id_mt2]] = qa_d
     vq_d[[id_vmt1, id_vmt2]] = vqa_d
-
+    pin.framesForwardKinematics(robo.model, robo.data, q)
     x_body_curr = np.concatenate(
         (
             robo.data.oMf[ee_id_ee].translation,
@@ -292,6 +298,9 @@ for i, name in enumerate(name_x):
 plt.show()
 
 plt.figure()
+plt.plot(
+    xz_ee_des_arr[:, 0], xz_ee_des_arr[:, 1], label="des", linestyle="--", linewidth=2
+)
 plt.plot(
     xz_ee_des_arr[:, 0], xz_ee_des_arr[:, 1], label="des", linestyle="--", linewidth=2
 )
