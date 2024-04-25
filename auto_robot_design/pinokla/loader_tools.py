@@ -242,11 +242,25 @@ def completeRobotLoader(
 
 
 def completeRobotLoaderFromStr(
-    udf_str: str, joint_description: dict, loop_description: dict, fixed=True, root_joint_type=pin.JointModelFreeFlyer()
+    udf_str: str, joint_description: dict, loop_description: dict, fixed=True, root_joint_type=pin.JointModelFreeFlyer(), is_act_root_joint=True
 ):
-    """
-    Return  model and constraint model associated to a directory, where the name od the urdf is robot.urdf and the name of the yam is robot.yaml
-    if no type assiciated, 6D type is applied
+    """Build pinocchio model from urdf string, actuator(joint) descriptor and loop description.
+    You have 2 options:
+    1) You can create a model whose base will be rigidly attached to the world. 
+    For this set fixed = True. Args root_joint_type and is_act_root_joint not working for this option.
+    2) You can create a model whose base will be attached to the world by different type of joint. 
+    If you set is_act_root_joint = True, root_joint is actuated. Generalized coordinates associated with 
+    root_joint locate first in q vector.
+    Args:
+        udf_str (str): _description_
+        joint_description (dict): _description_
+        loop_description (dict): _description_
+        fixed (bool, optional): _description_. Defaults to True.
+        root_joint_type (_type_, optional): _description_. Defaults to pin.JointModelFreeFlyer().
+        is_act_root_joint (bool, optional): _description_. Defaults to True.
+
+    Returns:
+        _type_: _description_
     """
     if fixed:
         model = pin.buildModelFromXML(udf_str)
@@ -346,7 +360,8 @@ def completeRobotLoaderFromStr(
         actuation_model = ActuationModel(model, joint_description["name_mot"])
     else:
         Lmot = joint_description["name_mot"]
-        # Lmot.append("root_joint")
+        if is_act_root_joint:
+            Lmot.append("root_joint")
         actuation_model = ActuationModel(model, Lmot)
 
     return (model, constraint_models, actuation_model, visual_model)
@@ -359,6 +374,7 @@ def build_model_with_extensions(
     actuator_context: Union[None, tuple, dict, nx.Graph] = None,
     fixed=True,
     root_joint_type = pin.JointModelFreeFlyer(),
+    is_act_root_joint = True,
     
 ):
     """
@@ -373,13 +389,14 @@ def build_model_with_extensions(
         loop_description (dict): A dictionary describing the kinematics loops of the robot.
         actuator_context (Union[None, tuple, dict, nx.Graph], optional): Field, which have information about what actuator is used for each joint. Defaults to None.
         fixed (bool, optional): A flag indicating whether the base robot is fixed. Defaults to True.
+        is_act_root_joint (bool): See docs for completeRobotLoaderFromStr 
 
     Returns:
         Robot: The built robot model with extensions.
     """
 
     model, constraint_models, actuation_model, visual_model = (
-        completeRobotLoaderFromStr(urdf_str, joint_description, loop_description, fixed, root_joint_type)
+        completeRobotLoaderFromStr(urdf_str, joint_description, loop_description, fixed, root_joint_type, is_act_root_joint)
     )
     constraint_data = [c.createData() for c in constraint_models]
     data = model.createData()
