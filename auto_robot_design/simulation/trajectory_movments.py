@@ -134,9 +134,9 @@ class TrajectoryMovements:
 
         Returns:
             tuple: A tuple containing the following simulation data:
-                - q_act (numpy.ndarray): The joint positions at each simulation step.
-                - vq_act (numpy.ndarray): The joint velocities at each simulation step.
-                - acc_act (numpy.ndarray): The joint accelerations at each simulation step.
+                - q (numpy.ndarray): The joint positions at each simulation step.
+                - vq (numpy.ndarray): The joint velocities at each simulation step.
+                - acc (numpy.ndarray): The joint accelerations at each simulation step.
                 - tau_act (numpy.ndarray): The actuator torques at each simulation step.
                 - pos_ee_frame (numpy.ndarray): The end-effector frame positions at each simulation step.
                 - power (numpy.ndarray): The mechanical power actuators exerted at each simulation step.
