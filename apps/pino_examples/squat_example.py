@@ -15,8 +15,10 @@ from auto_robot_design.pinokla.simulation_compare import max_toque_ratio, сompa
 from auto_robot_design.pinokla.squat import SquatHopParameters, SimulateSquatHop
 gen = TwoLinkGenerator()
 graph, constrain_dict = gen.get_standard_set()[6]
+graph2, constrain_dict2 = gen.get_standard_set()[2]
 
 pairs = all_combinations_active_joints_n_actuator(graph, t_motor_actuators)
+pairs2 = all_combinations_active_joints_n_actuator(graph2, t_motor_actuators)
 
 thickness = 0.04
 
@@ -31,12 +33,21 @@ builder = ParametrizedBuilder(DetailedURDFCreatorFixedEE,
 )
 robo_urdf, joint_description, loop_description = jps_graph2urdf_by_bulder(
     graph, builder)
+
+builder.actuator = dict(pairs[0])
+
+robo_urdf2, joint_description2, loop_description2 = jps_graph2urdf_by_bulder(
+    graph2, builder)
+
 sqh_p = SquatHopParameters(hop_flight_hight=0.3,
                            squatting_up_hight=0,
                            squatting_down_hight=-0.3,
                            total_time=0.55)
 hoppa = SimulateSquatHop(sqh_p)
 
+
+q_act, vq_act, acc_act, tau = hoppa.simulate(
+    robo_urdf, joint_description, loop_description, is_vis=False)
 
 q_act, vq_act, acc_act, tau = hoppa.simulate(
     robo_urdf, joint_description, loop_description, is_vis=False)
