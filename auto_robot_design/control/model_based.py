@@ -11,28 +11,38 @@ from auto_robot_design.pinokla.closed_loop_jacobian import (
 
 class TorqueComputedControl:
     def __init__(
-        self, robot, Kp: np.ndarray, Kd: np.ndarray, use_dJdt_term: bool = False
-    ):
-        self.robot = robot
-        self.use_dJdt = use_dJdt_term
+            self, robot, Kp: np.ndarray, Kd: np.ndarray, use_dJdt_term: bool = False
+        ):
+            """
+            Initialize class for computed torque control for a robot.
 
-        nmot = len(robot.actuation_model.idqmot)
-        assert Kp.shape == (nmot, nmot)
-        assert Kd.shape == (nmot, nmot)
+            Args:
+                robot: The robot model.
+                Kp: The proportional gain matrix of shape (nmot, nmot).
+                Kd: The derivative gain matrix of shape (nmot, nmot).
+                use_dJdt_term: A boolean indicating whether to use the dJ/dt term in the control law.
+            """
 
-        self.Kp = Kp
-        self.Kd = Kd
+            self.robot = robot
+            self.use_dJdt = use_dJdt_term
 
-        self.ids_mot = robot.actuation_model.idqmot
-        self.ids_vmot = robot.actuation_model.idvmot
+            nmot = len(robot.actuation_model.idqmot)
+            assert Kp.shape == (nmot, nmot)
+            assert Kd.shape == (nmot, nmot)
 
-        self.ids_free = self.robot.actuation_model.idqfree
-        self.ids_vfree = self.robot.actuation_model.idvfree
+            self.Kp = Kp
+            self.Kd = Kd
 
-        self.tauq = np.zeros(robot.model.nv)
+            self.ids_mot = robot.actuation_model.idqmot
+            self.ids_vmot = robot.actuation_model.idvmot
 
-        self.prev_Jmot = np.zeros((len(self.ids_vfree), len(self.ids_vmot)))
-        self.prev_Jfree = np.zeros((len(self.ids_vfree), len(self.ids_vfree)))
+            self.ids_free = self.robot.actuation_model.idqfree
+            self.ids_vfree = self.robot.actuation_model.idvfree
+
+            self.tauq = np.zeros(robot.model.nv)
+
+            self.prev_Jmot = np.zeros((len(self.ids_vfree), len(self.ids_vmot)))
+            self.prev_Jfree = np.zeros((len(self.ids_vfree), len(self.ids_vfree)))
 
     def compute(
         self,
@@ -42,7 +52,20 @@ class TorqueComputedControl:
         vq_a_ref: np.ndarray,
         ddq_a_ref: np.ndarray,
     ):
+        """
+        Compute the control torque for the robot based on the given inputs.
 
+        Args:
+            q (np.ndarray): The joint positions of the robot.
+            vq (np.ndarray): The joint velocities of the robot.
+            q_a_ref (np.ndarray): The desired joint positions for the active joints.
+            vq_a_ref (np.ndarray): The desired joint velocities for the active joints.
+            ddq_a_ref (np.ndarray): The desired joint accelerations for the active joints.
+
+        Returns:
+            np.ndarray: The control torque for the robot.
+
+        """
         if self.use_dJdt:
             Jmot, Jfree = jacobian_constraint(
                 self.robot.model,
@@ -99,25 +122,33 @@ class TorqueComputedControl:
         Ca = Jda.T @ E_tau.T @ C @ E_tau @ Jda
 
         tau_a = (
-            Ma @ (ddq_a_ref + self.Kp @ (q_a_ref - q_a) + self.Kd @ (vq_a_ref - vq_a))
-            + Ca @ vq_a
+            Ma @ ddq_a_ref
+            + Ca @ vq_a_ref
             + ga
-            + Jda.T
-            @ E_tau.T
-            @ M
-            @ E_tau
-            @ np.concatenate((np.zeros(len(self.ids_vmot)), a_d))
+            - Ma @ Jda.T @ E_tau.T @ self.Kp @ (q_a - q_a_ref)
+            - Ma @ Jda.T @ E_tau.T @ self.Kd @ (vq_a - vq_a_ref)
         )
 
-        self.tauq[self.ids_mot] = tau_a
-
-        return self.tauq
+        return tau_a
 
 
 class OperationSpacePDControl:
     def __init__(
         self, robot, Kp: np.ndarray, Kd: np.ndarray, id_frame_end_effector: int
     ):
+        """
+        Initialize class for operation space PD control for a robot.
+
+        Args:
+            robot: The robot model.
+            Kp: The proportional gain matrix of shape (6, 6).
+            Kd: The derivative gain matrix of shape (6, 6).
+            id_frame_end_effector: The ID of the end effector frame.
+
+        Returns:
+            None
+        """
+
         self.robot = robot
         self.id_frame = id_frame_end_effector
 
@@ -136,7 +167,19 @@ class OperationSpacePDControl:
         self.tauq = np.zeros(robot.model.nv)
 
     def compute(self, q: np.ndarray, vq, x_ref: np.ndarray, dx_ref: np.ndarray):
+        """
+        Compute the control input for the robot based on the given state and reference values.
 
+        Args:
+            q (np.ndarray): The joint positions of the robot.
+            vq: The joint velocities of the robot.
+            x_ref (np.ndarray): The desired reference state.
+            dx_ref (np.ndarray): The desired reference state velocity.
+
+        Returns:
+            np.ndarray: The computed control input for the robot.
+
+        """
         vq_cstr, J_closed = inverseConstraintKinematicsSpeed(
             self.robot.model,
             self.robot.data,

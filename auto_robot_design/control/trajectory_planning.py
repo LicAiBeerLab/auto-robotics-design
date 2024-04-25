@@ -6,6 +6,22 @@ import scipy.linalg as la
 
 
 def calculate_polynom_coeffs_by_n_points(time_point_arr, v0, vf, alp_f):
+    """
+    Calculates the polynomial coefficients based on the given time points and boundary conditions.
+
+    Parameters:
+    - time_point_arr (numpy.ndarray): Array of time points and corresponding positions.
+    - v0 (float): Initial velocity.
+    - vf (float): Final velocity.
+    - alp_f (float): Final acceleration.
+
+    Returns:
+    - numpy.ndarray: Array of polynomial coefficients.
+
+    Raises:
+    - Warning: If the system fails to solve for the polynomial coefficients.
+
+    """
     t0 = time_point_arr[0, 0]
     p0 = time_point_arr[0, 1]
     tf = time_point_arr[-1, 0]
@@ -32,6 +48,23 @@ def calculate_polynom_coeffs_by_n_points(time_point_arr, v0, vf, alp_f):
 def trajectory_planning(
     q_via_points, v0, vf, alpf, time_end: float = 1.0, dt: float = 0.1, plot=False
 ):
+    """
+    Generate a trajectory plan based on via points using polynomial interpolation.
+
+    Args:
+        q_via_points (list): List of via points for each joint. Each element of the list
+            is a 1D array representing the via points for a single joint.
+        v0 (float): Initial velocity.
+        vf (float): Final velocity.
+        alpf (float): Acceleration limit per joint.
+        time_end (float, optional): End time of the trajectory. Defaults to 1.0.
+        dt (float, optional): Time step for evaluating the trajectory. Defaults to 0.1.
+        plot (bool, optional): Whether to plot the trajectory. Defaults to False.
+
+    Returns:
+        tuple: A tuple containing the time array, joint position trajectory array,
+            joint velocity trajectory array, and joint acceleration trajectory array.
+    """
 
     N = len(q_via_points[0]) + 3
     q_traj = lambda t, b: np.sum(np.array([t**i for i in range(N)]).T * b, axis=1)
