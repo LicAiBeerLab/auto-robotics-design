@@ -20,6 +20,7 @@ def power_quality(time: np.ndarray, power: np.ndarray, plot=False):
         PQ[i] = np.sum(power[i])**2 - np.sum(power[i]**2)
         
     if plot:
+        plt.figure()
         plt.subplot(2, 1, 1)
         plt.plot(time, power[:, 0], label='P_1', linewidth=2)
         plt.plot(time, power[:, 1], label='P_2')
@@ -34,7 +35,7 @@ def power_quality(time: np.ndarray, power: np.ndarray, plot=False):
         plt.xlabel('Time (s)')
         plt.ylabel('Power Quality')
         plt.grid()
-        plt.show()
+        plt.figure()
 
         plt.plot(power[:, 0], power[:, 1])
         plt.xlabel('P_1')
@@ -63,6 +64,7 @@ def movments_in_xz_plane(time: np.ndarray, x: np.ndarray, des_x: np.ndarray, plo
         error[i] = np.linalg.norm((x[i] - des_x[i]))
         
     if plot:
+        plt.figure()
         plt.subplot(3, 1, 1)
         plt.plot(time, des_x[:, 0], label='des', linestyle='--', linewidth=3)
         plt.plot(time, x[:, 0], label='real')
@@ -85,8 +87,7 @@ def movments_in_xz_plane(time: np.ndarray, x: np.ndarray, des_x: np.ndarray, plo
         plt.xlabel('Time (s)')
         plt.ylabel('Error')
         plt.grid()
-        plt.show()
-        
+        plt.figure()
         plt.plot(des_x[:, 0], des_x[:, 2], label='des', linestyle='--', linewidth=3)
         plt.plot(x[:, 0], x[:, 2], label="real")
         plt.xlabel('X (m)')
