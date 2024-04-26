@@ -1,11 +1,10 @@
-from tkinter import N
-from matplotlib import pyplot as plt
 
+from matplotlib import pyplot as plt
+from scipy.interpolate import CubicSpline
 from auto_robot_design.control.trajectory_planning import trajectory_planning
 from auto_robot_design.pinokla.default_traj import (
     convert_x_y_to_6d_traj_xz,
     get_simple_spline,
-    get_trajectory,
 )
 from auto_robot_design.generator.restricted_generator.two_link_generator import (
     TwoLinkGenerator,
@@ -125,8 +124,10 @@ __, q_des_traj, dq_des_traj, ddq_des_traj = trajectory_planning(
 )
 
 # Trajectory generation in operational space
-# x_point, y_point = get_simple_spline(N_it)
-x_traj, y_traj = get_simple_spline(N_it)
+x_point, y_point = get_simple_spline()
+cs = CubicSpline(x_point, y_point)
+x_traj = np.linspace(x_point.min(), x_point.max(), N_it)
+y_traj = cs(x_traj)
 s_time = np.linspace(0, N_it * DT, x_point.size)
 # cs_x = np.polyfit(s_time, x_point, 2)
 # cs_y = np.polyfit(s_time, y_point, 2)
@@ -138,20 +139,20 @@ xz_ee_des_arr = np.c_[x_traj, y_traj]
 # Init control
 
 # Torque computed control in joint space
-# K = 500 * np.eye(2)
-# Kd = 50 * np.eye(2)
-# ctrl = TorqueComputedControl(robo, K, Kd)
+K = 500 * np.eye(2)
+Kd = 50 * np.eye(2)
+ctrl = TorqueComputedControl(robo, K, Kd)
 
 # Operation space PD control
-Kimp = np.eye(6) * 2000
-Kimp[3, 3] = 0
-Kimp[4, 4] = 0
-Kimp[5, 5] = 0
-Kdimp = np.eye(6) * 200
-Kdimp[3, 3] = 0
-Kdimp[4, 4] = 0
-Kdimp[5, 5] = 0
-ctrl = OperationSpacePDControl(robo, Kimp, Kdimp, ee_id_ee)
+# Kimp = np.eye(6) * 2000
+# Kimp[3, 3] = 0
+# Kimp[4, 4] = 0
+# Kimp[5, 5] = 0
+# Kdimp = np.eye(6) * 200
+# Kdimp[3, 3] = 0
+# Kdimp[4, 4] = 0
+# Kdimp[5, 5] = 0
+# ctrl = OperationSpacePDControl(robo, Kimp, Kdimp, ee_id_ee)
 
 nvmot = len(robo.actuation_model.idvmot)
 t_arr = np.zeros(N_it)
@@ -210,9 +211,9 @@ for i in range(N_it):
         )
     )
     # Torque computed control in joint space
-    # tauq = ctrl.compute(q, vq, qa_d, vqa_d, ddq_des_traj[i])
+    tauq = ctrl.compute(q, vq, qa_d, vqa_d, ddq_des_traj[i])
     # Operation space PD control
-    tauq = ctrl.compute(q, vq, x_body_des, np.zeros(6))
+    # tauq = ctrl.compute(q, vq, x_body_des, np.zeros(6))
 
     t_arr[i] = i * DT
     q_arr[i] = q

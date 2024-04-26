@@ -125,11 +125,12 @@ class TorqueComputedControl:
             Ma @ ddq_a_ref
             + Ca @ vq_a_ref
             + ga
-            - Ma @ Jda.T @ E_tau.T @ self.Kp @ (q_a - q_a_ref)
-            - Ma @ Jda.T @ E_tau.T @ self.Kd @ (vq_a - vq_a_ref)
+            - Ma @ self.Kp @ (q_a - q_a_ref)
+            - Ma @ self.Kd @ (vq_a - vq_a_ref)
         )
+        self.tauq[self.ids_mot] = tau_a
 
-        return tau_a
+        return self.tauq
 
 
 class OperationSpacePDControl:
