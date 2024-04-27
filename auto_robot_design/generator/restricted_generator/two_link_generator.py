@@ -22,7 +22,7 @@ class TwoLinkGenerator():
         self.constrain_dict = {}  # should be updated after creating each joint
         self.current_main_branch = []
         self.graph = nx.Graph()
-        self.ground_x_movement = (-0.3, 0.3)
+        self.ground_x_movement = (-0.4, 0.4)
         self.ground_z_movement = (-0.01,0)
         self.free_x_movement = (-0.3, 0.3)
         self.free_z_movement = (-0.3, 0.3)
@@ -296,6 +296,7 @@ def visualize_constrains(graph, constrain_dict):
         filter(lambda x: x[1]["optim"], constrain_dict.items()))
     for key, value in optimizing_joints.items():
         x, z = name2coord.get(key)
+        plt.plot(x, z, marker="o", markeredgecolor="red", markerfacecolor="green")
         width = value.get('x_range',[-0.01,0.01])
         x = x + width[0]
         width = abs(width[0]-width[1])

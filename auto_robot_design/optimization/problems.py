@@ -44,14 +44,15 @@ def get_optimizing_joints(graph, constrain_dict):
     return optimizing_joints
 
 class CalculateCriteriaProblemByWeigths(ElementwiseProblem):
-    def __init__(self, graph, builder, jp2limits, criteria_and_rewards : list, **kwargs):
+    def __init__(self, graph, builder, jp2limits, rewards_and_trajectories : list, crag, **kwargs):
         if "Actuator" in kwargs:
             self.motor = kwargs["Actuator"]
         self.graph = graph
         self.builder = builder
         self.jp2limits = jp2limits
         self.opt_joints = list(self.jp2limits.keys())
-        self.criteria_and_rewards:list[Tuple[CriteriaAggregator, list[Reward]]] = criteria_and_rewards
+        self.crag = crag
+        self.rewards_and_trajectories:list[Tuple[list[Reward],list[np.array]]] = rewards_and_trajectories
         self.initial_xopt, __, upper_bounds, lower_bounds = self.convert_joints2x_opt()
         super().__init__(
             n_var=len(self.initial_xopt),
@@ -65,19 +66,31 @@ class CalculateCriteriaProblemByWeigths(ElementwiseProblem):
         self.mutate_JP_by_xopt(x)
         fixed_robot, free_robot = jps_graph2pinocchio_robot(self.graph, self.builder)
         # all rewards are calculated and added to the result
-        total_result = 0
-        partial_results = []
-        #calculates all characteristics declared in the CriteriaAggregator
-        for criteria_aggregator, rewards in self.criteria_and_rewards:
-            point_criteria_vector, trajectory_criteria, res_dict_fixed = criteria_aggregator.get_criteria_data(fixed_robot, free_robot)
-
-            for reward, weight in rewards:
-                partial_results.append(reward.calculate(point_criteria_vector, trajectory_criteria, res_dict_fixed, Actuator = self.motor)[0])
-                total_result+= weight*partial_results[-1]
+        total_reward=0
+        print(total_reward)
+        partial_rewards = []
+        for rewards, trajectories in self.rewards_and_trajectories:
+            max_reward = -float('inf')
+            max_partial = None
+            for trajectory_id, trajectory in enumerate(trajectories):
+                point_criteria_vector, trajectory_criteria, res_dict_fixed = self.crag.get_criteria_data(fixed_robot, free_robot, trajectory)
+                current_total = 0
+                current_partial = []
+                for reward, weight in rewards:
+                    current_partial.append(reward.calculate(point_criteria_vector, trajectory_criteria, res_dict_fixed, Actuator=self.motor)[0])
+                    current_total += weight*current_partial[-1]
+                if current_total > max_reward:
+                    max_reward = current_total
+                    max_partial = current_partial
+                    best_trajectory_id = trajectory_id
+            total_reward+= max_reward
+            max_partial = [best_trajectory_id]+max_partial
+            partial_rewards.append(max_partial)
 
         # the form of the output required by the pymoo lib
-        out["F"] = -total_result
-        out["Fs"] = partial_results
+        
+        out["F"] = -total_reward
+        out["Fs"] = partial_rewards
 
 
     def convert_joints2x_opt(self):

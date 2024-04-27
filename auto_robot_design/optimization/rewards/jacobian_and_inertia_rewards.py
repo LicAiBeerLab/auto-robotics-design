@@ -114,4 +114,7 @@ class AccelerationCapability(Reward):
             result+=acc
             reward_vector.append(acc)
 
+        if errors[n_steps-1] > 1e-6:
+             return 0, []
+
         return result/n_steps, reward_vector
