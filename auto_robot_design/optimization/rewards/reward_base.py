@@ -33,4 +33,4 @@ class PositioningReward():
         """
         # get the manipulability for each point at the trajectory
         mean_error = trajectory_criteria[self.pos_error_key]
-        return -mean_error, list[self.pos_error_key]
+        return -mean_error, []
