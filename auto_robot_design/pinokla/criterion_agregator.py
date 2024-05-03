@@ -60,14 +60,12 @@ class CriteriaAggregator:
     """
 
     def __init__(self, dict_moment_criteria: dict[str, ComputeInterfaceMoment],
-                 dict_along_criteria: dict[str, ComputeInterfaceMoment],
-                 traj_6d: np.ndarray) -> None:
+                 dict_along_criteria: dict[str, ComputeInterfaceMoment]) -> None:
         self.dict_moment_criteria = dict_moment_criteria
         self.dict_along_criteria = dict_along_criteria
         self.end_effector_name = "EE"
-        self.traj_6d = traj_6d
 
-    def get_criteria_data(self, fixed_robot, free_robot):
+    def get_criteria_data(self, fixed_robot, free_robot, traj_6d):
         """Perform calculating
 
         Args:
@@ -83,7 +81,7 @@ class CriteriaAggregator:
 
         # perform calculations of the data required to calculate the fancy mech criteria
         res_dict_free, res_dict_fixed = calculate_quasi_static_simdata(
-            free_robot, fixed_robot, self.end_effector_name, self.traj_6d)
+            free_robot, fixed_robot, self.end_effector_name, traj_6d)
         # calculate the criteria that can be assigned to each point at the trajectory 
         point_criteria_vector = moment_criteria_calc(self.dict_moment_criteria,
                                                   res_dict_free, res_dict_fixed)

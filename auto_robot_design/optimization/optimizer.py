@@ -4,7 +4,7 @@ import dill
 
 class PymooOptimizer:
     def __init__(self, problem, algortihm, saver=None) -> None:
-        self.history = {"X": [], "F": [], "Fs": []}
+        self.history = {"X": [], "F": [], "Fs": [], "Mean":[]}
         self.problem = problem
         self.algorithm = algortihm
         self.saver = saver
@@ -28,6 +28,7 @@ class PymooOptimizer:
                 self.history["Fs"].append(p.get("Fs"))
 
             self.algorithm.tell(infills=pop)
+            self.history["Mean"].append(self.algorithm.output.f_avg.value)
 
             if checkpoint:
                 assert self.saver is not None

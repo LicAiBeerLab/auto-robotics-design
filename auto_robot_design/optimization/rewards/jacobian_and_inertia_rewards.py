@@ -42,20 +42,22 @@ class HeavyLiftingReward(Reward):
         mass = trajectory_criteria[self.mass_key]
         n_steps = len(trajectory_points)
         result = float('inf')
+        reward_vector = []
         for i in range(n_steps):
             if errors[i] > 1e-6:
-                return 0 # if at least one point is not reachable the total reward is 0
+                return 0,  [] # if at least one point is not reachable the total reward is 0
 
             force_matrix = np.transpose(manipulability_matrices[i]) # maps forces to torques
             zrr = np.abs(force_matrix@np.array([0,1]))
             force_z = pick_effort*self.max_effort_coefficient/max(zrr)
             additional_force = abs(force_z) - GRAVITY*mass
+            reward_vector.append(additional_force/GRAVITY)
             if additional_force < 0:
-                return 0
+                return 0, []
             if additional_force < result:
                 result = additional_force
 
-        return result/GRAVITY
+        return result/GRAVITY, reward_vector
 
 
 class AccelerationCapability(Reward):
@@ -92,10 +94,11 @@ class AccelerationCapability(Reward):
         diff_vector = np.diff(trajectory_points, axis=0)[:, [0, 2]]
         n_steps = len(trajectory_points)
         result = 0
+        reward_vector = []
         for i in range(n_steps-1):
             # the reward is none zero only if the point is reached
             if errors[i] > 1e-6:
-                continue
+                return 0, []
             # get the direction of the trajectory
             # trajectory_shift = np.array([trajectory_points[i+1][0]-trajectory_points[i][0], trajectory_points[i+1][2]-trajectory_points[i][2]])
             trajectory_shift = diff_vector[i]
@@ -109,5 +112,9 @@ class AccelerationCapability(Reward):
             unit_acc_torque = np.abs(acc_2_torque@trajectory_direction)
             acc= pick_effort*self.max_effort_coefficient/max(unit_acc_torque)
             result+=acc
+            reward_vector.append(acc)
 
-        return result
+        if errors[n_steps-1] > 1e-6:
+             return 0, []
+
+        return result/n_steps, reward_vector
