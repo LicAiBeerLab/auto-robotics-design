@@ -2,6 +2,7 @@ import os
 import dill
 from typing import Union, Tuple
 import numpy as np
+from pyparsing import C
 
 from auto_robot_design.description.builder import jps_graph2pinocchio_robot
 
@@ -117,14 +118,14 @@ class CalculateCriteriaProblemByWeigths(ElementwiseProblem):
             list_nodes[id].r = np.array([xz[0], 0, xz[1]])
 
     @classmethod
-    def load(cls, path, **kwargs):
+    def load(cls, path, builder, criteria_agrregator, **kwargs):
         with open(os.path.join(path, "problem_data.pkl"), "rb") as f:
             graph = dill.load(f)
             opt_joints = dill.load(f)
             initial_xopt = dill.load(f)
             jp2limits = dill.load(f)
-            criteria = dill.load(f)
-        istance = cls(graph, jp2limits, criteria, np.ones(len(criteria)), **kwargs)
+            rewards_and_trajectories = dill.load(f)
+        istance = cls(graph, builder, jp2limits, rewards_and_trajectories, criteria_agrregator, **kwargs)
         istance.initial_xopt = initial_xopt
         return istance
 
@@ -174,3 +175,66 @@ class CalculateMultiCriteriaProblem(ElementwiseProblem):
         for id, jp in zip(range(0, len(x_opt), num_params_one_jp), self.opt_joints):
             xz = x_opt[id : (id + num_params_one_jp)]
             self.graph[jp].r = np.array([xz[0], 0, xz[1]])
+
+class CalculateCriteriaMeanTraj(CalculateCriteriaProblemByWeigths):
+    def __init__(self, graph, builder, jp2limits, rewards_and_trajectories : list, crag, **kwargs):
+        super().__init__(graph, builder, jp2limits, rewards_and_trajectories, crag, **kwargs)
+
+    def _evaluate(self, x, out, *args, **kwargs):
+        self.mutate_JP_by_xopt(x)
+        fixed_robot, free_robot = jps_graph2pinocchio_robot(self.graph, self.builder)
+        # all rewards are calculated and added to the result
+        partial_rewards = []
+        total_reward = 0
+        for rewards, trajectories in self.rewards_and_trajectories:
+            mean_reward = np.zeros(len(trajectories))
+            mean_partial = np.zeros((len(trajectories),len(rewards)))
+            for trajectory_id, trajectory in enumerate(trajectories):
+                point_criteria_vector, trajectory_criteria, res_dict_fixed = self.crag.get_criteria_data(fixed_robot, free_robot, trajectory)
+                current_total = 0
+                current_partial = []
+                for reward, weight in rewards:
+                    current_partial.append(reward.calculate(point_criteria_vector, trajectory_criteria, res_dict_fixed, Actuator=self.motor)[0])
+                    current_total += weight*current_partial[-1]
+                mean_reward[trajectory_id] = current_total
+                mean_partial[trajectory_id] = current_partial
+            # print(mean_reward)
+            # print(mean_partial)
+            total_reward += np.mean(mean_reward)
+            partial_rewards.append([np.mean(mean_reward)]+list(np.mean(mean_partial, axis=0)))
+
+        # the form of the output required by the pymoo lib
+        
+        out["F"] = -total_reward
+        out["Fs"] = partial_rewards
+
+
+class CalculateCriteriaMeanMultiTraj(CalculateCriteriaProblemByWeigths):
+    def __init__(self, graph, builder, jp2limits, rewards_and_trajectories : list, crag, **kwargs):
+        super().__init__(graph, builder, jp2limits, rewards_and_trajectories, crag, **kwargs)
+
+    def _evaluate(self, x, out, *args, **kwargs):
+        self.mutate_JP_by_xopt(x)
+        fixed_robot, free_robot = jps_graph2pinocchio_robot(self.graph, self.builder)
+        # all rewards are calculated and added to the result
+        partial_rewards = []
+        total_reward = np.zeros(len(self.rewards_and_trajectories))
+        for id, (rewards, trajectories) in enumerate(self.rewards_and_trajectories):
+            mean_reward = np.zeros(len(trajectories))
+            mean_partial = np.zeros((len(trajectories),len(rewards)))
+            for trajectory_id, trajectory in enumerate(trajectories):
+                point_criteria_vector, trajectory_criteria, res_dict_fixed = self.crag.get_criteria_data(fixed_robot, free_robot, trajectory)
+                current_total = 0
+                current_partial = []
+                for reward, weight in rewards:
+                    current_partial.append(reward.calculate(point_criteria_vector, trajectory_criteria, res_dict_fixed, Actuator=self.motor)[0])
+                    current_total += weight*current_partial[-1]
+                mean_reward[trajectory_id] = current_total
+                mean_partial[trajectory_id] = current_partial
+            total_reward[id] = np.mean(mean_reward)
+            partial_rewards.append([total_reward]+list(np.mean(mean_partial, axis=0)))
+
+        # the form of the output required by the pymoo lib
+        # print(total_reward)
+        out["F"] = -total_reward
+        out["Fs"] = partial_rewards

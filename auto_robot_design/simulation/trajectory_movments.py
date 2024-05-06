@@ -1,8 +1,13 @@
-from operator import le
-from exceptiongroup import catch
 import numpy as np
 import pinocchio as pin
-from scipy import optimize
+
+import multiprocessing
+from pymoo.core.problem import StarmapParallelization
+
+from pymoo.problems.functional import FunctionalProblem
+from pymoo.optimize import minimize
+from pymoo.algorithms.soo.nonconvex.pso import PSO
+
 
 import meshcat
 from pinocchio.visualize import MeshcatVisualizer
@@ -230,7 +235,7 @@ class TrajectoryMovements:
             Kp: The optimized proportional gain matrix.
             Kd: The optimized derivative gain matrix.
         """
-        def cost(x, robot):
+        def cost(x, robot, prepare_trajectory, sim_func):
             old_Kp = self.Kp
             old_Kd = self.Kd
 
@@ -242,11 +247,11 @@ class TrajectoryMovements:
             self.Kd[0,0] = x[2]
             self.Kd[2,2] = x[3]
 
-            __, __, __, tau_act, pos_ee_frame, __ = self.simulate(robot,False)
+            __, __, __, tau_act, pos_ee_frame, __ = sim_func(robot,False)
+            __, des_traj_6d, __ = prepare_trajectory(robot)
+            
 
-            des_pos_ee_frame = self.des_trajectories["traj_6d_ref"][:,:3]
-
-            pos_error = np.sum(np.linalg.norm(pos_ee_frame - des_pos_ee_frame, axis=1)**2)
+            pos_error = np.sum(np.linalg.norm(pos_ee_frame - des_traj_6d[:,:3], axis=1)**2)
 
             norm_tau = np.sum(np.linalg.norm(tau_act, axis=1)**2)/6e4
 
@@ -255,20 +260,60 @@ class TrajectoryMovements:
 
             return pos_error + norm_tau
 
+        def func_objs(x, robot=robot, traj=self.prepare_trajectory, sim=self.simulate):
+            return cost(x, robot, traj, sim)
+            
+
+        
         bounds = [[0, 1e4] for __ in range(2)]
         bounds = np.vstack((bounds, [[0, 5e3] for __ in range(2)]))
 
-        results = optimize.shgo(cost, bounds, args=(robot,), n=10, iters=1)
-
+        N_PROCESS = 8
+        pool = multiprocessing.Pool(N_PROCESS)
+        runner = StarmapParallelization(pool.starmap)
+        
+        problem = FunctionalProblem(4, func_objs, xl=bounds[:,0], xu=bounds[:,1], elementwise_runner=runner)
+        algorithm = PSO(10)
+        
+        results = minimize(problem, algorithm, termination=('n_gen', 10), seed=1, verbose=True)
+        
         Kp = np.zeros((6,6))
         Kd = np.zeros((6,6))
 
-        Kp[0,0] = results.x[0]
-        Kp[2,2] = results.x[1]
-        Kd[0,0] = results.x[2]
-        Kd[2,2] = results.x[3]
+        Kp[0,0] = results.X[0]
+        Kp[2,2] = results.X[1]
+        Kd[0,0] = results.X[2]
+        Kd[2,2] = results.X[3]
         return Kp, Kd
     
+    
+    def cost_function(self, x, robot):
+        old_Kp = self.Kp
+        old_Kd = self.Kd
+
+        self.Kp = np.zeros((6,6))
+        self.Kd = np.zeros((6,6))
+
+        self.Kp[0,0] = x[0]
+        self.Kp[2,2] = x[1]
+        self.Kd[0,0] = x[2]
+        self.Kd[2,2] = x[3]
+
+        __, __, __, tau_act, pos_ee_frame, __ = self.simulate(robot,False)
+        __, des_traj_6d, __ = self.prepare_trajectory(robot)
+        
+
+        pos_error = np.sum(np.linalg.norm(pos_ee_frame - des_traj_6d[:,:3], axis=1)**2)
+
+        norm_tau = np.sum(np.linalg.norm(tau_act, axis=1)**2)/6e4
+
+        self.Kp = old_Kp
+        self.Kd = old_Kd
+
+        return pos_error + norm_tau
+    
+    def get_cost_function_by_robot(self, x, robot):
+        return self.cost_function()
 
 if __name__ == "__main__":
     from auto_robot_design.generator.restricted_generator.two_link_generator import (

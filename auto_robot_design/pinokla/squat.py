@@ -136,7 +136,7 @@ class SimulateSquatHop:
         if self.squat_hop_parameters.hop_direction == HopDirection.Z:
             root_joint_type = pin.JointModelPZ()
         else:
-            raise NotImplemented
+            raise NotImplementedError
 
         self.hop_robo = build_model_with_extensions(
             robo_urdf,
@@ -204,7 +204,7 @@ class SimulateSquatHop:
         if self.squat_hop_parameters.hop_direction == HopDirection.Z:
             id_in_vector = 2
         else:
-            raise NotImplemented
+            raise NotImplementedError
 
         default_hight = self.fixed_base_robo.data.oMf[ee_id].translation
         default_hight[id_in_vector] = default_hight[id_in_vector] - \
@@ -339,7 +339,7 @@ class SimulateSquatHop:
         if self.squat_hop_parameters.hop_direction == HopDirection.Z:
             ret_val = np.array([0, 0, force, 0, 0, 0])
         else:
-            raise NotImplemented
+            raise NotImplementedError
         return ret_val
 
     def act_torques_to_generalized_q(self, torques: np.ndarray) -> np.ndarray:
