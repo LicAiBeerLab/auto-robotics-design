@@ -1,13 +1,14 @@
 from typing import Tuple
 import numpy as np
-
+from auto_robot_design.pinokla.calc_criterion import DataDict
 from auto_robot_design.optimization.rewards.reward_base import Reward
+
 
 class VelocityReward(Reward):
     """Reward the mech for the value of the manipulability along the trajectory
     """
 
-    def __init__(self, manipulability_key, trajectory_key, error_key) -> None:
+    def __init__(self, manipulability_key: str, trajectory_key: str, error_key: str) -> None:
         """Set the dictionary keys for the data
 
         Args:
@@ -15,11 +16,12 @@ class VelocityReward(Reward):
             trajectory_key (str): key for the trajectory points
             error_key (str): key for the pose errors 
         """
+        super().__init__()
         self.manip_key = manipulability_key
         self.trajectory_key = trajectory_key
         self.error_key = error_key
 
-    def calculate(self, point_criteria, trajectory_criteria, trajectory_results, **kwargs) -> Tuple[float, list[float]]:
+    def calculate(self, point_criteria: DataDict, trajectory_criteria: DataDict, trajectory_results: DataDict, **kwargs) -> Tuple[float, list[float]]:
         """Calculate the length of the line from zero to the cross of the manipulability ellipsoid and trajectory direction
 
         Args:
@@ -35,7 +37,7 @@ class VelocityReward(Reward):
         # the reward is none zero only if the point is reached
         if not is_trajectory_reachable:
             return 0, []
-        
+
         # get the manipulability for each point at the trajectory
         manipulability_matrices: list[np.array] = point_criteria[self.manip_key]
         trajectory_points = trajectory_results[self.trajectory_key]
@@ -56,19 +58,21 @@ class VelocityReward(Reward):
             manipulability_matrix_inv = np.linalg.inv(manipulability_matrix)
             temp_vec = manipulability_matrix_inv@trajectory_direction
             result += 1/np.linalg.norm(temp_vec)
-            reward_vector[i]=1/np.linalg.norm(temp_vec)
+            reward_vector[i] = 1/np.linalg.norm(temp_vec)
 
         return result/(n_steps-1), reward_vector
+
 
 class ManipulabilityReward(Reward):
     """Calculate determinant of the manipulability matrix"""
 
-    def __init__(self, manipulability_key, trajectory_key, error_key):
+    def __init__(self, manipulability_key: str, trajectory_key: str, error_key: str):
+        super().__init__()
         self.manip_key = manipulability_key
         self.trajectory_key = trajectory_key
         self.error_key = error_key
-    
-    def calculate(self, point_criteria, trajectory_criteria, trajectory_results, **kwargs) -> Tuple[float, list[float]]:
+
+    def calculate(self, point_criteria: DataDict, trajectory_criteria: DataDict, trajectory_results: DataDict, **kwargs) -> Tuple[float, list[float]]:
         """Get manipulability for each point in the trajectory and return the mean value
 
         Args:
@@ -88,26 +92,28 @@ class ManipulabilityReward(Reward):
 
         # get the manipulability for each point at the trajectory
         manipulability: list[np.array] = point_criteria[self.manip_key]
-        result=np.mean(manipulability)
-        reward_vector=list(manipulability)
+        result = np.mean(manipulability)
+        reward_vector = list(manipulability)
 
         return result, reward_vector
+
 
 class ForceEllipsoidReward(Reward):
     """Force capability along the trajectory"""
 
-    def __init__(self, manipulability_key, trajectory_key, error_key) -> None:
+    def __init__(self, manipulability_key: str, trajectory_key: str, error_key: str) -> None:
         """Set the dictionary keys for the data
 
         Args:
             manipulability_key (str): key for the manipulability matrix
             error_key (str): key for the pose errors 
         """
+        super().__init__()
         self.manip_key = manipulability_key
         self.trajectory_key = trajectory_key
         self.error_key = error_key
 
-    def calculate(self, point_criteria, trajectory_criteria, trajectory_results, **kwargs) -> Tuple[float, list[float]]:
+    def calculate(self, point_criteria: DataDict, trajectory_criteria: DataDict, trajectory_results: DataDict, **kwargs) -> Tuple[float, list[float]]:
         """Calculate reduction ratio along the trajectory for each point and return the mean value
 
         Args:
@@ -145,10 +151,11 @@ class ForceEllipsoidReward(Reward):
 
         return result/(n_steps-1), reward_vector
 
+
 class EndPointZRRReward(Reward):
     """Reduction ratio along the vertical (z) axis in the edge points of the trajectory (stance poses)"""
 
-    def __init__(self, manipulability_key, trajectory_key, error_key) -> None:
+    def __init__(self, manipulability_key: str, trajectory_key: str, error_key: str) -> None:
         """Set the dictionary keys for the data
 
         Args:
@@ -156,11 +163,12 @@ class EndPointZRRReward(Reward):
             trajectory_key (str): key for the trajectory points
             error_key (str): key for the pose errors 
         """
+        super().__init__()
         self.manip_key = manipulability_key
         self.trajectory_key = trajectory_key
         self.error_key = error_key
 
-    def calculate(self, point_criteria, trajectory_criteria, trajectory_results, **kwargs) -> Tuple[float, list[float]]:
+    def calculate(self, point_criteria: DataDict, trajectory_criteria: DataDict, trajectory_results: DataDict, **kwargs) -> Tuple[float, list[float]]:
         """Calculates the sum of ZRR in starting and end points
 
         Args:
@@ -188,4 +196,3 @@ class EndPointZRRReward(Reward):
             end_result = 1/np.linalg.norm(end_pose_matrix@np.array([0, 1]))
 
         return (starting_result + end_result)/2, [starting_result, end_result]
-    

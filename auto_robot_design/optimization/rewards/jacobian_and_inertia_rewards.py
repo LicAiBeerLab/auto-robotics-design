@@ -3,6 +3,7 @@ from typing import Tuple
 import numpy as np
 
 from auto_robot_design.optimization.rewards.reward_base import Reward
+from auto_robot_design.pinokla.calc_criterion import DataDict
 
 GRAVITY = 9.81
 
@@ -14,14 +15,15 @@ class HeavyLiftingReward(Reward):
         Reward (float): mass capacity
     """
 
-    def __init__(self, manipulability_key, mass_key, trajectory_key, error_key, max_effort_coef=0.7) -> None:
+    def __init__(self, manipulability_key, mass_key:str, trajectory_key:str, error_key:str, max_effort_coef=0.7) -> None:
+        super().__init__()
         self.max_effort_coefficient = max_effort_coef
         self.manip_key = manipulability_key
         self.trajectory_key = trajectory_key
         self.error_key = error_key
         self.mass_key = mass_key
 
-    def calculate(self, point_criteria, trajectory_criteria, trajectory_results, **kwargs) -> Tuple[float, list[float]]:
+    def calculate(self, point_criteria:DataDict, trajectory_criteria:DataDict, trajectory_results:DataDict, **kwargs) -> Tuple[float, list[float]]:
         """_summary_
 
         Args:
@@ -78,14 +80,15 @@ class AccelerationCapability(Reward):
     """Calculate the reward that combine effective inertia and force capability
     """
 
-    def __init__(self, manipulability_key, trajectory_key, error_key, actuated_mass_key, max_effort_coef=0.7) -> None:
+    def __init__(self, manipulability_key:str, trajectory_key:str, error_key:str, actuated_mass_key:str, max_effort_coef=0.7) -> None:
+        super().__init__()
         self.max_effort_coefficient = max_effort_coef
         self.manip_key = manipulability_key
         self.trajectory_key = trajectory_key
         self.error_key = error_key
         self.actuated_mass_key = actuated_mass_key
 
-    def calculate(self, point_criteria, trajectory_criteria, trajectory_results, **kwargs) -> Tuple[float, list[float]]:
+    def calculate(self, point_criteria:DataDict, trajectory_criteria:DataDict, trajectory_results:DataDict, **kwargs) -> Tuple[float, list[float]]:
         """_summary_
 
         Args:
