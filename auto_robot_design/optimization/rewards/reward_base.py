@@ -1,13 +1,22 @@
-
+from typing import Tuple
 class Reward():
     """Interface for the optimization criteria"""
 
     def __init__(self) -> None:
-        pass
+        self.point_precision = 1e-6
 
-    def calculate(self, point_criteria, trajectory_criteria, trajectory_results,**kwargs) -> float:
+    def calculate(self, point_criteria, trajectory_criteria, trajectory_results,**kwargs) -> Tuple[float, list[float]]:
         """Calculate the value of the criterion from the data"""
-        pass
+
+        raise NotImplementedError("A reward must implement calculate method!")
+
+    def check_reachability(self, errors):
+        if max(errors)>self.point_precision:
+            return False
+        
+        return True
+
+
 
 class PositioningReward():
     """Mean position error for the trajectory"""
@@ -20,7 +29,7 @@ class PositioningReward():
         """
         self.pos_error_key = pos_error_key
 
-    def calculate(self, point_criteria, trajectory_criteria, trajectory_results, **kwargs) -> float:
+    def calculate(self, point_criteria, trajectory_criteria, trajectory_results, **kwargs) -> Tuple[float, list[float]]:
         """Just get the value for the mean positioning error
 
         Args:
@@ -33,4 +42,5 @@ class PositioningReward():
         """
         # get the manipulability for each point at the trajectory
         mean_error = trajectory_criteria[self.pos_error_key]
+        # the empty list is for the consistency with the other rewards
         return -mean_error, []
