@@ -28,7 +28,7 @@ class PymooOptimizer:
                 self.history["Fs"].append(p.get("Fs"))
 
             self.algorithm.tell(infills=pop)
-            # self.history["Mean"].append(self.algorithm.output.f_avg.value)
+            self.history["Mean"].append(self.algorithm.output.f_avg.value)
 
             if checkpoint:
                 assert self.saver is not None

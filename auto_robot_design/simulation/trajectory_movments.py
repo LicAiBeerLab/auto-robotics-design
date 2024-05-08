@@ -1,13 +1,12 @@
 import numpy as np
 import pinocchio as pin
 
-import multiprocessing
-from pymoo.core.problem import StarmapParallelization
+import multiprocess
+from pymoo.core.problem import StarmapParallelization, ElementwiseProblem
 
 from pymoo.problems.functional import FunctionalProblem
 from pymoo.optimize import minimize
 from pymoo.algorithms.soo.nonconvex.pso import PSO
-
 
 import meshcat
 from pinocchio.visualize import MeshcatVisualizer
@@ -16,6 +15,37 @@ from auto_robot_design.control.model_based import OperationSpacePDControl
 from auto_robot_design.control.trajectory_planning import trajectory_planning
 from auto_robot_design.pinokla.closed_loop_kinematics import closedLoopInverseKinematicsProximal, closedLoopProximalMount
 from auto_robot_design.pinokla.default_traj import convert_x_y_to_6d_traj_xz
+
+class ControlOptProblem(ElementwiseProblem):
+    def __init__ (self, simulation, robot, *args, **kwargs):
+        self.robot = robot
+        self.simulation = simulation
+        super().__init__(n_var=4, n_obj=1, n_constr=0, elementwise_evaluation=True, *args, **kwargs)
+        
+    def _evaluate(self, x, out, *args, **kwargs):
+        old_Kp = self.simulation.Kp
+        old_Kd = self.simulation.Kd
+
+        self.simulation.Kp = np.zeros((6,6))
+        self.simulation.Kd = np.zeros((6,6))
+
+        self.simulation.Kp[0,0] = x[0]
+        self.simulation.Kp[2,2] = x[1]
+        self.simulation.Kd[0,0] = x[2]
+        self.simulation.Kd[2,2] = x[3]
+
+        __, __, __, tau_act, pos_ee_frame, __ = self.simulation.simulate(self.robot,False)
+        __, des_traj_6d, __ = self.simulation.prepare_trajectory(self.robot)
+        
+
+        pos_error = np.sum(np.linalg.norm(pos_ee_frame - des_traj_6d[:,:3], axis=1)**2)
+
+        norm_tau = np.sum(np.linalg.norm(tau_act, axis=1)**2)/6e4
+
+        self.Kp = old_Kp
+        self.Kd = old_Kd
+
+        out["F"] = pos_error + norm_tau
 
 class TrajectoryMovements:
     def __init__(self, trajectory, final_time, time_step, name_ee_frame) -> None:
@@ -235,45 +265,17 @@ class TrajectoryMovements:
             Kp: The optimized proportional gain matrix.
             Kd: The optimized derivative gain matrix.
         """
-        def cost(x, robot, prepare_trajectory, sim_func):
-            old_Kp = self.Kp
-            old_Kd = self.Kd
-
-            self.Kp = np.zeros((6,6))
-            self.Kd = np.zeros((6,6))
-
-            self.Kp[0,0] = x[0]
-            self.Kp[2,2] = x[1]
-            self.Kd[0,0] = x[2]
-            self.Kd[2,2] = x[3]
-
-            __, __, __, tau_act, pos_ee_frame, __ = sim_func(robot,False)
-            __, des_traj_6d, __ = prepare_trajectory(robot)
-            
-
-            pos_error = np.sum(np.linalg.norm(pos_ee_frame - des_traj_6d[:,:3], axis=1)**2)
-
-            norm_tau = np.sum(np.linalg.norm(tau_act, axis=1)**2)/6e4
-
-            self.Kp = old_Kp
-            self.Kd = old_Kd
-
-            return pos_error + norm_tau
-
-        def func_objs(x, robot=robot, traj=self.prepare_trajectory, sim=self.simulate):
-            return cost(x, robot, traj, sim)
-            
 
         
         bounds = [[0, 1e4] for __ in range(2)]
         bounds = np.vstack((bounds, [[0, 5e3] for __ in range(2)]))
 
-        N_PROCESS = 8
-        pool = multiprocessing.Pool(N_PROCESS)
-        runner = StarmapParallelization(pool.starmap)
+        # N_PROCESS = 8
+        # pool = multiprocess.Pool(N_PROCESS)
+        # runner = StarmapParallelization(pool.starmap)
         
-        problem = FunctionalProblem(4, func_objs, xl=bounds[:,0], xu=bounds[:,1], elementwise_runner=runner)
-        algorithm = PSO(10)
+        problem = ControlOptProblem(self, robot, xl=bounds[:,0], xu=bounds[:,1])#, elementwise_runner=runner)
+        algorithm = PSO(5)
         
         results = minimize(problem, algorithm, termination=('n_gen', 10), seed=1, verbose=True)
         
@@ -285,35 +287,7 @@ class TrajectoryMovements:
         Kd[0,0] = results.X[2]
         Kd[2,2] = results.X[3]
         return Kp, Kd
-    
-    
-    def cost_function(self, x, robot):
-        old_Kp = self.Kp
-        old_Kd = self.Kd
 
-        self.Kp = np.zeros((6,6))
-        self.Kd = np.zeros((6,6))
-
-        self.Kp[0,0] = x[0]
-        self.Kp[2,2] = x[1]
-        self.Kd[0,0] = x[2]
-        self.Kd[2,2] = x[3]
-
-        __, __, __, tau_act, pos_ee_frame, __ = self.simulate(robot,False)
-        __, des_traj_6d, __ = self.prepare_trajectory(robot)
-        
-
-        pos_error = np.sum(np.linalg.norm(pos_ee_frame - des_traj_6d[:,:3], axis=1)**2)
-
-        norm_tau = np.sum(np.linalg.norm(tau_act, axis=1)**2)/6e4
-
-        self.Kp = old_Kp
-        self.Kd = old_Kd
-
-        return pos_error + norm_tau
-    
-    def get_cost_function_by_robot(self, x, robot):
-        return self.cost_function()
 
 if __name__ == "__main__":
     from auto_robot_design.generator.restricted_generator.two_link_generator import (

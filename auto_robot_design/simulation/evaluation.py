@@ -48,7 +48,7 @@ def power_quality(time: np.ndarray, power: np.ndarray, plot=False):
     return np.mean(PQ)
 
 
-def compare_power_quality(time: np.ndarray, power_init: np.ndarray, power_opt: np.ndarray, plot=False):
+def compare_power_quality(time: np.ndarray, power_arrs, plot=False):
     """
     Evaluate the power quality of the robot
     Args:
@@ -59,36 +59,30 @@ def compare_power_quality(time: np.ndarray, power_init: np.ndarray, power_opt: n
         float: power quality
     """
     
-    PQ_old = np.zeros((power_init.shape[0], 1))
-    PQ_new = np.zeros((power_opt.shape[0], 1))
+    PQ = np.zeros((len(power_arrs), power_arrs[0].shape[0]))
     
-    for i in range(power_init.shape[0]):
-        PQ_old[i] = np.sum(power_init[i])**2 - np.sum(power_init[i]**2)
-        PQ_new[i] = np.sum(power_opt[i])**2 - np.sum(power_opt[i]**2)
+    
+    
+    for j in range(len(power_arrs)):
+        for i in range(power_arrs[0].shape[0]):
+            PQ[j,i] = np.sum(power_arrs[j][i])**2 - np.sum(power_arrs[j][i]**2)
         
     if plot:
-        fig = plt.figure(figsize=(7, 7), layout='constrained')
-        axs = fig.subplot_mosaic([["power_old", "power_new"],
-                                ["PQ", "PQ"]])
-        axs["power_old"].plot(time, power_init[:, 0], label='P_1', linewidth=2)
-        axs["power_old"].plot(time, power_init[:, 1], label='P_2')
-        axs["power_old"].set_xlim([time[0], time[-1]])
-        axs["power_old"].set_title('Initial')
-        axs["power_old"].set_xlabel('Time (s)')
-        axs["power_old"].set_ylabel('Power (W)')
-        axs["power_old"].legend()
-        axs["power_old"].grid()
-        axs["power_new"].plot(time, power_opt[:, 0], label='P_1', linewidth=2)
-        axs["power_new"].plot(time, power_opt[:, 1], label='P_2')
-        axs["power_new"].set_xlim([time[0], time[-1]])
-        axs["power_new"].set_title('Optimized')
-        axs["power_new"].set_xlabel('Time (s)')
-        axs["power_new"].set_ylabel('Power (W)')
-        axs["power_new"].legend()
-        axs["power_new"].grid()
-    
-        axs["PQ"].plot(time, PQ_old, label='Initial', linewidth=2)
-        axs["PQ"].plot(time, PQ_new, label='Optimized')
+        plot_power_name = ["Design " + str(i) for i in range(len(power_arrs))]
+        fig = plt.figure(figsize=(len(power_arrs)*6, 10))
+        axs = fig.subplot_mosaic([plot_power_name,
+                                ["PQ" for i in range(len(power_arrs))]])
+        for name, power in zip(plot_power_name, power_arrs):
+            axs[name].plot(time, power[:, 0], label='P_1', linewidth=2)
+            axs[name].plot(time, power[:, 1], label='P_2')
+            axs[name].set_xlim([time[0], time[-1]])
+            axs[name].set_title(name)
+            axs[name].set_xlabel('Time (s)')
+            axs[name].set_ylabel('Power (W)')
+            axs[name].legend()
+            axs[name].grid()
+        for i in range(len(power_arrs)):
+            axs["PQ"].plot(time, PQ[i, :], label='PQ_' + str(i))
         axs["PQ"].set_xlim([time[0], time[-1]])
         axs["PQ"].set_xlabel('Time (s)')
         axs["PQ"].set_ylabel('Power Quality')
@@ -96,8 +90,8 @@ def compare_power_quality(time: np.ndarray, power_init: np.ndarray, power_opt: n
         axs["PQ"].grid()
         
         plt.figure()
-        plt.plot(power_init[:, 0], power_init[:, 1], label='Initial')
-        plt.plot(power_opt[:, 0], power_opt[:, 1], label='Optimized')
+        for i in range(len(power_arrs)):
+            plt.plot(power_arrs[i][:, 0], power_arrs[i][:, 1], label='Design ' + str(i))
         plt.axhline(0, color='black')
         plt.axvline(0, color='black')
         plt.xlabel('P_1')
@@ -107,7 +101,7 @@ def compare_power_quality(time: np.ndarray, power_init: np.ndarray, power_opt: n
         plt.legend()
         plt.show()
         
-    return np.mean(PQ_old), np.mean(PQ_new)
+    return np.mean(PQ, axis=1)
 
 def movments_in_xz_plane(time: np.ndarray, x: np.ndarray, des_x: np.ndarray, plot=False):
     """
@@ -163,7 +157,7 @@ def movments_in_xz_plane(time: np.ndarray, x: np.ndarray, des_x: np.ndarray, plo
     return np.mean(error)
 
 
-def compare_movments_in_xz_plane(time: np.ndarray, x_init: np.ndarray, x_opt: np.ndarray, des_x: np.ndarray, plot=False):
+def compare_movments_in_xz_plane(time: np.ndarray, x, des_x: np.ndarray, plot=False):
     """
     Evaluate the movements in the xz plane
     Args:
@@ -175,82 +169,56 @@ def compare_movments_in_xz_plane(time: np.ndarray, x_init: np.ndarray, x_opt: np
         float: error tracking trajectory in the xz plane
     """
     
-    error_old = np.zeros((x_init.shape[0], 1))
-    error_new = np.zeros((x_opt.shape[0], 1))
+    error_arrs = np.zeros((len(x), x[0].shape[0]))
     
-    for i in range(x_init.shape[0]):
-        error_old[i] = np.linalg.norm((x_init[i] - des_x[i]))
-        error_new[i] = np.linalg.norm((x_opt[i] - des_x[i]))
+    for j in range(len(x)):
+        for i in range(x[0].shape[0]):
+            error_arrs[j, i] = np.linalg.norm((x[j][i] - des_x[i]))
         
     if plot:
-        plt.figure(figsize=(10, 10))
-        plt.subplot(3, 2, 1)
-        plt.plot(time, des_x[:, 0], label='des', linestyle='--', linewidth=3)
-        plt.plot(time, x_init[:, 0], label='real')
-        plt.title('Initial')
-        plt.xlim([time[0], time[-1]])
-        plt.xlabel('Time (s)')
-        plt.ylabel('X (m)')
-        plt.grid()
-        plt.legend()
+        plot_name = ["Design " + str(i) for i in range(len(x))]
+        fig = plt.figure(figsize=(len(x)*6, 10))
+        axs = fig.subplot_mosaic([[name + "_X" for name in plot_name],
+                                  [name + "_Z" for name in plot_name],
+                                ["error" for i in range(len(x))]])
+        for name, x_arr in zip(plot_name, x):
+            axs[name + "_X"].plot(time, des_x[:, 0], label='des', linestyle='--', linewidth=3)
+            axs[name + "_X"].plot(time, x_arr[:, 0], label='real')
+            axs[name + "_X"].set_xlim([time[0], time[-1]])
+            axs[name + "_X"].set_xlabel('Time (s)')
+            axs[name + "_X"].set_ylabel('X (m)')
+            axs[name + "_X"].legend()
+            axs[name + "_X"].grid()
+            axs[name + "_Z"].plot(time, des_x[:, 2], label='des', linestyle='--', linewidth=3)
+            axs[name + "_Z"].plot(time, x_arr[:, 2], label='real')
+            axs[name + "_Z"].set_xlim([time[0], time[-1]])
+            axs[name + "_Z"].set_xlabel('Time (s)')
+            axs[name + "_Z"].set_ylabel('Z (m)')
+            axs[name + "_Z"].legend()
+            axs[name + "_Z"].grid()
 
-        plt.subplot(3, 2, 2)
-        plt.plot(time, des_x[:, 0], label='des', linestyle='--', linewidth=3)
-        plt.plot(time, x_opt[:, 0], label='real')
-        plt.xlim([time[0], time[-1]])
-        plt.title('Optimized')
-        plt.xlabel('Time (s)')
-        plt.ylabel('X (m)')
-        plt.grid()
-        plt.legend()
-    
-        plt.subplot(3, 2, 3)
-        plt.plot(time, des_x[:, 2], label='des', linestyle='--', linewidth=3)
-        plt.plot(time, x_init[:, 2], label='real')
-        plt.xlim([time[0], time[-1]])
-        plt.xlabel('Time (s)')
-        plt.ylabel('Z (m)')
-        plt.grid()
-        plt.legend()
+        for i in range(len(x)):
+            axs["error"].plot(time, error_arrs[i, :], label='error_' + str(i))
+        axs["error"].set_xlim([time[0], time[-1]])
+        axs["error"].set_xlabel('Time (s)')
+        axs["error"].set_ylabel('Error')
+        axs["error"].legend()
+        axs["error"].grid()
         
-        plt.subplot(3, 2, 4)
-        plt.plot(time, des_x[:, 2], label='des', linestyle='--', linewidth=3)
-        plt.plot(time, x_opt[:, 2], label='real')
-        plt.xlim([time[0], time[-1]])
-        plt.xlabel('Time (s)')
-        plt.ylabel('Z (m)')
-        plt.grid()
-        plt.legend()
-        
-        plt.subplot(3, 2, (5, 6))
-        plt.plot(time, error_old, label='error_init')
-        plt.plot(time, error_new, label='error_opt')
-        plt.xlim([time[0], time[-1]])
-        plt.xlabel('Time (s)')
-        plt.ylabel('Error')
-        plt.legend()
-        plt.grid()
 
-        plt.figure(figsize=(10, 5))
-        plt.subplot(1, 2, 1)
-        plt.plot(des_x[:, 0], des_x[:, 2], label='des', linestyle='--', linewidth=3)
-        plt.plot(x_init[:, 0], x_init[:, 2], label="real")
+        plt.figure(figsize=(len(x)*6, 6))
+        for i in range(len(x)):
+            plt.plot(des_x[:, 0], des_x[:, 2], label='des', linestyle='--', linewidth=3)
+            plt.plot(x[i][:, 0], x[i][:, 2], label="real")
         plt.xlabel('X (m)')
         plt.ylabel('Z (m)')
         plt.grid()
         plt.legend()
         plt.axis('equal')
-        plt.subplot(1, 2, 2)
-        plt.plot(des_x[:, 0], des_x[:, 2], label='des', linestyle='--', linewidth=3)
-        plt.plot(x_opt[:, 0], x_opt[:, 2], label="real")
-        plt.xlabel('X (m)')
-        plt.ylabel('Z (m)')
-        plt.grid()
-        plt.legend()
-        plt.axis('equal')
+        
         plt.show()
         
-    return np.mean(error_old), np.mean(error_new)
+    return np.mean(error_arrs, axis=1)
 
 def torque_evaluation(time: np.ndarray, torque: np.ndarray, plot = False):
     """
@@ -276,7 +244,7 @@ def torque_evaluation(time: np.ndarray, torque: np.ndarray, plot = False):
     return np.max(np.abs(torque), axis=0)
 
 
-def compare_torque_evaluation(time: np.ndarray, torque_init: np.ndarray, torque_opt, plot = False):
+def compare_torque_evaluation(time: np.ndarray, torque_arrs, plot = False):
     """
     Evaluate the torque
     Args:
@@ -286,26 +254,21 @@ def compare_torque_evaluation(time: np.ndarray, torque_init: np.ndarray, torque_
     Returns:
         float: torque evaluation
     """
+    
     if plot:
-        plt.figure(figsize=(10, 5))
-        plt.subplot(1,2,1)
-        for i in range(torque_init.shape[1]):
-            plt.plot(time, torque_init[:, i], label='tau_' + str(i))
-        plt.xlim([time[0], time[-1]])
-        plt.title('Initial')
-        plt.xlabel('Time (s)')
-        plt.ylabel('Torque (Nm)')
-        plt.grid()
-        plt.legend()
-        plt.subplot(1,2,2)
-        for i in range(torque_opt.shape[1]):
-            plt.plot(time, torque_opt[:, i], label='tau_' + str(i))
-        plt.xlim([time[0], time[-1]])
-        plt.title('Optimized')
-        plt.xlabel('Time (s)')
-        plt.ylabel('Torque (Nm)')
-        plt.grid()
-        plt.legend()
+        plot_name = ["Design " + str(i) for i in range(len(torque_arrs))]
+        fig = plt.figure(figsize=(len(torque_arrs)*6, 6))
+        
+        axs = fig.subplot_mosaic([name + "_tau" for name in plot_name])
+        
+        for name, torque in zip(plot_name, torque_arrs):
+            for i in range(torque.shape[1]):
+                axs[name + "_tau"].plot(time, torque[:, i], label='tau_' + str(i))
+            axs[name + "_tau"].set_xlim(time[0], time[-1])
+            axs[name + "_tau"].set_xlabel('Time (s)')
+            axs[name + "_tau"].set_ylabel('Torque (Nm)')
+            axs[name + "_tau"].grid()
+            axs[name + "_tau"].legend()
         plt.show()
     
-    return np.max(np.abs(torque_init), axis=0), np.max(np.abs(torque_opt), axis=0)
+    return np.max(np.abs(torque_arrs), axis=1), np.mean(np.abs(torque_arrs), axis=1)

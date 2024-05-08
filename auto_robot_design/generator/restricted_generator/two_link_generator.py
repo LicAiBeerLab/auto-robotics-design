@@ -35,7 +35,7 @@ class TwoLinkGenerator():
         self.current_main_branch = []
         self.graph = nx.Graph()
 
-    def build_standard_two_linker(self, knee_pos: float = -0.5, nominal_length=1, right_shift=np.tan(np.pi/6)/2):
+    def build_standard_two_linker(self, knee_pos: float = -0.5, nominal_length=0.8, right_shift=np.tan(np.pi/6)/2):
         ground_joint = JointPoint(
             r=np.zeros(3),
             w=np.array([0, 1, 0]),
