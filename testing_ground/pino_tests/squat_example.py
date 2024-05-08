@@ -5,35 +5,54 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
-from auto_robot_design.description.actuators import t_motor_actuators
+from auto_robot_design.description.actuators import MyActuator_RMD_MT_RH_17_100_N, t_motor_actuators
 
 from auto_robot_design.description.utils import (
     all_combinations_active_joints_n_actuator, )
 
 from auto_robot_design.generator.restricted_generator.two_link_generator import TwoLinkGenerator
+from auto_robot_design.optimization.optimizer import PymooOptimizer
+from auto_robot_design.optimization.problems import CalculateCriteriaProblemByWeigths
+from auto_robot_design.optimization.saver import load_checkpoint
 from auto_robot_design.pinokla.squat import SquatHopParameters, SimulateSquatHop
-gen = TwoLinkGenerator()
-graph, constrain_dict = gen.get_standard_set()[6]
+import dill
+import os
+ 
 
-pairs = all_combinations_active_joints_n_actuator(graph, t_motor_actuators)
+path = "apps\optimize\\results\\test_2024-05-07_22-31-47"
 
+
+
+problem = CalculateCriteriaProblemByWeigths.load(
+    path
+)  # **{"elementwise_runner":runner})
+checklpoint = load_checkpoint(path)
+
+optimizer = PymooOptimizer(problem, checklpoint)
+optimizer.load_history(path)
+
+hist_flat = np.array(optimizer.history["F"]).flatten()
+not_super_best_id = np.argsort(hist_flat)[0]
+ 
+
+
+problem.mutate_JP_by_xopt(optimizer.history["X"][not_super_best_id])
+graph = problem.graph
+ 
+
+#actuator = TMotor_AK10_9()
+actuator = MyActuator_RMD_MT_RH_17_100_N()
 thickness = 0.04
-
-density = 1000
-
-print(pairs[0])
-builder = ParametrizedBuilder(DetailedURDFCreatorFixedEE,
-                              density={"default": density, "G":5000},
-                              thickness={"default": thickness, "EE":0.08},
-                              actuator=dict(pairs[0]),
-                              size_ground=np.array([thickness*5, thickness*5, thickness*2]),
-)
+builder = ParametrizedBuilder(DetailedURDFCreatorFixedEE, size_ground=np.array(
+    [thickness*5, thickness*10, thickness*2]), actuator=actuator,thickness=thickness)
 robo_urdf, joint_description, loop_description = jps_graph2urdf_by_bulder(
     graph, builder)
-sqh_p = SquatHopParameters(hop_flight_hight=0.3,
+
+
+sqh_p = SquatHopParameters(hop_flight_hight=0.2,
                            squatting_up_hight=0,
-                           squatting_down_hight=-0.3,
-                           total_time=0.55)
+                           squatting_down_hight=-0.4,
+                           total_time=1.1)
 hoppa = SimulateSquatHop(sqh_p)
 
 

@@ -27,7 +27,7 @@ from auto_robot_design.optimization.test_criteria import calculate_mass
 from auto_robot_design.description.utils import draw_joint_point
 
 
-path = "results/test"
+path = "apps\optimize\\results\\test_2024-05-07_22-31-47"
 
 # n_proccess = 2
 # pool = multiprocessing.Pool(n_proccess)
