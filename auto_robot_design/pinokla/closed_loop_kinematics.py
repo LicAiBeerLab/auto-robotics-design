@@ -25,7 +25,7 @@ def closedLoopInverseKinematicsProximal(
     q_start = None,
     onlytranslation=False,
     
-    max_it=1000,
+    max_it=200,
     eps=5e-11,
     rho=1e-10,
     mu=1e-3,

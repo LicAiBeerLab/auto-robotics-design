@@ -62,3 +62,23 @@ def get_vertical_trajectory(starting_point, height, x_shift, n_points = 50):
     x_trajectory+=x_shift
     y_trajectory = np.linspace(starting_point, starting_point+height, n_points)
     return (x_trajectory, y_trajectory)
+
+
+def get_workspace_trajectory(starting_point, height, width,n_vertical,n_horizontal):
+    vertical_step = height/n_vertical
+    horizontal_step = width/n_horizontal
+    current_point = starting_point
+    x_list = []
+    y_list = []
+    x_list.append(current_point[0])
+    y_list.append(current_point[1])
+    for i in range(n_horizontal+1):
+        for _ in range(n_vertical):
+            current_point[1] += vertical_step*((0.5-i%2)*2)
+            x_list.append(current_point[0])
+            y_list.append(current_point[1])
+        current_point[0] += horizontal_step
+        x_list.append(current_point[0])
+        y_list.append(current_point[1])
+
+    return (np.array(x_list[:-1:]), np.array(y_list[:-1:]))

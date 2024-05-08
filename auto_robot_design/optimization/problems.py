@@ -67,7 +67,6 @@ class CalculateCriteriaProblemByWeigths(ElementwiseProblem):
         fixed_robot, free_robot = jps_graph2pinocchio_robot(self.graph, self.builder)
         # all rewards are calculated and added to the result
         total_reward=0
-        print(total_reward)
         partial_rewards = []
         for rewards, trajectories in self.rewards_and_trajectories:
             max_reward = -float('inf')
