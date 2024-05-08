@@ -1,11 +1,14 @@
+from typing import Tuple
+
 import numpy as np
 
 from auto_robot_design.optimization.rewards.reward_base import Reward
+from auto_robot_design.pinokla.calc_criterion import DataDict
 
 class EndPointIMFReward(Reward):
     """IMF in the trajectory edge points"""
 
-    def __init__(self, imf_key, trajectory_key, error_key) -> None:
+    def __init__(self, imf_key:str, trajectory_key:str, error_key:str) -> None:
         """Set the dictionary keys for the data
 
         Args:
@@ -17,7 +20,7 @@ class EndPointIMFReward(Reward):
         self.trajectory_key = trajectory_key
         self.error_key = error_key
 
-    def calculate(self, point_criteria, trajectory_criteria, trajectory_results, **kwargs) -> float:
+    def calculate(self, point_criteria:DataDict, trajectory_criteria:DataDict, trajectory_results:DataDict, **kwargs) -> Tuple[float, list[float]]:
         """Calculate the sum of IMF in starting and end points
 
         Args:
@@ -30,7 +33,6 @@ class EndPointIMFReward(Reward):
         """
         IMF: list[np.array] = point_criteria[self.imf_key]
         errors = trajectory_results[self.error_key]
-
         if errors[0] > 1e-6:
             starting_result = 0
         else:
@@ -43,12 +45,13 @@ class EndPointIMFReward(Reward):
 
         return (starting_result + end_result)/2, [starting_result, end_result]
 
+
 class MassReward():
     """Mass of the robot
-    
+
     Currently mass reward does not include the base"""
 
-    def __init__(self, mass_key) -> None:
+    def __init__(self, mass_key:str) -> None:
         """Set the dictionary keys for the data
 
         Args:
@@ -56,7 +59,7 @@ class MassReward():
         """
         self.mass_key = mass_key
 
-    def calculate(self, point_criteria, trajectory_criteria, trajectory_results, **kwargs) -> float:
+    def calculate(self, point_criteria:DataDict, trajectory_criteria:DataDict, trajectory_results:DataDict, **kwargs) -> Tuple[float, list[float]]:
         """Just get the total mass from the data dictionaries
 
         Args:
@@ -70,14 +73,14 @@ class MassReward():
         # get the manipulability for each point at the trajectory
         mass = trajectory_criteria[self.mass_key]
         return -mass, []
-    
+
 
 class ActuatedMassReward():
     """Mass of the robot
-    
+
     Currently mass reward does not include the base"""
 
-    def __init__(self, mass_key) -> None:
+    def __init__(self, mass_key:str) -> None:
         """Set the dictionary keys for the data
 
         Args:
@@ -85,7 +88,7 @@ class ActuatedMassReward():
         """
         self.mass_key = mass_key
 
-    def calculate(self, point_criteria, trajectory_criteria, trajectory_results, **kwargs) -> float:
+    def calculate(self, point_criteria:DataDict, trajectory_criteria:DataDict, trajectory_results:DataDict, **kwargs) -> Tuple[float, list[float]]:
         """Just get the total mass from the data dictionaries
 
         Args:
@@ -101,10 +104,11 @@ class ActuatedMassReward():
 
         return -np.mean(mass), list(mass)
 
+
 class TrajectoryIMFReward(Reward):
     """IMF in the trajectory edge points"""
 
-    def __init__(self, imf_key, trajectory_key, error_key) -> None:
+    def __init__(self, imf_key:str, trajectory_key:str, error_key:str) -> None:
         """Set the dictionary keys for the data
 
         Args:
@@ -112,11 +116,12 @@ class TrajectoryIMFReward(Reward):
             trajectory_key (str): key for the trajectory points
             error_key (str): key for the pose errors 
         """
+        super().__init__()
         self.imf_key = imf_key
         self.trajectory_key = trajectory_key
         self.error_key = error_key
 
-    def calculate(self, point_criteria, trajectory_criteria, trajectory_results, **kwargs) -> float:
+    def calculate(self, point_criteria:DataDict, trajectory_criteria:DataDict, trajectory_results:DataDict, **kwargs) -> Tuple[float, list[float]]:
         """Calculate the mean IMF along the trajectory
 
         Args:
@@ -127,18 +132,20 @@ class TrajectoryIMFReward(Reward):
         Returns:
             float: value of the reward
         """
-        IMF: list[np.array] = point_criteria[self.imf_key]
 
         errors = trajectory_results[self.error_key]
+        is_trajectory_reachable = self.check_reachability(errors)
+        # the reward is none zero only if the point is reached
+        if not is_trajectory_reachable:
+            return 0, []
 
+        IMF: list[np.array] = point_criteria[self.imf_key]
         n_steps = len(errors)
         result = 0
         reward_vector = [0]*n_steps
         for i in range(n_steps):
-            # the reward is none zero only if the point is reached
-            if errors[i] > 1e-6:
-                return 0, []
             tmp = IMF[i]
             result += tmp
+            reward_vector[i] = tmp
 
         return result, reward_vector
