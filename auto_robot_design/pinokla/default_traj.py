@@ -65,15 +65,15 @@ def get_vertical_trajectory(starting_point, height, x_shift, n_points = 50):
 
 
 def get_workspace_trajectory(starting_point, height, width,n_vertical,n_horizontal):
-    vertical_step = height/n_vertical
-    horizontal_step = width/n_horizontal
+    vertical_step = height/(n_vertical-1)
+    horizontal_step = width/(n_horizontal-1)
     current_point = starting_point
     x_list = []
     y_list = []
     x_list.append(current_point[0])
     y_list.append(current_point[1])
-    for i in range(n_horizontal+1):
-        for _ in range(n_vertical):
+    for i in range(n_horizontal):
+        for _ in range(n_vertical-1):
             current_point[1] += vertical_step*((0.5-i%2)*2)
             x_list.append(current_point[0])
             y_list.append(current_point[1])

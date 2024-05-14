@@ -184,7 +184,6 @@ class MeanHeavyLiftingReward(Reward):
         trajectory_points = trajectory_results[self.trajectory_key]
         mass = trajectory_criteria[self.mass_key]
         n_steps = len(trajectory_points)
-        result = float('inf')
         reward_vector = [0]*n_steps
         for i in range(n_steps):
             # the force matrix is the transpose of Jacobian, it transforms forces into torques
@@ -226,10 +225,10 @@ class MinAccelerationCapability(Reward):
         Returns:
             float: value of the reward
         """
-        if "Actuator" in kwargs:
-            pick_effort = kwargs["Actuator"].peak_effort
-        else:
-            raise KeyError("Lifting criterion requires the Actuator")
+        # if "Actuator" in kwargs:
+        #     pick_effort = kwargs["Actuator"].peak_effort
+        # else:
+        #     raise KeyError("Lifting criterion requires the Actuator")
 
         errors = trajectory_results[self.error_key]
         is_trajectory_reachable = self.check_reachability(errors)
@@ -243,7 +242,6 @@ class MinAccelerationCapability(Reward):
 
 
         n_steps = len(errors)
-        result = 0
         reward_vector = [0]*(n_steps)
         for i in range(n_steps):
             # get the manipulability matrix and mass matrix for the current point
