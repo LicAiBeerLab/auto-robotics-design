@@ -15,7 +15,7 @@ class HeavyLiftingReward(Reward):
         Reward (float): mass capacity
     """
 
-    def __init__(self, manipulability_key, mass_key:str, trajectory_key:str, error_key:str, max_effort_coef=0.7) -> None:
+    def __init__(self, manipulability_key, mass_key: str, trajectory_key: str, error_key: str, max_effort_coef=0.7) -> None:
         super().__init__()
         self.max_effort_coefficient = max_effort_coef
         self.manip_key = manipulability_key
@@ -23,7 +23,7 @@ class HeavyLiftingReward(Reward):
         self.error_key = error_key
         self.mass_key = mass_key
 
-    def calculate(self, point_criteria:DataDict, trajectory_criteria:DataDict, trajectory_results:DataDict, **kwargs) -> Tuple[float, list[float]]:
+    def calculate(self, point_criteria: DataDict, trajectory_criteria: DataDict, trajectory_results: DataDict, **kwargs) -> Tuple[float, list[float]]:
         """_summary_
 
         Args:
@@ -80,7 +80,7 @@ class AccelerationCapability(Reward):
     """Calculate the reward that combine effective inertia and force capability
     """
 
-    def __init__(self, manipulability_key:str, trajectory_key:str, error_key:str, actuated_mass_key:str, max_effort_coef=0.7) -> None:
+    def __init__(self, manipulability_key: str, trajectory_key: str, error_key: str, actuated_mass_key: str, max_effort_coef=0.7) -> None:
         super().__init__()
         self.max_effort_coefficient = max_effort_coef
         self.manip_key = manipulability_key
@@ -88,7 +88,7 @@ class AccelerationCapability(Reward):
         self.error_key = error_key
         self.actuated_mass_key = actuated_mass_key
 
-    def calculate(self, point_criteria:DataDict, trajectory_criteria:DataDict, trajectory_results:DataDict, **kwargs) -> Tuple[float, list[float]]:
+    def calculate(self, point_criteria: DataDict, trajectory_criteria: DataDict, trajectory_results: DataDict, **kwargs) -> Tuple[float, list[float]]:
         """_summary_
 
         Args:
@@ -147,7 +147,7 @@ class MeanHeavyLiftingReward(Reward):
         Reward (float): mass capacity
     """
 
-    def __init__(self, manipulability_key, mass_key:str, trajectory_key:str, error_key:str, max_effort_coef=0.7) -> None:
+    def __init__(self, manipulability_key, mass_key: str, trajectory_key: str, error_key: str, max_effort_coef=0.7) -> None:
         super().__init__()
         self.max_effort_coefficient = max_effort_coef
         self.manip_key = manipulability_key
@@ -155,7 +155,7 @@ class MeanHeavyLiftingReward(Reward):
         self.error_key = error_key
         self.mass_key = mass_key
 
-    def calculate(self, point_criteria:DataDict, trajectory_criteria:DataDict, trajectory_results:DataDict, **kwargs) -> Tuple[float, list[float]]:
+    def calculate(self, point_criteria: DataDict, trajectory_criteria: DataDict, trajectory_results: DataDict, **kwargs) -> Tuple[float, list[float]]:
         """_summary_
 
         Args:
@@ -198,15 +198,14 @@ class MeanHeavyLiftingReward(Reward):
             additional_force = abs(achievable_force_z) - GRAVITY*mass
             reward_vector[i] = additional_force/GRAVITY
 
-
         return np.mean(np.array(reward_vector)), reward_vector
-    
+
 
 class MinAccelerationCapability(Reward):
     """Calculate the reward that combine effective inertia and force capability
     """
 
-    def __init__(self, manipulability_key:str, trajectory_key:str, error_key:str, actuated_mass_key:str, max_effort_coef=0.7) -> None:
+    def __init__(self, manipulability_key: str, trajectory_key: str, error_key: str, actuated_mass_key: str, max_effort_coef=0.7) -> None:
         super().__init__()
         self.max_effort_coefficient = max_effort_coef
         self.manip_key = manipulability_key
@@ -214,7 +213,7 @@ class MinAccelerationCapability(Reward):
         self.error_key = error_key
         self.actuated_mass_key = actuated_mass_key
 
-    def calculate(self, point_criteria:DataDict, trajectory_criteria:DataDict, trajectory_results:DataDict, **kwargs) -> Tuple[float, list[float]]:
+    def calculate(self, point_criteria: DataDict, trajectory_criteria: DataDict, trajectory_results: DataDict, **kwargs) -> Tuple[float, list[float]]:
         """_summary_
 
         Args:
@@ -240,7 +239,6 @@ class MinAccelerationCapability(Reward):
         manipulability_matrices: list[np.array] = point_criteria[self.manip_key]
         effective_mass_matrices: list[np.array] = point_criteria[self.actuated_mass_key]
 
-
         n_steps = len(errors)
         reward_vector = [0]*(n_steps)
         for i in range(n_steps):
@@ -249,7 +247,8 @@ class MinAccelerationCapability(Reward):
             effective_mass_matrix: np.array = effective_mass_matrices[i]
             # calculate the matrix that transforms quasi-static acceleration to required torque
 
-            torque_2_acc = manipulability_matrix@np.linalg.inv(effective_mass_matrix)
+            torque_2_acc = manipulability_matrix@np.linalg.inv(
+                effective_mass_matrix)
             step_result = np.min(abs(np.linalg.eigvals(torque_2_acc)))
             reward_vector[i] = step_result
 

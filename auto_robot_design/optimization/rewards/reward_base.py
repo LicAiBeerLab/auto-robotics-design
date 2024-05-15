@@ -8,7 +8,7 @@ class Reward():
     """Interface for the optimization criteria"""
 
     def __init__(self) -> None:
-        self.point_precision = 1e-5
+        self.point_precision = 1e-6
 
     def calculate(self, point_criteria: DataDict, trajectory_criteria: DataDict, trajectory_results: DataDict, **kwargs) -> Tuple[float, list[float]]:
         """Calculate the value of the criterion from the data"""
@@ -59,7 +59,8 @@ class PositioningErrorCalculator():
     def calculate(self, trajectory_results: DataDict):
         errors = trajectory_results[self.error_key]
         if max(errors) > self.point_threshold:
-            return np.mean(errors)
+            #return np.mean(errors)
+            return max(errors)
         else:
             return 0
 
@@ -87,16 +88,20 @@ class PositioningConstrain():
 
 
 class RewardManager():
+    """Manager class to aggregate trajectories and corresponding rewards
+
+        User should add trajectories and then add rewards that are calculated for these trajectories.
+    """
     def __init__(self, crag) -> None:
         self.trajectories = {}
         self.rewards = {}
         self.crag = crag
         self.precalculated_trajectories = None
 
-    def add_trajectory(self, trajectory, id):
-        if not (id in self.trajectories):
-            self.trajectories[id] = trajectory
-            self.rewards[id] = []
+    def add_trajectory(self, trajectory, idx):
+        if not (idx in self.trajectories):
+            self.trajectories[idx] = trajectory
+            self.rewards[idx] = []
         else:
             raise KeyError(
                 'Attempt to add trajectory id that already exist in RewardManager')
@@ -136,8 +141,9 @@ class RewardManager():
         return total_reward, partial_rewards
 
     def dummy_partial(self):
+        """Create partial reward with zeros to add for robots that failed constrains"""
         partial_rewards = []
-        for trajectory_id, trajectory in self.trajectories.items():
+        for trajectory_id, _ in self.trajectories.items():
             rewards = self.rewards[trajectory_id]
             partial_reward = [trajectory_id]
             for _, _ in rewards:
@@ -146,6 +152,10 @@ class RewardManager():
         return partial_rewards
 
     def check_constrain_trajectory(self, trajectory, results):
+        """Checks if a trajectory that was used in constrain calculation is also one of reward trajectories.
+        
+            If a trajectory is a reward trajectory save its results and use them to avoid recalculation 
+        """
         temp_dict = {}
         for trajectory_id, in_trajectory in self.trajectories.items():
             if np.array_equal(trajectory, in_trajectory):
