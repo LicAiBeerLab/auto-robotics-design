@@ -8,7 +8,7 @@ class Reward():
     """Interface for the optimization criteria"""
 
     def __init__(self) -> None:
-        self.point_precision = 1e-3
+        self.point_precision = 1e-5
 
     def calculate(self, point_criteria: DataDict, trajectory_criteria: DataDict, trajectory_results: DataDict, **kwargs) -> Tuple[float, list[float]]:
         """Calculate the value of the criterion from the data"""
@@ -17,7 +17,8 @@ class Reward():
 
     def check_reachability(self, errors):
         if max(errors) > self.point_precision:
-            raise ValueError(f"All points should be reachable to calculate a reward {max(errors)}")
+            raise ValueError(
+                f"All points should be reachable to calculate a reward {max(errors)}")
 
         return True
 
@@ -111,11 +112,14 @@ class RewardManager():
         partial_rewards = []
         for trajectory_id, trajectory in self.trajectories.items():
             rewards = self.rewards[trajectory_id]
-            if self.precalculated_trajectories and (trajectory_id in self.precalculated_trajectories):
-                point_criteria_vector, trajectory_criteria, res_dict_fixed = self.precalculated_trajectories[trajectory_id]
-            else:
-                point_criteria_vector, trajectory_criteria, res_dict_fixed = self.crag.get_criteria_data(
-                    fixed_robot, free_robot, trajectory)
+            # if self.precalculated_trajectories and (trajectory_id in self.precalculated_trajectories):
+            #     point_criteria_vector, trajectory_criteria, res_dict_fixed = self.precalculated_trajectories[trajectory_id]
+            # else:
+            #     point_criteria_vector, trajectory_criteria, res_dict_fixed = self.crag.get_criteria_data(
+            #         fixed_robot, free_robot, trajectory)
+
+            point_criteria_vector, trajectory_criteria, res_dict_fixed = self.crag.get_criteria_data(
+                fixed_robot, free_robot, trajectory)
             reward_at_trajectory = 0
             partial_reward = [trajectory_id]
             for reward, weight in rewards:
@@ -130,7 +134,7 @@ class RewardManager():
         # calculate the total reward
         total_reward = -sum([reward for _, reward in trajectory_rewards])
         return total_reward, partial_rewards
-    
+
     def dummy_partial(self):
         partial_rewards = []
         for trajectory_id, trajectory in self.trajectories.items():
@@ -144,9 +148,7 @@ class RewardManager():
     def check_constrain_trajectory(self, trajectory, results):
         temp_dict = {}
         for trajectory_id, in_trajectory in self.trajectories.items():
-            if  np.array_equal(trajectory, in_trajectory):
-                temp_dict[trajectory_id]= results
-        
+            if np.array_equal(trajectory, in_trajectory):
+                temp_dict[trajectory_id] = results
+
         self.precalculated_trajectories = temp_dict
-            
-        
