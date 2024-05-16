@@ -308,7 +308,7 @@ class SimulateSquatHop:
         for i in range(simulate_steps):
             current_time = i * self.time_step
             des_pos, des_vel, des_acc = traj_fun(current_time)
-            tau_q = self.get_torques(des_acc, q, grav_force, total_mass)
+            tau_q = self.get_torques(des_acc, q, grav_force, total_mass, control_coefficient)
             a = pin.constraintDynamics(self.hop_robo.model, self.hop_robo.data,
                                        q, vq, tau_q,
                                        self.hop_robo.constraint_models,

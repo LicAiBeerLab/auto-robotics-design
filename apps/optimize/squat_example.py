@@ -5,7 +5,7 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
-from auto_robot_design.description.actuators import MyActuator_RMD_MT_RH_17_100_N, t_motor_actuators
+from auto_robot_design.description.actuators import MyActuator_RMD_MT_RH_17_100_N, TMotor_AK10_9, t_motor_actuators
 
 from auto_robot_design.description.utils import (
     all_combinations_active_joints_n_actuator, )
@@ -17,7 +17,7 @@ from auto_robot_design.optimization.saver import load_checkpoint
 from auto_robot_design.pinokla.squat import SquatHopParameters, SimulateSquatHop
 import dill
 import os
-from scipy.optimize import dual_annealing, direct
+
 
 
 def reward_with_context(sim_hopp: SimulateSquatHop, robo_urdf: str,
@@ -57,19 +57,38 @@ def min_error_control_brute_force(min_fun: Callable[[float], float]):
 
 def get_history_and_problem(path):
     problem = CalculateCriteriaProblemByWeigths.load(
-        path)  # **{"elementwise_runner":runner})
+        path)  
     checklpoint = load_checkpoint(path)
 
     optimizer = PymooOptimizer(problem, checklpoint)
     optimizer.load_history(path)
-    hist_flat = np.array(optimizer.history["F"]).flatten()
-    not_super_best_id = np.argsort(hist_flat)[0]
-    problem.mutate_JP_by_xopt(optimizer.history["X"][not_super_best_id])
-    graph = problem.graph
-
+  
     return optimizer.history, problem
 
-path = "results\\th_1909_num1_2024-05-08_19-14-25"
+def get_sorted_history(history : dict):
+    rewards =  np.array(history["F"]).flatten()
+    x_value = np.array(history["X"]).flatten()
+    ids_sorted = np.argsort(rewards)
+    sorted_reward = rewards[ids_sorted]
+    sorted_x_values = x_value[ids_sorted]
+    return sorted_reward, sorted_x_values
+
+def get_histogram_data(rewards):
+    NUMBER_BINS = 10
+    _, bins_edg = np.histogram(rewards, NUMBER_BINS)
+    bin_indices = np.digitize(rewards, bins_edg, right=True)
+    bins_set_id = [np.where(bin_indices == i)[0] for i in range(1, len(bins_edg))]
+    return bins_set_id
+
+def get_tested_reward_and_x(sorted_reward :np.ndarray, sorted_x_values: np.ndarray):
+    bins_set_id = get_histogram_data(sorted_reward)
+    best_in_bins = [i[0] for i in bins_set_id]
+    return sorted_reward[best_in_bins], sorted_x_values[best_in_bins]
+
+  
+
+
+path = "results\\vertical_acceleration_heavy_generator_0_2024-05-16_14-36-51"
 
 problem = CalculateCriteriaProblemByWeigths.load(
     path)  # **{"elementwise_runner":runner})
@@ -85,6 +104,7 @@ sorted_reward_big1 = sorted_reward[np.where(sorted_reward < -0.5)]
 # plt.figure()
 # plt.hist(sorted_reward_big1, 10)
 # plt.show()
+ 
 best_id = np.argsort(hist_flat)[0]
 best_rew = optimizer.history["F"][best_id]
 not_super_best_rew = optimizer.history["F"][not_super_best_id]
@@ -94,7 +114,7 @@ problem.mutate_JP_by_xopt(optimizer.history["X"][not_super_best_id])
 graph = problem.graph
 
 #actuator = TMotor_AK10_9()
-actuator = MyActuator_RMD_MT_RH_17_100_N()
+actuator = TMotor_AK10_9()
 thickness = 0.04
 builder = ParametrizedBuilder(
     DetailedURDFCreatorFixedEE,
@@ -106,7 +126,7 @@ robo_urdf, joint_description, loop_description = jps_graph2urdf_by_bulder(
 
 sqh_p = SquatHopParameters(hop_flight_hight=0.25,
                            squatting_up_hight=0.0,
-                           squatting_down_hight=-0.38,
+                           squatting_down_hight=-0.3,
                            total_time=0.8)
 hoppa = SimulateSquatHop(sqh_p)
 
