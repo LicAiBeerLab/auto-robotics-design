@@ -16,7 +16,7 @@ class Reward():
         raise NotImplementedError("A reward must implement calculate method!")
 
     def check_reachability(self, errors):
-        if max(errors) > self.point_precision:
+        if np.max(errors) > self.point_precision:
             raise ValueError(
                 f"All points should be reachable to calculate a reward {max(errors)}")
 
@@ -58,9 +58,9 @@ class PositioningErrorCalculator():
 
     def calculate(self, trajectory_results: DataDict):
         errors = trajectory_results[self.error_key]
-        if max(errors) > self.point_threshold:
+        if np.max(errors) > self.point_threshold:
             #return np.mean(errors)
-            return max(errors)
+            return np.max(errors)
         else:
             return 0
 

@@ -116,7 +116,6 @@ class AccelerationCapability(Reward):
         trajectory_points = trajectory_results[self.trajectory_key]
         diff_vector = np.diff(trajectory_points, axis=0)[:, [0, 2]]
         n_steps = len(trajectory_points)
-        result = 0
         reward_vector = [0]*(n_steps-1)
         for i in range(n_steps-1):
             # get the direction of the trajectory
@@ -134,10 +133,9 @@ class AccelerationCapability(Reward):
             unit_acc_torque = np.abs(acc_2_torque@trajectory_direction)
             # calculate the factor that max out the higher torque
             acc = pick_effort*self.max_effort_coefficient/max(unit_acc_torque)
-            result += acc
             reward_vector[i] = acc
 
-        return result/n_steps, reward_vector
+        return np.mean(np.array(reward_vector)), reward_vector
 
 
 class MeanHeavyLiftingReward(Reward):
