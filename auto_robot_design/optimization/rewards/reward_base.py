@@ -117,14 +117,14 @@ class RewardManager():
         partial_rewards = []
         for trajectory_id, trajectory in self.trajectories.items():
             rewards = self.rewards[trajectory_id]
-            # if self.precalculated_trajectories and (trajectory_id in self.precalculated_trajectories):
-            #     point_criteria_vector, trajectory_criteria, res_dict_fixed = self.precalculated_trajectories[trajectory_id]
-            # else:
-            #     point_criteria_vector, trajectory_criteria, res_dict_fixed = self.crag.get_criteria_data(
-            #         fixed_robot, free_robot, trajectory)
+            if self.precalculated_trajectories and (trajectory_id in self.precalculated_trajectories):
+                point_criteria_vector, trajectory_criteria, res_dict_fixed = self.precalculated_trajectories[trajectory_id]
+            else:
+                point_criteria_vector, trajectory_criteria, res_dict_fixed = self.crag.get_criteria_data(
+                    fixed_robot, free_robot, trajectory)
 
-            point_criteria_vector, trajectory_criteria, res_dict_fixed = self.crag.get_criteria_data(
-                fixed_robot, free_robot, trajectory)
+            # point_criteria_vector, trajectory_criteria, res_dict_fixed = self.crag.get_criteria_data(
+            #     fixed_robot, free_robot, trajectory)
             reward_at_trajectory = 0
             partial_reward = [trajectory_id]
             for reward, weight in rewards:
