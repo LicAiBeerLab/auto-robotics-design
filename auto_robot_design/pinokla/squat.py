@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import IntFlag, auto
 from typing import Callable
-from auto_robot_design.pinokla.closed_loop_jacobian import inverseConstraintKinematicsSpeed
+from auto_robot_design.pinokla.closed_loop_jacobian import constraint_jacobian_active_to_passive, inverseConstraintKinematicsSpeed
 from auto_robot_design.pinokla.loader_tools import build_model_with_extensions
 import pinocchio as pin
 import numpy as np
@@ -261,9 +261,9 @@ class SimulateSquatHop:
             raise Exception("Start squat position is not reached")
         traj_fun = self.create_traj_equation()
 
-        pin.computeGeneralizedGravity(self.hop_robo.model, self.hop_robo.data,
+        grav_force = pin.computeGeneralizedGravity(self.hop_robo.model, self.hop_robo.data,
                                       start_squat_q)
-        grav_force = self.hop_robo.data.g[0]
+        # grav_force = self.hop_robo.data.g[0]
         total_mass = pin.computeTotalMass(self.hop_robo.model)
         simulate_steps = int(self.squat_hop_parameters.total_time /
                              self.time_step)
@@ -388,6 +388,14 @@ class SimulateSquatHop:
         Returns:
             np.ndarray: _description_ 
         """
+        Jda, E_tau = constraint_jacobian_active_to_passive(
+            self.hop_robo.model,
+            self.hop_robo.data,
+            self.hop_robo.constraint_models,
+            self.hop_robo.constraint_data,
+            self.hop_robo.actuation_model,
+            current_q,
+        )
         ground_as_ee_id = self.hop_robo.model.getFrameId(
             self.squat_hop_parameters.ground_link_name)
         vq, J_closed = inverseConstraintKinematicsSpeed(
@@ -400,11 +408,11 @@ class SimulateSquatHop:
             ground_as_ee_id,
             self.hop_robo.data.oMf[ground_as_ee_id].action @ np.zeros(6),
         )
-        COMPENSATE_COEFFICIENT = 0.81
-        desired_end_effector_force = COMPENSATE_COEFFICIENT * \
-            grav_force + total_mass * desired_acceleration
+        # COMPENSATE_COEFFICIENT = 0.81
+        desired_end_effector_force = total_mass * desired_acceleration
         desired_end_effector_wrench = self.scalar_force_to_wrench(
             desired_end_effector_force)
-        desired_q_torques = J_closed.T @ desired_end_effector_wrench
+        # desired_q_torques = J_closed.T @ desired_end_effector_wrench + Jda.T @ E_tau.T @ grav_force
+        desired_q_torques =  Jda.T @ E_tau.T @ grav_force
         tau = self.act_torques_to_generalized_q(desired_q_torques)
         return tau

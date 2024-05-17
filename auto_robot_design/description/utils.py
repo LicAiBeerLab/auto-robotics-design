@@ -187,15 +187,15 @@ def draw_joint_point(graph: nx.Graph):
         node_size=150,
         with_labels=False,
     )
-    pos_labels = {g:np.array(p) + np.array([-0.2, 0.2])*la.norm(EE_pos)/5 for g, p in pos.items()}
-    nx.draw_networkx_labels(
-        graph,
-        pos_labels,
-        labels,
-        font_color = "r",
-        font_family = "monospace"
+    # pos_labels = {g:np.array(p) + np.array([-0.2, 0.2])*la.norm(EE_pos)/5 for g, p in pos.items()}
+    # nx.draw_networkx_labels(
+    #     graph,
+    #     pos_labels,
+    #     labels,
+    #     font_color = "r",
+    #     font_family = "monospace"
 
-    )
+    # )
     if nx.is_weighted(graph):
         edge_labels = nx.get_edge_attributes(graph, "weight")
         nx.draw_networkx_edge_labels(
@@ -206,12 +206,12 @@ def draw_joint_point(graph: nx.Graph):
             font_family = "monospace"
 
         )
-    plt.plot(G_pos[:,0], G_pos[:,1], "ok", label="Ground")
-    plt.plot(EE_pos[:,0], EE_pos[:,1], "ob", label="EndEffector")
+    # plt.plot(G_pos[:,0], G_pos[:,1], "ok", label="Ground")
+    # plt.plot(EE_pos[:,0], EE_pos[:,1], "ob", label="EndEffector")
     plt.plot(active_j_pos[:,0], active_j_pos[:,1], "og",
              markersize=20, 
              fillstyle="none", label="Active")
-    plt.legend()
+    # plt.legend()
     plt.axis("equal")
 
 
@@ -228,8 +228,8 @@ def draw_kinematic_graph(graph: nx.Graph):
     nx.draw_networkx_labels(graph, pos, labels, font_size=20, font_family="sans-serif")
 
     # edge_labels = nx.get_edge_attributes(graph, "weight")
-    edge_labels = {(u, v):d["joint"].jp.name for (u, v, d) in graph.edges(data=True)}
-    nx.draw_networkx_edge_labels(graph, pos, edge_labels)
+    # edge_labels = {(u, v):d["joint"].jp.name for (u, v, d) in graph.edges(data=True)}
+    # nx.draw_networkx_edge_labels(graph, pos, edge_labels)
     ax = plt.gca()
     ax.margins(0.08)
     plt.axis("off")

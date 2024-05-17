@@ -1,3 +1,5 @@
+from datetime import time
+import re
 import numpy as np
 import pinocchio as pin
 
@@ -7,6 +9,10 @@ from pymoo.core.problem import StarmapParallelization, ElementwiseProblem
 from pymoo.problems.functional import FunctionalProblem
 from pymoo.optimize import minimize
 from pymoo.algorithms.soo.nonconvex.pso import PSO
+from pymoo.algorithms.soo.nonconvex.pattern import PatternSearch
+from pymoo.algorithms.soo.nonconvex.cmaes import CMAES
+from pymoo.algorithms.soo.nonconvex.isres import ISRES
+from scipy.optimize import shgo
 
 import meshcat
 from pinocchio.visualize import MeshcatVisualizer
@@ -16,13 +22,47 @@ from auto_robot_design.control.trajectory_planning import trajectory_planning
 from auto_robot_design.pinokla.closed_loop_kinematics import closedLoopInverseKinematicsProximal, closedLoopProximalMount
 from auto_robot_design.pinokla.default_traj import convert_x_y_to_6d_traj_xz
 
-class ControlOptProblem(ElementwiseProblem):
+# class ControlOptProblem(ElementwiseProblem):
+#     def __init__ (self, simulation, robot, *args, **kwargs):
+#         self.robot = robot
+#         self.simulation = simulation
+#         super().__init__(n_var=4, n_obj=1, n_constr=0, elementwise_evaluation=True, *args, **kwargs)
+        
+#     def _evaluate(self, x, out, *args, **kwargs):
+#         old_Kp = self.simulation.Kp
+#         old_Kd = self.simulation.Kd
+
+#         self.simulation.Kp = np.zeros((6,6))
+#         self.simulation.Kd = np.zeros((6,6))
+
+#         self.simulation.Kp[0,0] = x[0]
+#         self.simulation.Kp[2,2] = x[1]
+#         self.simulation.Kd[0,0] = x[2]
+#         self.simulation.Kd[2,2] = x[3]
+
+#         __, __, __, tau_act, pos_ee_frame, __ = self.simulation.simulate(self.robot,False)
+#         __, des_traj_6d, __ = self.simulation.prepare_trajectory(self.robot)
+        
+
+#         pos_error = np.sum(np.linalg.norm(pos_ee_frame - des_traj_6d[:,:3], axis=1)**2)
+
+#         norm_tau = np.sum(np.linalg.norm(tau_act, axis=1)**2)/6e4
+        
+#         self.Kp = old_Kp
+#         self.Kd = old_Kd
+        
+#         rew = pos_error + norm_tau
+#         if rew > 1e8:
+#             rew = 1e8
+
+#         out["F"] = rew
+
+class ControlOptProblem:
     def __init__ (self, simulation, robot, *args, **kwargs):
         self.robot = robot
         self.simulation = simulation
-        super().__init__(n_var=4, n_obj=1, n_constr=0, elementwise_evaluation=True, *args, **kwargs)
         
-    def _evaluate(self, x, out, *args, **kwargs):
+    def evaluate(self, x):
         old_Kp = self.simulation.Kp
         old_Kd = self.simulation.Kd
 
@@ -41,11 +81,16 @@ class ControlOptProblem(ElementwiseProblem):
         pos_error = np.sum(np.linalg.norm(pos_ee_frame - des_traj_6d[:,:3], axis=1)**2)
 
         norm_tau = np.sum(np.linalg.norm(tau_act, axis=1)**2)/6e4
-
+        
         self.Kp = old_Kp
         self.Kd = old_Kd
+        
+        rew = pos_error + norm_tau
+        if rew > 1e8:
+            rew = 1e8
 
-        out["F"] = pos_error + norm_tau
+        return rew
+
 
 class TrajectoryMovements:
     def __init__(self, trajectory, final_time, time_step, name_ee_frame) -> None:
@@ -109,14 +154,33 @@ class TrajectoryMovements:
         """
         des_trajectories = np.zeros((self.num_sim_steps, 2))
         des_trajectories[:,0] = np.linspace(self.traj[0,0], self.traj[-1,0], self.num_sim_steps)
-        cs_z_by_x = np.polyfit(self.traj[:,0], self.traj[:,1], 3)
-        des_trajectories[:,1] = np.polyval(cs_z_by_x, des_trajectories[:,0])
+        try:
+            cs_z_by_x = np.polyfit(self.traj[:,0], self.traj[:,1], 3)
+            des_trajectories[:,1] = np.polyval(cs_z_by_x, des_trajectories[:,0])
+        except ValueError or RuntimeWarning:
+            des_trajectories[:,1] = np.linspace(self.traj[0,1], self.traj[-1,1], self.num_sim_steps)
+
         time_arr = np.linspace(0, self.time, self.num_sim_steps)
-        
         des_traj_6d = convert_x_y_to_6d_traj_xz(des_trajectories[:,0], des_trajectories[:,1])
         
-        des_d_traj_6d = np.diff(des_traj_6d, axis=0) / self.time_step
-        des_d_traj_6d = np.vstack((des_d_traj_6d, des_d_traj_6d[-1]))
+        t_s = self.time / 2
+        Vs = np.array([des_trajectories[:,0][-1] - des_trajectories[:,0][0], des_trajectories[:,1][-1] - des_trajectories[:,1][0]]) / t_s
+        
+        des_dtraj_2d = np.zeros((self.num_sim_steps, 2))
+        
+        mask1 = time_arr <= t_s
+        mask2 = time_arr > t_s
+        for idx, time in enumerate(time_arr):
+            if time <= t_s:
+                des_dtraj_2d[idx,:] = Vs*time
+            else:
+                des_dtraj_2d[idx,:] = -Vs*(time - t_s) + Vs*t_s
+                
+        
+        des_d_traj_6d = convert_x_y_to_6d_traj_xz(des_dtraj_2d[:,0], des_dtraj_2d[:,1])
+        
+        # des_d_traj_6d = np.diff(des_traj_6d, axis=0) / self.time_step
+        # des_d_traj_6d = np.vstack((des_d_traj_6d, des_d_traj_6d[-1]))
 
         # q = np.zeros(robot.model.nq)
         # Trajectory by points in joint space
@@ -239,8 +303,8 @@ class TrajectoryMovements:
             except np.linalg.LinAlgError:
                 return q_act, vq_act, acc_act, tau_act, pos_ee_frame, power
             # First coordinate is root_joint
-
             tau_a = tau_q[control.ids_vmot]
+
             vq_a = vq[control.ids_vmot]
             q_act[i] = q
             vq_act[i] = vq
@@ -267,26 +331,33 @@ class TrajectoryMovements:
         """
 
         
-        bounds = [[0, 1e4] for __ in range(2)]
-        bounds = np.vstack((bounds, [[0, 5e3] for __ in range(2)]))
+        bounds = [[0, 5e3] for __ in range(2)]
+        bounds = np.vstack((bounds, [[0, 1e3] for __ in range(2)]))
 
         # N_PROCESS = 8
         # pool = multiprocess.Pool(N_PROCESS)
         # runner = StarmapParallelization(pool.starmap)
         
-        problem = ControlOptProblem(self, robot, xl=bounds[:,0], xu=bounds[:,1])#, elementwise_runner=runner)
-        algorithm = PSO(5)
+        # problem = ControlOptProblem(self, robot, xl=bounds[:,0], xu=bounds[:,1])#, elementwise_runner=runner)
+        # algorithm = PSO(25, max_velocity_rate=500)
         
-        results = minimize(problem, algorithm, termination=('n_gen', 10), seed=1, verbose=True)
+        problem = ControlOptProblem(self, robot)
+        results = shgo(problem.evaluate, bounds, n=10)
+        
+        # results = minimize(problem, algorithm, termination=("n_gen",5), seed=1, verbose=True)
         
         Kp = np.zeros((6,6))
         Kd = np.zeros((6,6))
 
-        Kp[0,0] = results.X[0]
-        Kp[2,2] = results.X[1]
-        Kd[0,0] = results.X[2]
-        Kd[2,2] = results.X[3]
-        return Kp, Kd
+        Kp[0,0] = results.x[0]
+        Kp[2,2] = results.x[1]
+        Kd[0,0] = results.x[2]
+        Kd[2,2] = results.x[3]
+        # Kp[0,0] = results.X[0]
+        # Kp[2,2] = results.X[1]
+        # Kd[0,0] = results.X[2]
+        # Kd[2,2] = results.X[3]
+        return Kp, Kd, results.fun
 
 
 if __name__ == "__main__":
