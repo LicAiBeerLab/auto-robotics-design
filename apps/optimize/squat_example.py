@@ -88,7 +88,7 @@ def get_tested_reward_and_x(sorted_reward :np.ndarray, sorted_x_values: np.ndarr
   
 
 
-path = "results\\vertical_acceleration_heavy_generator_0_2024-05-16_14-36-51"
+path = "results\\vertical_acceleration_heavy_generator_0_2024-05-16_14-50-48"
 
 problem = CalculateCriteriaProblemByWeigths.load(
     path)  # **{"elementwise_runner":runner})
@@ -124,10 +124,10 @@ builder = ParametrizedBuilder(
 robo_urdf, joint_description, loop_description = jps_graph2urdf_by_bulder(
     graph, builder)
 
-sqh_p = SquatHopParameters(hop_flight_hight=0.25,
+sqh_p = SquatHopParameters(hop_flight_hight=0.2,
                            squatting_up_hight=0.0,
-                           squatting_down_hight=-0.3,
-                           total_time=0.8)
+                           squatting_down_hight=-0.28,
+                           total_time=0.6)
 hoppa = SimulateSquatHop(sqh_p)
 
 opti = partial(reward_with_context, hoppa, robo_urdf, joint_description,
@@ -141,7 +141,7 @@ q_act, vq_act, acc_act, tau = hoppa.simulate(robo_urdf,
                                              joint_description,
                                              loop_description,
                                              control_coefficient=res[0],
-                                             is_vis=False)
+                                             is_vis=True)
 
 trj_f = hoppa.create_traj_equation()
 t = np.linspace(0, sqh_p.total_time, len(q_act))

@@ -7,7 +7,7 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
-from auto_robot_design.description.actuators import MyActuator_RMD_MT_RH_17_100_N, RevoluteActuator, t_motor_actuators
+from auto_robot_design.description.actuators import MyActuator_RMD_MT_RH_17_100_N, RevoluteActuator, TMotor_AK10_9, t_motor_actuators
 
 from auto_robot_design.description.utils import (
     all_combinations_active_joints_n_actuator, )
@@ -151,9 +151,9 @@ def get_sample_torque_traj_from_sample(path, builder: ParametrizedBuilder):
             (robo_urdf, joint_description, loop_description))
 
     sqh_p = SquatHopParameters(hop_flight_hight=0.2,
-                               squatting_up_hight=0.0,
-                               squatting_down_hight=-0.38,
-                               total_time=0.8)
+                            squatting_up_hight=0.0,
+                            squatting_down_hight=-0.28,
+                            total_time=0.6)
     hoppa = SimulateSquatHop(sqh_p)
     for i, (robo_urdf_i, joint_description_i, loop_description_i) in enumerate(urdf_j_des_l_des):
         opti = partial(reward_vel_with_context, hoppa, robo_urdf_i, joint_description_i,
@@ -188,7 +188,7 @@ def get_sample_torque_traj_from_sample(path, builder: ParametrizedBuilder):
 
 
 
-actuator = MyActuator_RMD_MT_RH_17_100_N()
+actuator = TMotor_AK10_9()
 thickness = 0.04
 builder = ParametrizedBuilder(
     DetailedURDFCreatorFixedEE,
@@ -196,7 +196,7 @@ builder = ParametrizedBuilder(
     actuator=actuator,
     thickness=thickness)
 
-paths = ["results\\th_1909_num4_2024-05-08_19-26-31", "results\\th_1909_num6_2024-05-08_19-35-39", "results\\th_1909_num8_2024-05-08_19-46-12"]
+paths = ["results\\st_acc_imf_v_acc_hl_generator_2_2024-05-16_16-41-56"]
 for path_i in paths:
     print(path_i)
     get_sample_torque_traj_from_sample(path_i, builder)

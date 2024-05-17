@@ -116,9 +116,8 @@ class CalculateCriteriaProblemByWeigths(ElementwiseProblem):
             opt_joints = dill.load(f)
             initial_xopt = dill.load(f)
             jp2limits = dill.load(f)
-            criteria = dill.load(f)
+            criteria = [1,2,3]
         istance = cls(graph, builder = None, jp2limits=jp2limits, crag= criteria, rewards_and_trajectories = np.ones(len(criteria)), **kwargs)
-                      np.ones(len(criteria)), **kwargs)
         istance.initial_xopt = initial_xopt
         return istance
 
