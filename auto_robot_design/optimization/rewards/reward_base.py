@@ -80,9 +80,10 @@ class PositioningConstrain():
         total_error = 0
         results = []
         for point_set in self.points:
-            results.append(criterion_aggregator.get_criteria_data(
-                fixed_robot, free_robot, point_set))
-            total_error += self.calculator.calculate(results[-1][2])
+            tmp = criterion_aggregator.get_criteria_data(
+                fixed_robot, free_robot, point_set)
+            results.append(tmp)
+            total_error += self.calculator.calculate(tmp[2])
 
         return total_error, results
 
