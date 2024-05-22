@@ -3,6 +3,8 @@ from typing import Tuple
 from auto_robot_design.pinokla.calc_criterion import DataDict
 import os
 
+from auto_robot_design.pinokla.criterion_math import convert_full_J_to_planar_xz
+
 
 class Reward():
     """Interface for the optimization criteria"""
@@ -52,20 +54,30 @@ class PositioningReward():
 
 
 class PositioningErrorCalculator():
+
     def __init__(self, error_key):
         self.error_key = error_key
         self.point_threshold = 1e-6
 
     def calculate(self, trajectory_results: DataDict):
         errors = trajectory_results[self.error_key]
-        if np.max(errors) > self.point_threshold:
-            #return np.mean(errors)
-            return np.max(errors)
-        else:
-            return 0
+        jacobians = trajectory_results["J_closed"]
+        get_svd_s = lambda x: np.linalg.svd(x)[1]
+        eig_val = []
+        for jacob in jacobians:
+            planar_J = convert_full_J_to_planar_xz(jacob)
+            trans_planar_J = planar_J[:2, :2]
+            U, S, Vh = np.linalg.svd(trans_planar_J)
+
+            max_eig_val = np.max(S)
+            min_eig_val = np.min(S)
+            isotropic = max_eig_val / min_eig_val
+            eig_val.append(isotropic)
+        return eig_val
 
 
 class PositioningConstrain():
+
     def __init__(self, error_calculator, points=None) -> None:
         self.points = points
         self.calculator = error_calculator
@@ -76,16 +88,19 @@ class PositioningConstrain():
         else:
             self.points.append(points_set)
 
-    def calculate_constrain_error(self, criterion_aggregator, fixed_robot, free_robot):
+    def calculate_constrain_error(self, criterion_aggregator, fixed_robot,
+                                  free_robot):
         total_error = 0
+        total_error = []
+        total_error_pos = []
         results = []
         for point_set in self.points:
             tmp = criterion_aggregator.get_criteria_data(
                 fixed_robot, free_robot, point_set)
             results.append(tmp)
-            total_error += self.calculator.calculate(tmp[2])
-
-        return total_error, results
+            total_error.append(self.calculator.calculate(tmp[2]))
+            total_error_pos = tmp[2]["error"]
+        return total_error, results, total_error_pos
 
 
 class RewardManager():
