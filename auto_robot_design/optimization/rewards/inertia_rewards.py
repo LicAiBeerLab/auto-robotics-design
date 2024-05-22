@@ -5,10 +5,11 @@ import numpy as np
 from auto_robot_design.optimization.rewards.reward_base import Reward
 from auto_robot_design.pinokla.calc_criterion import DataDict
 
+
 class EndPointIMFReward(Reward):
     """IMF in the trajectory edge points"""
 
-    def __init__(self, imf_key:str, trajectory_key:str, error_key:str) -> None:
+    def __init__(self, imf_key: str, trajectory_key: str, error_key: str) -> None:
         """Set the dictionary keys for the data
 
         Args:
@@ -20,7 +21,7 @@ class EndPointIMFReward(Reward):
         self.trajectory_key = trajectory_key
         self.error_key = error_key
 
-    def calculate(self, point_criteria:DataDict, trajectory_criteria:DataDict, trajectory_results:DataDict, **kwargs) -> Tuple[float, list[float]]:
+    def calculate(self, point_criteria: DataDict, trajectory_criteria: DataDict, trajectory_results: DataDict, **kwargs) -> Tuple[float, list[float]]:
         """Calculate the sum of IMF in starting and end points
 
         Args:
@@ -51,7 +52,7 @@ class MassReward():
 
     Currently mass reward does not include the base"""
 
-    def __init__(self, mass_key:str) -> None:
+    def __init__(self, mass_key: str) -> None:
         """Set the dictionary keys for the data
 
         Args:
@@ -59,7 +60,7 @@ class MassReward():
         """
         self.mass_key = mass_key
 
-    def calculate(self, point_criteria:DataDict, trajectory_criteria:DataDict, trajectory_results:DataDict, **kwargs) -> Tuple[float, list[float]]:
+    def calculate(self, point_criteria: DataDict, trajectory_criteria: DataDict, trajectory_results: DataDict, **kwargs) -> Tuple[float, list[float]]:
         """Just get the total mass from the data dictionaries
 
         Args:
@@ -80,7 +81,7 @@ class ActuatedMassReward():
 
     Currently mass reward does not include the base"""
 
-    def __init__(self, mass_key:str) -> None:
+    def __init__(self, mass_key: str) -> None:
         """Set the dictionary keys for the data
 
         Args:
@@ -88,8 +89,8 @@ class ActuatedMassReward():
         """
         self.mass_key = mass_key
 
-    def calculate(self, point_criteria:DataDict, trajectory_criteria:DataDict, trajectory_results:DataDict, **kwargs) -> Tuple[float, list[float]]:
-        """Just get the total mass from the data dictionaries
+    def calculate(self, point_criteria: DataDict, trajectory_criteria: DataDict, trajectory_results: DataDict, **kwargs) -> Tuple[float, list[float]]:
+        """Calculate mean determinant of the mass matrix in actuated coordinates. 
 
         Args:
             point_criteria (DataDict): all data of the characteristics assigned to each point
@@ -99,16 +100,15 @@ class ActuatedMassReward():
         Returns:
             float: value of the reward
         """
-        # get the manipulability for each point at the trajectory
         mass = np.linalg.det(point_criteria[self.mass_key])
 
         return -np.mean(mass), list(mass)
 
 
 class TrajectoryIMFReward(Reward):
-    """IMF in the trajectory edge points"""
+    """mean IMF along a trajectory"""
 
-    def __init__(self, imf_key:str, trajectory_key:str, error_key:str) -> None:
+    def __init__(self, imf_key: str, trajectory_key: str, error_key: str) -> None:
         """Set the dictionary keys for the data
 
         Args:
@@ -121,7 +121,7 @@ class TrajectoryIMFReward(Reward):
         self.trajectory_key = trajectory_key
         self.error_key = error_key
 
-    def calculate(self, point_criteria:DataDict, trajectory_criteria:DataDict, trajectory_results:DataDict, **kwargs) -> Tuple[float, list[float]]:
+    def calculate(self, point_criteria: DataDict, trajectory_criteria: DataDict, trajectory_results: DataDict, **kwargs) -> Tuple[float, list[float]]:
         """Calculate the mean IMF along the trajectory
 
         Args:
@@ -139,13 +139,11 @@ class TrajectoryIMFReward(Reward):
         if not is_trajectory_reachable:
             return 0, []
 
-        IMF: list[np.array] = point_criteria[self.imf_key]
+        imf_vector: list[np.array] = point_criteria[self.imf_key]
         n_steps = len(errors)
-        result = 0
         reward_vector = [0]*n_steps
         for i in range(n_steps):
-            tmp = IMF[i]
-            result += tmp
+            tmp = imf_vector[i]
             reward_vector[i] = tmp
 
-        return result, reward_vector
+        return np.mean(np.array(reward_vector)), reward_vector
