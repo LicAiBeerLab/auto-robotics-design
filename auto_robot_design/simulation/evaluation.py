@@ -87,7 +87,7 @@ def compare_power_quality(time: np.ndarray, power_arrs, plot=False, path=None):
             axs[name].legend()
             axs[name].grid()
         if path is not None:
-            plt.savefig(path + "power.pdf")
+            plt.savefig(path + "power.svg")
         plt.figure(figsize=(6,6))
         for i in range(len(power_arrs)):
             plt.plot(time, PQ[i, :], label='Design ' + str(i+1))
@@ -97,7 +97,7 @@ def compare_power_quality(time: np.ndarray, power_arrs, plot=False, path=None):
         plt.legend()
         plt.grid()
         if path is not None:
-            plt.savefig(path + "power_quality.pdf")
+            plt.savefig(path + "power_quality.svg")
 
         plt.figure()
         for i in range(len(power_arrs)):
@@ -110,7 +110,7 @@ def compare_power_quality(time: np.ndarray, power_arrs, plot=False, path=None):
         plt.axis('equal')
         plt.legend()
         if path is not None:
-            plt.savefig(path + "power_space.pdf")
+            plt.savefig(path + "power_space.svg")
         else:  
             plt.show()
         
@@ -212,7 +212,7 @@ def compare_movments_in_xz_plane(time: np.ndarray, x, des_x: np.ndarray, plot=Fa
             axs[name + "_Z"].legend()
             axs[name + "_Z"].grid()
         if path is not None:
-            plt.savefig(path + "trajectory.pdf")
+            plt.savefig(path + "trajectory.svg")
         plt.figure(figsize=(6,6))
         for i in range(len(x)):
             plt.plot(time, error_arrs[i, :], label='Design ' + str(1+i))
@@ -223,7 +223,7 @@ def compare_movments_in_xz_plane(time: np.ndarray, x, des_x: np.ndarray, plot=Fa
         plt.grid()
         
         if path is not None:
-            plt.savefig(path + "error.pdf")
+            plt.savefig(path + "error.svg")
 
         fig = plt.figure(figsize=(len(x)*6, 6))
         axs = fig.subplot_mosaic([[name + "_xz" for name in plot_name]])
@@ -238,7 +238,7 @@ def compare_movments_in_xz_plane(time: np.ndarray, x, des_x: np.ndarray, plot=Fa
             axs[name + "_xz"].axis('equal')
         
         if path is not None:
-            plt.savefig(path + "xz_plane.pdf")
+            plt.savefig(path + "xz_plane.svg")
         else:
             plt.show()
         
@@ -295,7 +295,7 @@ def compare_torque_evaluation(time: np.ndarray, torque_arrs, plot = False, path=
             axs[name + "_tau"].grid()
             axs[name + "_tau"].legend()
         if path is not None:
-            plt.savefig(path + "torque.pdf")
+            plt.savefig(path + "torque.svg")
         else:
             plt.show()
     

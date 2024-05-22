@@ -154,27 +154,25 @@ class TrajectoryMovements:
         """
         des_trajectories = np.zeros((self.num_sim_steps, 2))
         des_trajectories[:,0] = np.linspace(self.traj[0,0], self.traj[-1,0], self.num_sim_steps)
-        try:
+        if self.traj[:,0].max() - self.traj[:,0].min() < 1e-3:
+            des_trajectories[:,1] = np.linspace(self.traj[0,1], self.traj[-1,1], self.num_sim_steps)
+        else:
             cs_z_by_x = np.polyfit(self.traj[:,0], self.traj[:,1], 3)
             des_trajectories[:,1] = np.polyval(cs_z_by_x, des_trajectories[:,0])
-        except ValueError or RuntimeWarning:
-            des_trajectories[:,1] = np.linspace(self.traj[0,1], self.traj[-1,1], self.num_sim_steps)
 
         time_arr = np.linspace(0, self.time, self.num_sim_steps)
         des_traj_6d = convert_x_y_to_6d_traj_xz(des_trajectories[:,0], des_trajectories[:,1])
         
         t_s = self.time / 2
-        Vs = np.array([des_trajectories[:,0][-1] - des_trajectories[:,0][0], des_trajectories[:,1][-1] - des_trajectories[:,1][0]]) / t_s
+        Vs = np.array([des_trajectories[:,0][-1] - des_trajectories[:,0][0], (des_trajectories[:,1].max() - des_trajectories[:,1].min())*2]) / t_s
         
         des_dtraj_2d = np.zeros((self.num_sim_steps, 2))
         
-        mask1 = time_arr <= t_s
-        mask2 = time_arr > t_s
-        for idx, time in enumerate(time_arr):
-            if time <= t_s:
-                des_dtraj_2d[idx,:] = Vs*time
+        for idx, t in enumerate(time_arr):
+            if t <= t_s:
+                des_dtraj_2d[idx,:] = Vs*t
             else:
-                des_dtraj_2d[idx,:] = -Vs*(time - t_s) + Vs*t_s
+                des_dtraj_2d[idx,:] = -Vs*(t - t_s) + Vs*t_s
                 
         
         des_d_traj_6d = convert_x_y_to_6d_traj_xz(des_dtraj_2d[:,0], des_dtraj_2d[:,1])
@@ -317,7 +315,7 @@ class TrajectoryMovements:
                 viz.display(q)
         return q_act, vq_act, acc_act, tau_act, pos_ee_frame, power
     
-    def optimize_control(self, robot):
+    def optimize_control(self, robot, options={}):
         """
         Optimize the control coefficients for the robot. The optimization function is the sum of the squared error of the position of the end effector frame and the sum of the squared torque.
         The `scipy.optimize.shgo` method is used for optimization.
@@ -342,7 +340,7 @@ class TrajectoryMovements:
         # algorithm = PSO(25, max_velocity_rate=500)
         
         problem = ControlOptProblem(self, robot)
-        results = shgo(problem.evaluate, bounds, n=10)
+        results = shgo(problem.evaluate, bounds, n=10, options=options)
         
         # results = minimize(problem, algorithm, termination=("n_gen",5), seed=1, verbose=True)
         
