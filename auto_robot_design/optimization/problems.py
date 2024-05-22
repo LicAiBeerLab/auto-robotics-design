@@ -50,6 +50,9 @@ class CalculateCriteriaProblemByWeigths(ElementwiseProblem):
     def __init__(self, graph, builder, jp2limits, rewards_and_trajectories: RewardManager ,  soft_constrain=None, **kwargs):
         if "Actuator" in kwargs:
             self.motor = kwargs["Actuator"]
+        else:
+            self.motor = None
+
         self.graph = graph
         self.builder = builder
         self.jp2limits = jp2limits
