@@ -59,16 +59,10 @@ class PositioningErrorCalculator():
     def calculate(self, trajectory_results: DataDict):
         errors = trajectory_results[self.error_key]
         if np.max(errors) > self.point_threshold:
-            #return np.mean(errors)
+            # return np.mean(errors)
             return np.max(errors)
         else:
-            return 0
-
-
-class PositioningConstrain():
-    def __init__(self, error_calculator, points=None) -> None:
-        self.points = points
-        self.calculator = error_calculator
+            return 0"POS_ERR": TranslationErrorMSE()
 
     def add_points_set(self, points_set):
         if self.points is None:
@@ -93,11 +87,13 @@ class RewardManager():
 
         User should add trajectories and then add rewards that are calculated for these trajectories.
     """
+
     def __init__(self, crag) -> None:
         self.trajectories = {}
         self.rewards = {}
         self.crag = crag
         self.precalculated_trajectories = None
+        self.agg_list = []
 
     def add_trajectory(self, trajectory, idx):
         if not (idx in self.trajectories):
@@ -113,13 +109,27 @@ class RewardManager():
         else:
             raise KeyError('Trajectory id not in the trajectories dict')
 
+    def add_trajectory_aggregator(self, trajectory_list, agg_type: str):
+        if not (agg_type in ['mean', 'median', 'min', 'max']):
+            raise ValueError('Wrong aggregation type!')
+
+        if not set(trajectory_list).issubset(set(self.trajectories.keys())):
+            raise ValueError('add trajectory before aggregation')
+
+        for lt, _ in self.agg_list:
+            if len(set(lt).intersection(set(trajectory_list))) > 0:
+                raise ValueError('Each trajectory can be aggregated only once')
+
+        self.agg_list.append((trajectory_list, agg_type))
+
     def calculate_total(self, fixed_robot, free_robot, motor):
         trajectory_rewards = []
         partial_rewards = []
         for trajectory_id, trajectory in self.trajectories.items():
             rewards = self.rewards[trajectory_id]
             if self.precalculated_trajectories and (trajectory_id in self.precalculated_trajectories):
-                point_criteria_vector, trajectory_criteria, res_dict_fixed = self.precalculated_trajectories[trajectory_id]
+                point_criteria_vector, trajectory_criteria, res_dict_fixed = self.precalculated_trajectories[
+                    trajectory_id]
             else:
                 point_criteria_vector, trajectory_criteria, res_dict_fixed = self.crag.get_criteria_data(
                     fixed_robot, free_robot, trajectory)
@@ -137,9 +147,38 @@ class RewardManager():
             trajectory_rewards.append((trajectory_id, reward_at_trajectory))
             partial_rewards.append(partial_reward)
 
+        # if len(self.agg_list) > 0:
+        final_partial = []
+        exclusion_list = []
+        for lst, agg_type in self.agg_list:
+            exclusion_list += lst
+            local_partial = []
+            for v in partial_reward:
+                if v[0] in lst:
+                    local_partial.append(v)
+
+            tmp_array = np.array(local_partial)
+
+            if agg_type == 'mean':
+                res = np.mean(tmp_array, axis=0)
+            elif agg_type == 'median':
+                res = np.median(tmp_array, axis=0)
+            elif agg_type == 'min':
+                res = np.min(tmp_array, axis=0)
+            elif agg_type == 'max':
+                res = np.max(tmp_array, axis=0)
+            res[0] = tmp_array[0][0]
+            final_partial.append(res)
+
+        for v in partial_reward:
+            if v[0] not in exclusion_list:
+                final_partial.append(v)
+
         # calculate the total reward
-        total_reward = -sum([reward for _, reward in trajectory_rewards])
-        return total_reward, partial_rewards
+        # total_reward = -sum([reward for _, reward in trajectory_rewards])
+        final_rewards = (np.array(final_partial)[:, 1:]).flatten()
+        total_reward = -np.sum(final_rewards)
+        return total_reward, partial_rewards, final_rewards
 
     def dummy_partial(self):
         """Create partial reward with zeros to add for robots that failed constrains"""
@@ -154,7 +193,7 @@ class RewardManager():
 
     def check_constrain_trajectory(self, trajectory, results):
         """Checks if a trajectory that was used in constrain calculation is also one of reward trajectories.
-        
+
             If a trajectory is a reward trajectory save its results and use them to avoid recalculation 
         """
         temp_dict = {}
