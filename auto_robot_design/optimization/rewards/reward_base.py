@@ -22,6 +22,12 @@ class Reward():
 
         return True
 
+class DummyReward(Reward):
+    """Mean position error for the trajectory"""
+
+    def calculate(self, point_criteria: DataDict, trajectory_criteria: DataDict, trajectory_results: DataDict, **kwargs) -> Tuple[float, list[float]]:
+        
+        return 0, []
 
 class PositioningReward():
     """Mean position error for the trajectory"""
@@ -62,7 +68,13 @@ class PositioningErrorCalculator():
             # return np.mean(errors)
             return np.max(errors)
         else:
-            return 0"POS_ERR": TranslationErrorMSE()
+            return 0
+
+
+class PositioningConstrain():
+    def __init__(self, error_calculator, points=None) -> None:
+        self.points = points
+        self.calculator = error_calculator
 
     def add_points_set(self, points_set):
         if self.points is None:
@@ -153,7 +165,7 @@ class RewardManager():
         for lst, agg_type in self.agg_list:
             exclusion_list += lst
             local_partial = []
-            for v in partial_reward:
+            for v in partial_rewards:
                 if v[0] in lst:
                     local_partial.append(v)
 
@@ -170,7 +182,7 @@ class RewardManager():
             res[0] = tmp_array[0][0]
             final_partial.append(res)
 
-        for v in partial_reward:
+        for v in partial_rewards:
             if v[0] not in exclusion_list:
                 final_partial.append(v)
 
