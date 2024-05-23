@@ -1,9 +1,7 @@
 import numpy as np
 from typing import Tuple
 from auto_robot_design.pinokla.calc_criterion import DataDict
-import os
 
-from auto_robot_design.pinokla.criterion_math import convert_full_J_to_planar_xz
 
 
 class Reward():
