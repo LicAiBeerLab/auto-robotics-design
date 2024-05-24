@@ -127,6 +127,33 @@ class CalculateCriteriaProblemByWeigths(ElementwiseProblem):
 
 
 class CalculateMultiCriteriaProblem(ElementwiseProblem):
+    def __init__(self, graph, builder, jp2limits, rewards_and_trajectories: RewardManager, soft_constrain=None, **kwargs):
+        if "Actuator" in kwargs:
+            self.motor = kwargs["Actuator"]
+        else:
+            self.motor = None
+
+        self.graph = graph
+        self.builder = builder
+        self.jp2limits = jp2limits
+        self.opt_joints = list(self.jp2limits.keys())
+        self.soft_constrain = soft_constrain
+        self.rewards_and_trajectories: RewardManager = rewards_and_trajectories
+        self.initial_xopt, __, upper_bounds, lower_bounds = self.convert_joints2x_opt()
+        super().__init__(
+            n_var=len(self.initial_xopt),
+            n_obj=len(self.rewards_and_trajectories.rewards),
+            xu=upper_bounds,
+            xl=lower_bounds,
+            **kwargs,
+        )
+    
+    def _evaluate(self, x, out, *args, **kwargs):
+        super()._evaluate(x, out, *args, **kwargs)
+        
+        out["F"] = out["Fs"][0]
+
+class CalculateMultiCriteriaProblem(ElementwiseProblem):
     def __init__(self, graph, jp2limits, criteria, **kwargs):
         self.graph = graph
         self.jp2limits = jp2limits

@@ -22,12 +22,12 @@ class TwoLinkGenerator():
         self.constrain_dict = {}  # should be updated after creating each joint
         self.current_main_branch = []
         self.graph = nx.Graph()
-        self.ground_x_movement = (-0.4, 0.4)
+        self.ground_x_movement = (-0.1, 0.1)
         self.ground_z_movement = (-0.01,0)
-        self.free_x_movement = (-0.3, 0.3)
-        self.free_z_movement = (-0.3, 0.3)
-        self.bound_x_movement = (-0.2, 0.2)
-        self.bound_z_movement = (-0.2, 0.2)
+        self.free_x_movement = (-0.1, 0.1)
+        self.free_z_movement = (-0.1, 0.1)
+        self.bound_x_movement = (-0.1, 0.1)
+        self.bound_z_movement = (-0.1, 0.1)
 
     def reset(self):
         """Reset the graph builder."""
@@ -35,7 +35,7 @@ class TwoLinkGenerator():
         self.current_main_branch = []
         self.graph = nx.Graph()
 
-    def build_standard_two_linker(self, knee_pos: float = -0.5, nominal_length=1, right_shift=np.tan(np.pi/6)/2):
+    def build_standard_two_linker(self, knee_pos: float = -0.5, nominal_length=0.195, right_shift=-0.18):
         ground_joint = JointPoint(
             r=np.zeros(3),
             w=np.array([0, 1, 0]),
@@ -238,7 +238,7 @@ class TwoLinkGenerator():
         list_names = list(map(lambda x: x.name, self.graph.nodes))
         self.constrain_dict = dict(filter(lambda x:x[0] in list_names, self.constrain_dict.items()))
 
-    def get_standard_set(self, knee_pos=-0.5, shift=0.5):
+    def get_standard_set(self, knee_pos=-0.5, shift=0.1):
         result_list = []
         for inner in [True, False]:
             for ground in [True, False]:
