@@ -10,7 +10,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 import modern_robotics as mr
 
-from auto_robot_design.description.actuators import Actuator, RevoluteUnit, TMotor_AK80_9
+from auto_robot_design.description.actuators import Actuator, RevoluteUnit, TMotor_AK80_9, MIT_Actuator
 from auto_robot_design.description.kinematics import (
     Joint,
     JointPoint,
@@ -36,6 +36,29 @@ DEFAULT_PARAMS_DICT = {
     "joint_damping": DEFAULT_JOINT_DAMPING,
     "joint_friction": DEFAULT_JOINT_FRICTION,
     "actuator": DEFAULT_ACTUATOR,
+}
+
+MIT_DENSITY = 723.52
+MIT_THICKNESS = 0.0335
+MIT_JOINT_DAMPING = 0.05
+MIT_JOINT_FRICTION = 0
+MIT_ACTUATOR = MIT_Actuator()
+MIT_BODY_SIZE = [0.28, 0.19, 0.098]
+MIT_OFFSET_GROUND_FL = np.array([-MIT_BODY_SIZE[0]/2 - 0.096/2, MIT_BODY_SIZE[1]/2 + MIT_THICKNESS/2, 0])
+MIT_OFFSET_GROUND_RL = np.array([MIT_BODY_SIZE[0]/2 + 0.096/2, MIT_BODY_SIZE[1]/2 + MIT_THICKNESS/2, 0])
+MIT_BODY_DENSITY = (3.3 + (0.54-0.44)/4) / np.prod(MIT_BODY_SIZE)
+
+
+MIT_CHEETAH_PARAMS_DICT = {
+    "density": MIT_DENSITY,
+    "thickness": MIT_THICKNESS,
+    "joint_damping": MIT_JOINT_DAMPING,
+    "joint_friction": MIT_JOINT_FRICTION,
+    "actuator": MIT_ACTUATOR,
+    "body_density": MIT_BODY_DENSITY,
+    "size_ground": MIT_BODY_SIZE,
+    "offset_ground_fl": MIT_OFFSET_GROUND_FL,
+    "offset_ground_rl": MIT_OFFSET_GROUND_RL,
 }
 
 def add_branch(G: nx.Graph, branch: Union[List[JointPoint], List[List[JointPoint]]]):
@@ -878,6 +901,7 @@ class ParametrizedBuilder(Builder):
         joint_friction: Union[float, dict] = 0,
         joint_limits: Union[dict, tuple] = (-np.pi, np.pi),
         size_ground: np.ndarray = np.zeros(3),
+        offset_ground: np.ndarray = np.zeros(3),
         actuator: Union[Actuator, dict]=TMotor_AK80_9(),
     ) -> None:
         super().__init__(creater)
@@ -885,6 +909,7 @@ class ParametrizedBuilder(Builder):
         self.actuator = actuator
         self.thickness = thickness
         self.size_ground = size_ground
+        self.offset_ground = offset_ground
         self.joint_damping = joint_damping
         self.joint_friction = joint_friction
         self.joint_limits = joint_limits
@@ -919,8 +944,7 @@ class ParametrizedBuilder(Builder):
     def _set_link_attributes(self, link):
         if link.name == "G" and self.size_ground.any():
             link.geometry.size = list(self.size_ground)
-            pos = np.zeros(3)
-            pos[1] = self.size_ground[1] / 2
+            pos = self.offset_ground
             link.inertial_frame = mr.RpToTrans(np.eye(3), pos)
         else:
             link.thickness = self.thickness[link.name] if link.name in self.thickness else self.thickness["default"]
