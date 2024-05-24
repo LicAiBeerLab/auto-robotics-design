@@ -142,16 +142,33 @@ class CalculateMultiCriteriaProblem(ElementwiseProblem):
         self.initial_xopt, __, upper_bounds, lower_bounds = self.convert_joints2x_opt()
         super().__init__(
             n_var=len(self.initial_xopt),
-            n_obj=len(self.rewards_and_trajectories.rewards),
+            n_obj=2#len(self.rewards_and_trajectories.rewards),
             xu=upper_bounds,
             xl=lower_bounds,
             **kwargs,
         )
     
     def _evaluate(self, x, out, *args, **kwargs):
-        super()._evaluate(x, out, *args, **kwargs)
+        self.mutate_JP_by_xopt(x)
+        fixed_robot, free_robot = jps_graph2pinocchio_robot(self.graph, self.builder)
+        # position constrain
+        self.rewards_and_trajectories.precalculated_trajectories = None
+        constrain_error, results = self.soft_constrain.calculate_constrain_error(
+            self.rewards_and_trajectories.crag, fixed_robot, free_robot)
+        if constrain_error > 0:
+            vectors_errs = np.array([constrain_error for __ in self.n_obj])
+            out["F"] = vectors_errs
+            out["Fs"] = self.rewards_and_trajectories.dummy_partial()
+            return
+        else:
+            for i, point_set in enumerate(self.soft_constrain.points):
+                self.rewards_and_trajectories.check_constrain_trajectory(point_set, results[i])
+
+        __, partial_rewards, vector_rewards = self.rewards_and_trajectories.calculate_total(fixed_robot, free_robot, self.motor)
         
-        out["F"] = out["Fs"][0]
+        out["F"] = vector_rewards
+        out["Fs"] = partial_rewards
+
 
 class CalculateMultiCriteriaProblem(ElementwiseProblem):
     def __init__(self, graph, jp2limits, criteria, **kwargs):
