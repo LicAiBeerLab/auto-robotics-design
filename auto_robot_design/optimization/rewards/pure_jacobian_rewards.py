@@ -98,6 +98,46 @@ class ManipulabilityReward(Reward):
         return result, reward_vector
 
 
+class MinManipulabilityReward(Reward):
+    """Calculate the mean of minimum eigenvalue of manipulability matrix  """
+
+    def __init__(self, manipulability_key: str, trajectory_key: str, error_key: str):
+        super().__init__()
+        self.manip_key = manipulability_key
+        self.trajectory_key = trajectory_key
+        self.error_key = error_key
+
+    def calculate(self, point_criteria: DataDict, trajectory_criteria: DataDict, trajectory_results: DataDict, **kwargs) -> Tuple[float, list[float]]:
+        """Get manipulability for each point in the trajectory and return the mean value
+
+        Args:
+            point_criteria (DataDict): all data of the characteristics assigned to each point
+            trajectory_criteria (DataDict): all data of the trajectory characteristics 
+            trajectory_results (DataDict): data of trajectory and trajectory following
+
+        Returns:
+            Tuple[float, list[float]]: value of the reward and the reward vector
+        """
+
+        errors = trajectory_results[self.error_key]
+        is_trajectory_reachable = self.check_reachability(errors)
+        # the reward is none zero only if the point is reached
+        if not is_trajectory_reachable:
+            return 0, []
+
+        # get the manipulability for each point at the trajectory
+        manipulability_matrices: list[np.array] = point_criteria[self.manip_key]
+
+        n_steps = len(errors)
+        reward_vector = [0]*n_steps
+        for i in range(n_steps):
+            step_result = np.min(
+                abs(np.linalg.eigvals(manipulability_matrices[i])))
+            reward_vector[i] = step_result
+
+        return np.mean(np.array(reward_vector)), reward_vector
+
+
 class ForceEllipsoidReward(Reward):
     """Force capability along the trajectory"""
 
@@ -152,6 +192,49 @@ class ForceEllipsoidReward(Reward):
         return result/(n_steps-1), reward_vector
 
 
+class MinForceReward(Reward):
+    """mean value of 1/max_eigen_value """
+
+    def __init__(self, manipulability_key: str, trajectory_key: str, error_key: str) -> None:
+        """Set the dictionary keys for the data
+
+        Args:
+            manipulability_key (str): key for the manipulability matrix
+            error_key (str): key for the pose errors 
+        """
+        super().__init__()
+        self.manip_key = manipulability_key
+        self.trajectory_key = trajectory_key
+        self.error_key = error_key
+
+    def calculate(self, point_criteria: DataDict, trajectory_criteria: DataDict, trajectory_results: DataDict, **kwargs) -> Tuple[float, list[float]]:
+        """Calculate reduction ratio along the trajectory for each point and return the mean value
+
+        Args:
+            point_criteria (DataDict): all data of the characteristics assigned to each point
+            trajectory_criteria (DataDict): all data of the trajectory characteristics 
+            trajectory_results (DataDict): data of trajectory and trajectory following
+
+        Returns:
+            Tuple[float, list[float]]: value of the reward and the reward vector
+        """
+        errors = trajectory_results[self.error_key]
+        is_trajectory_reachable = self.check_reachability(errors)
+        # the reward is none zero only if the point is reached
+        if not is_trajectory_reachable:
+            return 0, []
+
+        manipulability_matrices: list[np.array] = point_criteria[self.manip_key]
+        n_steps = len(errors)
+        reward_vector = [0]*n_steps
+        for i in range(n_steps):
+            step_result = np.min(
+                abs(np.linalg.eigvals(manipulability_matrices[i])))
+            reward_vector[i] = step_result
+
+        return np.mean(np.array(reward_vector)), reward_vector
+
+
 class EndPointZRRReward(Reward):
     """Reduction ratio along the vertical (z) axis in the edge points of the trajectory (stance poses)"""
 
@@ -196,3 +279,84 @@ class EndPointZRRReward(Reward):
             end_result = 1/np.linalg.norm(end_pose_matrix@np.array([0, 1]))
 
         return (starting_result + end_result)/2, [starting_result, end_result]
+    
+
+class ZRRReward(Reward):
+    """Reduction ratio along the vertical (z) axis in the edge points of the trajectory (stance poses)"""
+
+    def __init__(self, manipulability_key: str, trajectory_key: str, error_key: str) -> None:
+        """Set the dictionary keys for the data
+
+        Args:
+            manipulability_key (str): key for the manipulability matrix
+            trajectory_key (str): key for the trajectory points
+            error_key (str): key for the pose errors 
+        """
+        super().__init__()
+        self.manip_key = manipulability_key
+        self.trajectory_key = trajectory_key
+        self.error_key = error_key
+
+    def calculate(self, point_criteria: DataDict, trajectory_criteria: DataDict, trajectory_results: DataDict, **kwargs) -> Tuple[float, list[float]]:
+        """Calculates the sum of ZRR in starting and end points
+
+        Args:
+            point_criteria (DataDict): all data of the characteristics assigned to each point
+            trajectory_criteria (DataDict): all data of the trajectory characteristics 
+            trajectory_results (DataDict): data of trajectory and trajectory following
+
+        Returns:
+            float: value of the reward
+        """
+        errors = trajectory_results[self.error_key]
+        is_trajectory_reachable = self.check_reachability(errors)
+        # the reward is none zero only if the point is reached
+        if not is_trajectory_reachable:
+            return 0, []
+
+        manipulability_matrices: list[np.array] = point_criteria[self.manip_key]
+        n_steps = len(errors)
+        reward_vector = [0]*n_steps
+        for i in range(n_steps):
+            force_matrix = np.transpose(manipulability_matrices[i])
+            reward_vector[i] = 1/np.linalg.norm(force_matrix@np.array([0, 1]))
+
+        return np.mean(np.array(reward_vector)), reward_vector
+
+class DexterityIndexReward(Reward):
+    """Calculate the mean of minimum eigenvalue of manipulability matrix  """
+
+    def __init__(self, manipulability_key: str, trajectory_key: str, error_key: str):
+        super().__init__()
+        self.manip_key = manipulability_key
+        self.trajectory_key = trajectory_key
+        self.error_key = error_key
+
+    def calculate(self, point_criteria: DataDict, trajectory_criteria: DataDict, trajectory_results: DataDict, **kwargs) -> Tuple[float, list[float]]:
+        """Get manipulability for each point in the trajectory and return the mean value
+
+        Args:
+            point_criteria (DataDict): all data of the characteristics assigned to each point
+            trajectory_criteria (DataDict): all data of the trajectory characteristics 
+            trajectory_results (DataDict): data of trajectory and trajectory following
+
+        Returns:
+            Tuple[float, list[float]]: value of the reward and the reward vector
+        """
+
+        errors = trajectory_results[self.error_key]
+        is_trajectory_reachable = self.check_reachability(errors)
+        # the reward is none zero only if the point is reached
+        if not is_trajectory_reachable:
+            return 0, []
+
+        # get the manipulability for each point at the trajectory
+        manipulability_matrices: list[np.array] = point_criteria[self.manip_key]
+
+        n_steps = len(errors)
+        reward_vector = [0]*n_steps
+        for i in range(n_steps):
+            step_result = np.min(abs(np.linalg.eigvals(manipulability_matrices[i])))/np.max(abs(np.linalg.eigvals(manipulability_matrices[i])))
+            reward_vector[i] = step_result
+
+        return np.mean(np.array(reward_vector)), reward_vector

@@ -3,27 +3,28 @@ import numpy as np
 from auto_robot_design.description.actuators import t_motor_actuators
 
 from auto_robot_design.description.utils import all_combinations_active_joints_n_actuator
-from auto_robot_design.description.builder import DetailedURDFCreatorFixedEE, ParametrizedBuilder, jps_graph2urdf_by_bulder
+from auto_robot_design.description.builder import DetailedURDFCreatorFixedEE, ParametrizedBuilder, jps_graph2urdf_by_bulder, MIT_CHEETAH_PARAMS_DICT
 from auto_robot_design.generator.restricted_generator.two_link_generator import TwoLinkGenerator
 from auto_robot_design.pinokla.loader_tools import build_model_with_extensions
 
 
 gen = TwoLinkGenerator()
-graph, constrain_dict = gen.get_standard_set()[4]
+graph, constrain_dict = gen.get_standard_set()[1]
 
 
-pairs = all_combinations_active_joints_n_actuator(graph, t_motor_actuators)
 
-thickness = 0.04
+thickness = MIT_CHEETAH_PARAMS_DICT["thickness"]
 
-density = 2700 / 2.8
+density = MIT_CHEETAH_PARAMS_DICT["density"]
+body_density = MIT_CHEETAH_PARAMS_DICT["body_density"]
 
-print(pairs[0])
+
 builder = ParametrizedBuilder(DetailedURDFCreatorFixedEE,
-                              density={"default": density, "G":10000},
-                              thickness={"default": thickness, "EE":0.08},
-                              actuator=dict(pairs[0]),
-                              size_ground=np.array([thickness*5, thickness*10, thickness*2]),
+                              density={"default": density, "G":body_density},
+                              thickness={"default": thickness, "EE":0.033},
+                              actuator={"default": MIT_CHEETAH_PARAMS_DICT["actuator"]},
+                              size_ground=np.array(MIT_CHEETAH_PARAMS_DICT["size_ground"]),
+                              offset_ground=MIT_CHEETAH_PARAMS_DICT["offset_ground_rl"]
 )
 
 robo_urdf, joint_description, loop_description = jps_graph2urdf_by_bulder(graph, builder)

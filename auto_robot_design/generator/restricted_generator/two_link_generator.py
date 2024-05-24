@@ -22,12 +22,12 @@ class TwoLinkGenerator():
         self.constrain_dict = {}  # should be updated after creating each joint
         self.current_main_branch = []
         self.graph = nx.Graph()
-        self.ground_x_movement = (-0.4, 0.4)
+        self.ground_x_movement = (-0.1, 0.1)
         self.ground_z_movement = (-0.01,0)
-        self.free_x_movement = (-0.3, 0.3)
-        self.free_z_movement = (-0.3, 0.3)
-        self.bound_x_movement = (-0.2, 0.2)
-        self.bound_z_movement = (-0.2, 0.2)
+        self.free_x_movement = (-0.1, 0.1)
+        self.free_z_movement = (-0.1, 0.1)
+        self.bound_x_movement = (-0.1, 0.1)
+        self.bound_z_movement = (-0.1, 0.1)
 
     def reset(self):
         """Reset the graph builder."""
@@ -35,7 +35,7 @@ class TwoLinkGenerator():
         self.current_main_branch = []
         self.graph = nx.Graph()
 
-    def build_standard_two_linker(self, knee_pos: float = -0.5, nominal_length=1, right_shift=np.tan(np.pi/6)/2):
+    def build_standard_two_linker(self, knee_pos: float = -0.148, nominal_length=0.27577, right_shift=-0.148):
         ground_joint = JointPoint(
             r=np.zeros(3),
             w=np.array([0, 1, 0]),
@@ -50,9 +50,9 @@ class TwoLinkGenerator():
 
         knee_joint_pos = np.array([right_shift, 0, knee_pos])
         knee_joint = JointPoint(
-            r=knee_joint_pos, w=np.array([0, 1, 0]), name=f"Main_knee")
+            r=knee_joint_pos, w=np.array([0, 1, 0]), name="Main_knee")
         self.constrain_dict[knee_joint.name] = {
-            'optim': False, 'x_range': (-0.2, 0.2), 'z_range': (-0.2, 0.2)}
+            'optim': True, 'x_range': (-0.5, 0.0), 'z_range': (-0.02, 0.02)}
         self.current_main_branch.append(knee_joint)
         ee = JointPoint(
             r=np.array([0, 0, -nominal_length]),
@@ -105,7 +105,7 @@ class TwoLinkGenerator():
 
         branch = []
         if ground:
-            top_joint: JointPoint = ground_joint
+            top_joint: JointPoint= ground_joint
         else:
             top_joint: JointPoint = top_link_joint
         bot_joint: JointPoint = bot_link_joint
@@ -143,16 +143,22 @@ class TwoLinkGenerator():
 
         # create joints for each possible point, not all of them will be used in the final graph
         # ground is always active
-        ground_joint = JointPoint(r=ground_connection,
-                                  w=np.array([0, 1, 0]),
-                                  attach_ground=True,
-                                  active=True,
-                                  name=f"2L_ground")
+        if variant not in [1,3]:
+            ground_joint = JointPoint(r=ground_connection,
+                                        w=np.array([0, 1, 0]),
+                                        attach_ground=True,
+                                        active=True,
+                                        name="4L_ground")
+        else:
+            ground_joint = JointPoint(r=ground_connection,
+                                        w=np.array([0, 1, 0]),
+                                        attach_ground=True,
+                                        active=False,
+                                        name="4L_ground")
         self.constrain_dict[ground_joint.name] = {
             'optim': True, 'x_range': self.ground_x_movement, 'z_range': self.ground_z_movement}
         # create connection dict
         connection_joints = {ground_joint: []}
-
         top_link_joint = JointPoint(
             r=link_connection_points[0], w=np.array([0, 1, 0]), name=f'4L_top')
         self.constrain_dict[top_link_joint.name] = {
@@ -217,8 +223,11 @@ class TwoLinkGenerator():
             branch.append(permutation[0])
             triangle_joints = []
             for i, pos in enumerate(new_joint_pos):
+                flag = False
+                if i == 1 and variant in [1,3]:
+                    flag = True
                 joint = JointPoint(r=pos, w=np.array(
-                    [0, 1, 0]), name=f"4LT2_j{i}")
+                    [0, 1, 0]), active=flag,name=f"4LT2_j{i}")
                 self.constrain_dict[joint.name] = {
                     'optim': True, 'x_range':self.free_x_movement, 'z_range': self.free_z_movement}
                 branch.append(joint)
@@ -238,7 +247,7 @@ class TwoLinkGenerator():
         list_names = list(map(lambda x: x.name, self.graph.nodes))
         self.constrain_dict = dict(filter(lambda x:x[0] in list_names, self.constrain_dict.items()))
 
-    def get_standard_set(self, knee_pos=-0.5, shift=0.5):
+    def get_standard_set(self, knee_pos=-0.148, shift=0.1):
         result_list = []
         for inner in [True, False]:
             for ground in [True, False]:
