@@ -422,7 +422,7 @@ class NeutralPoseMass(ComputeInterface):
     """Wrapper for calculate total mass of robot. Criterion implementation src is criterion_math"""
 
     def __init__(self) -> None:
-        self.is_fixed = True
+        self.is_fixed = False
 
     def __call__(self, data_dict: DataDict, robo: Robot = None):
         return calculate_mass(robo)
@@ -511,7 +511,7 @@ def moment_criteria_calc(calculate_desription: dict[str,
 
 def along_criteria_calc(calculate_desription: dict[str, ComputeInterface],
                         data_dict_free: DataDict, data_dict_fixed: DataDict,
-                        robo: Robot = None) -> dict:
+                        robo_fixed: Robot = None, robo_free: Robot = None) -> dict:
     """Each criterion get the entire DataDict and Robot.
 
     Args:
@@ -526,8 +526,9 @@ def along_criteria_calc(calculate_desription: dict[str, ComputeInterface],
     for key, criteria in calculate_desription.items():
         if criteria.is_fixed:
             data_dict = data_dict_fixed
+            robo = robo_fixed
         else:
             data_dict = data_dict_free
-
+            robo = robo_free
         res_dict[key] = criteria(data_dict, robo)
     return res_dict

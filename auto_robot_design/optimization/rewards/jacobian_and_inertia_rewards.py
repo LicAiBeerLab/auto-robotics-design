@@ -7,6 +7,26 @@ from auto_robot_design.pinokla.calc_criterion import DataDict
 
 GRAVITY = 9.81
 
+def calculate_achievable_forces_z(manipulability_matrices: list[np.array], pick_effort: float,
+              max_effort_coefficient: float) -> np.ndarray:
+
+    n_steps = len(manipulability_matrices)
+
+    achievable_forces_z = np.zeros(n_steps)
+    for i in range(n_steps):
+        # the force matrix is the transpose of Jacobian, it transforms forces into torques
+        force_matrix = np.transpose(manipulability_matrices[i])
+        # calculate torque vector that is required to get unit force in the z direction.
+        # it also declares the ratio of torques that provides z-directed force
+        z_unit_force_torques = np.abs(force_matrix @ np.array([0, 1]))
+        # calculate the factor that max out the higher torque
+        achievable_force_z = pick_effort * \
+            max_effort_coefficient/max(z_unit_force_torques)
+        # calculate extra force that can be applied to the payload
+        achievable_forces_z[i] = abs(achievable_force_z)
+
+    return achievable_forces_z
+
 
 class HeavyLiftingReward(Reward):
     """Calculate the mass that can be held still using up to 70% of the motor capacity
@@ -15,7 +35,12 @@ class HeavyLiftingReward(Reward):
         Reward (float): mass capacity
     """
 
-    def __init__(self, manipulability_key, mass_key: str, trajectory_key: str, error_key: str, max_effort_coef=0.7) -> None:
+    def __init__(self,
+                 manipulability_key,
+                 mass_key: str,
+                 trajectory_key: str,
+                 error_key: str,
+                 max_effort_coef=0.7) -> None:
         super().__init__()
         self.max_effort_coefficient = max_effort_coef
         self.manip_key = manipulability_key
@@ -23,7 +48,9 @@ class HeavyLiftingReward(Reward):
         self.error_key = error_key
         self.mass_key = mass_key
 
-    def calculate(self, point_criteria: DataDict, trajectory_criteria: DataDict, trajectory_results: DataDict, **kwargs) -> Tuple[float, list[float]]:
+    def calculate(self, point_criteria: DataDict,
+                  trajectory_criteria: DataDict, trajectory_results: DataDict,
+                  **kwargs) -> Tuple[float, list[float]]:
         """_summary_
 
         Args:
@@ -48,32 +75,17 @@ class HeavyLiftingReward(Reward):
         if not is_trajectory_reachable:
             return 0, []
 
-        manipulability_matrices: list[np.array] = point_criteria[self.manip_key]
+        manipulability_matrices: list[np.array] = point_criteria[
+            self.manip_key]
         trajectory_points = trajectory_results[self.trajectory_key]
         mass = trajectory_criteria[self.mass_key]
-        n_steps = len(trajectory_points)
-        result = float('inf')
-        reward_vector = [0]*n_steps
-        for i in range(n_steps):
-            # the force matrix is the transpose of Jacobian, it transforms forces into torques
-            force_matrix = np.transpose(manipulability_matrices[i])
-            # calculate torque vector that is required to get unit force in the z direction.
-            # it also declares the ratio of torques that provides z-directed force
-            z_unit_force_torques = np.abs(force_matrix@np.array([0, 1]))
-            # calculate the factor that max out the higher torque
-            achievable_force_z = pick_effort * \
-                self.max_effort_coefficient/max(z_unit_force_torques)
-            # calculate extra force that can be applied to the payload
-            additional_force = abs(achievable_force_z) - GRAVITY*mass
-            reward_vector[i] = additional_force/GRAVITY
-            # if at some point the force is not enough to even list leg itself, return 0
-            if additional_force < 0:
-                return 0, []
-            # get the minimum force that can be applied to the payload
-            if additional_force < result:
-                result = additional_force
+ 
+        achievable_forces_z_vec = calculate_achievable_forces_z(
+            manipulability_matrices, pick_effort, self.max_effort_coefficient)
+        reward_vector = achievable_forces_z_vec / (GRAVITY * mass)
+        reward = np.min(reward_vector)
 
-        return result/GRAVITY, reward_vector
+        return reward, reward_vector
 
 
 class AccelerationCapability(Reward):
@@ -153,7 +165,9 @@ class MeanHeavyLiftingReward(Reward):
         self.error_key = error_key
         self.mass_key = mass_key
 
-    def calculate(self, point_criteria: DataDict, trajectory_criteria: DataDict, trajectory_results: DataDict, **kwargs) -> Tuple[float, list[float]]:
+    def calculate(self, point_criteria: DataDict,
+                  trajectory_criteria: DataDict, trajectory_results: DataDict,
+                  **kwargs) -> Tuple[float, list[float]]:
         """_summary_
 
         Args:
@@ -178,32 +192,31 @@ class MeanHeavyLiftingReward(Reward):
         if not is_trajectory_reachable:
             return 0, []
 
-        manipulability_matrices: list[np.array] = point_criteria[self.manip_key]
+        manipulability_matrices: list[np.array] = point_criteria[
+            self.manip_key]
         trajectory_points = trajectory_results[self.trajectory_key]
         mass = trajectory_criteria[self.mass_key]
         n_steps = len(trajectory_points)
-        reward_vector = [0]*n_steps
-        for i in range(n_steps):
-            # the force matrix is the transpose of Jacobian, it transforms forces into torques
-            force_matrix = np.transpose(manipulability_matrices[i])
-            # calculate torque vector that is required to get unit force in the z direction.
-            # it also declares the ratio of torques that provides z-directed force
-            z_unit_force_torques = np.abs(force_matrix@np.array([0, 1]))
-            # calculate the factor that max out the higher torque
-            achievable_force_z = pick_effort * \
-                self.max_effort_coefficient/max(z_unit_force_torques)
-            # calculate extra force that can be applied to the payload
-            additional_force = abs(achievable_force_z) - GRAVITY*mass
-            reward_vector[i] = additional_force/GRAVITY
+        result = float('inf')
+        reward_vector = [0] * n_steps
+        achievable_forces_z_vec = calculate_achievable_forces_z(
+            manipulability_matrices, pick_effort, self.max_effort_coefficient)
+        reward_vector = achievable_forces_z_vec / (GRAVITY * mass)
+        reward = np.mean(reward_vector)
 
-        return np.mean(np.array(reward_vector)), reward_vector
+        return reward, reward_vector
 
 
 class MinAccelerationCapability(Reward):
     """Calculate the reward that combine effective inertia and force capability
     """
 
-    def __init__(self, manipulability_key: str, trajectory_key: str, error_key: str, actuated_mass_key: str, max_effort_coef=0.7) -> None:
+    def __init__(self,
+                 manipulability_key: str,
+                 trajectory_key: str,
+                 error_key: str,
+                 actuated_mass_key: str,
+                 max_effort_coef=0.7) -> None:
         super().__init__()
         self.max_effort_coefficient = max_effort_coef
         self.manip_key = manipulability_key
@@ -211,7 +224,9 @@ class MinAccelerationCapability(Reward):
         self.error_key = error_key
         self.actuated_mass_key = actuated_mass_key
 
-    def calculate(self, point_criteria: DataDict, trajectory_criteria: DataDict, trajectory_results: DataDict, **kwargs) -> Tuple[float, list[float]]:
+    def calculate(self, point_criteria: DataDict,
+                  trajectory_criteria: DataDict, trajectory_results: DataDict,
+                  **kwargs) -> Tuple[float, list[float]]:
         """_summary_
 
         Args:
@@ -234,18 +249,20 @@ class MinAccelerationCapability(Reward):
             return 0, []
 
         # get the manipulability for each point at the trajectory
-        manipulability_matrices: list[np.array] = point_criteria[self.manip_key]
-        effective_mass_matrices: list[np.array] = point_criteria[self.actuated_mass_key]
+        manipulability_matrices: list[np.array] = point_criteria[
+            self.manip_key]
+        effective_mass_matrices: list[np.array] = point_criteria[
+            self.actuated_mass_key]
 
         n_steps = len(errors)
-        reward_vector = [0]*(n_steps)
+        reward_vector = [0] * (n_steps)
         for i in range(n_steps):
             # get the manipulability matrix and mass matrix for the current point
             manipulability_matrix: np.array = manipulability_matrices[i]
             effective_mass_matrix: np.array = effective_mass_matrices[i]
             # calculate the matrix that transforms quasi-static acceleration to required torque
 
-            torque_2_acc = manipulability_matrix@np.linalg.inv(
+            torque_2_acc = manipulability_matrix @ np.linalg.inv(
                 effective_mass_matrix)
             step_result = np.min(abs(np.linalg.eigvals(torque_2_acc)))
             reward_vector[i] = step_result
