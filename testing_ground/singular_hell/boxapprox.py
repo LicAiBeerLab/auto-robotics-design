@@ -3,18 +3,12 @@ from scipy.optimize import linprog
 from matplotlib.patches import Rectangle
 from matplotlib import pyplot as plt
 import collections
-from multiprocessing import Pool, freeze_support, Manager, cpu_count
+from multiprocessing import Pool, freeze_support, cpu_count
 import time
 from functools import partial
+# from mpl_toolkits.mplot3d import Axes3D
 
-def pow_interval(interval, p: int):
-    is_odd = p%2>0
-    if is_odd:
-        return (interval[0]**p, interval[1]**p)
-    else:
-        is_zerocross = interval[0]*interval[1]<=0
-        return np.asarray((0 if is_zerocross else np.min(abs(interval))**p, 
-                           np.max(abs(interval))**p))
+from testing_ground.singular_hell.box_utils import pow_interval
 
 def calc_parab_ineq(m_bounds, m_ind: int, p_ind: int, vector_size: int):
     """Calculate halfplane inequalities (bounding p) for p=m**2"""
@@ -73,6 +67,138 @@ def calc_hyberb_ineq(m_bounds, n_bounds, m_ind: int, n_ind: int, p_ind: int, vec
 
     b_ub = np.asarray([-pl1[3], -pl2[3], pl3[3], pl4[3]])
     return A_ub, b_ub
+
+
+#TODO fix overlapping boxes issue, not critical
+def approximate_boxes(B, A_eq, b_eq, sqr_pairs=[], cross_triplets=[], threshold_s=[0.1], threshold_v=0.95):
+    n = np.shape(B)[0]
+    is_sigma_simple = len(threshold_s) == 1
+
+    # print(B)
+    # A_ub = np.zeros((3*len(sqr_pairs), n))
+    # b_ub = np.zeros(3*len(sqr_pairs))
+    A_ub = np.full((3*len(sqr_pairs)+4*len(cross_triplets), n),None)
+    b_ub = np.full(3*len(sqr_pairs)+4*len(cross_triplets),None)
+
+    # Blist = [(B[i,0],B[i,1]) for i in range(n)]
+    # print(Blist)
+    # c = np.zeros(n)
+    # c[0] = 1
+    # minim = linprog(c,A_eq=A_eq,b_eq=b_eq,bounds=B)
+    # print(minim.fun)
+    # print(f'suc{minim.success}, stat{minim.status}, nit{minim.nit}\nmsg: {minim.message}')
+
+    # minim = linprog(-c,A_eq=A_eq,b_eq=b_eq,bounds=B)
+    # print(-minim.fun)
+    # print(f'suc{minim.success}, stat{minim.status}, nit{minim.nit}\nmsg: {minim.message}')
+
+    sols = []
+    P = [B]
+    while len(P) > 0:
+        print(f'lenP {len(P)}')
+        B_c = P.pop() #0
+
+        lengths_c = B_c[:,1] - B_c[:,0]
+        # valid_inds = (lengths_c > 0).nonzero()
+        # print('valind',valid_inds)
+        # print('valleng',lengths_c[valid_inds])
+        
+        is_empty = False
+        is_shrinkable = True
+        if is_sigma_simple:
+            is_small_enough = np.max(lengths_c) <= threshold_s[0]
+        else:
+            is_small_enough = (lengths_c <= threshold_s).all()
+        
+        while not is_empty and is_shrinkable and not is_small_enough:  #uncomment for better timings
+            lengths_p = lengths_c
+            # valid_inds_p = np.transpose((lengths_p > 0).nonzero())
+            valid_inds_p = (lengths_p > 0).nonzero()[0]
+
+            #shrink
+            for i in valid_inds_p: #range(n):
+                c = np.zeros(n)
+                c[i] = 1
+
+                #inequalities for current bounds
+                shift = 0
+                for j, (m_ind, p_ind) in enumerate(sqr_pairs):
+                    A, b = calc_parab_ineq(B_c[m_ind,:], m_ind, p_ind, n)
+                    A_ub[3*j:3*j+3,:] = A
+                    b_ub[3*j:3*j+3] = b
+                    shift += 3
+                for j, (m_ind, n_ind, p_ind) in enumerate(cross_triplets):
+                    A, b = calc_hyberb_ineq(B_c[m_ind,:], B_c[n_ind,:], m_ind, n_ind, p_ind, n)
+                    A_ub[4*j+shift:4*j+4+shift,:] = A
+                    b_ub[4*j+shift:4*j+4+shift] = b
+
+                minim = linprog(c,A_eq=A_eq,b_eq=b_eq,bounds=B_c, A_ub=A_ub, b_ub=b_ub,options={'presolve':False}) #method='highs-ipm' #slower but more boxes with presolve 
+                if not minim.success:
+                    is_empty = True
+                    print(minim.message)
+                    # if minim.status != 2:
+                    #     print(minim.message)
+                    break
+
+                B_c[i,0] = minim.fun
+
+                #comment for better timings
+                #inequalities for updated bounds
+                shift = 0
+                for j, (m_ind, p_ind) in enumerate(sqr_pairs):
+                    A, b = calc_parab_ineq(B_c[m_ind,:], m_ind, p_ind, n)
+                    A_ub[3*j:3*j+3,:] = A
+                    b_ub[3*j:3*j+3] = b
+                    shift += 3
+                for j, (m_ind, n_ind, p_ind) in enumerate(cross_triplets):
+                    A, b = calc_hyberb_ineq(B_c[m_ind,:], B_c[n_ind,:], m_ind, n_ind, p_ind, n)
+                    A_ub[4*j+shift:4*j+4+shift,:] = A
+                    b_ub[4*j+shift:4*j+4+shift] = b
+
+                maxim = linprog(-c,A_eq=A_eq,b_eq=b_eq,bounds=B_c, A_ub=A_ub, b_ub=b_ub,options={'presolve':False}) #method='highs-ipm'
+                if not maxim.success:
+                    is_empty = True
+                    print(maxim.message)
+                    # if maxim.status != 2:
+                    #     print(maxim.message)
+                    break
+
+                # B_c[i,0] = minim.fun
+                B_c[i,1] = -maxim.fun
+
+                # if is_small_enough: #worse than without checking, but better time
+                #     break
+
+            lengths_c = B_c[:,1] - B_c[:,0]
+            longest_dim_ind = np.argmax(lengths_c)
+            if is_sigma_simple:
+                is_small_enough = lengths_c[longest_dim_ind] <= threshold_s[0]
+            else:
+                is_small_enough = (lengths_c <= threshold_s).all()
+
+            valid_inds = (lengths_c > 0).nonzero()
+            print('valid indexes',valid_inds[0])
+            # print('valleng',lengths_c[valid_inds])
+            V_p = np.prod(lengths_p[valid_inds])
+            V_c = np.prod(lengths_c[valid_inds])
+            
+            # print(V_c,V_p)
+            is_shrinkable = V_c/V_p <= threshold_v
+            # print(is_shrinkable)
+
+        if not is_empty:
+            if is_small_enough:
+                sols.append(B_c)
+            else:
+                #split
+                half_length = lengths_c[longest_dim_ind]/2.
+                B1 = B_c.copy()
+                B1[longest_dim_ind,1] -= half_length
+                B2 = B_c.copy()
+                B2[longest_dim_ind,0] += half_length
+                P.append(B1)
+                P.append(B2)
+    return sols
 
 
 def process_box(B_c, A_eq, b_eq, 
@@ -370,6 +496,45 @@ def box_parallel(boxes, A_eq, b_eq,
     # resultsA = pool.starmap(mockup_, inputs)
     pool.close()
     pool.join()
+    print(f'Search took {time.time()-t2:.3f} seconds')
+
+    print('-------------------')
+    # print(sharedP)
+    # print(len(sharedP))
+    # print(sharedsols)
+    print('unexplored:',len(P))
+    print('solutions:',len(sols))
+    return sols
+
+def box_serial(boxes, A_eq, b_eq, 
+                sqr_pairs=[], cross_triplets=[], 
+                threshold_s=[0.1], threshold_v=0.95):
+    P = collections.deque(boxes)
+    sols = []
+
+    print('-------------------') 
+    process_box_ = partial(process_box, A_eq=A_eq, b_eq=b_eq, 
+                           sqr_pairs=sqr_pairs, cross_triplets=cross_triplets, 
+                           threshold_s=threshold_s, threshold_v=threshold_v)
+    t2 = time.time()
+
+    while len(P) > 0:
+        print('unexplored:',len(P))
+        B_c = P.popleft()
+
+        r = process_box_(B_c)
+
+        # result.extend(g2)
+        if r[0] == 0:
+            pass
+        elif r[0] == 1:
+            sols.append(r[1])
+            # print('sol')
+        else:
+            P.append(r[1])
+            P.append(r[2])
+            # print('split')    
+
     print(f'Search took {time.time()-t2:.3f} seconds')
 
     print('-------------------')
