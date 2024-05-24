@@ -196,9 +196,6 @@ class MeanHeavyLiftingReward(Reward):
             self.manip_key]
         trajectory_points = trajectory_results[self.trajectory_key]
         mass = trajectory_criteria[self.mass_key]
-        n_steps = len(trajectory_points)
-        result = float('inf')
-        reward_vector = [0] * n_steps
         achievable_forces_z_vec = calculate_achievable_forces_z(
             manipulability_matrices, pick_effort, self.max_effort_coefficient)
         reward_vector = achievable_forces_z_vec / (GRAVITY * mass)
