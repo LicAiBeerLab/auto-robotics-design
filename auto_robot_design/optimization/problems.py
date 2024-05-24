@@ -83,7 +83,7 @@ class CalculateCriteriaProblemByWeigths(ElementwiseProblem):
             for i, point_set in enumerate(self.soft_constrain.points):
                 self.rewards_and_trajectories.check_constrain_trajectory(point_set, results[i])
 
-        total_reward, partial_rewards = self.rewards_and_trajectories.calculate_total(fixed_robot, free_robot, self.motor)
+        total_reward, partial_rewards,_ = self.rewards_and_trajectories.calculate_total(fixed_robot, free_robot, self.motor)
         # the form of the output required by the pymoo lib
 
         out["F"] = total_reward
