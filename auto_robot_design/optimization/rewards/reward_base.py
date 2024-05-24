@@ -22,6 +22,12 @@ class Reward():
 
         return True
 
+class DummyReward(Reward):
+    """Mean position error for the trajectory"""
+
+    def calculate(self, point_criteria: DataDict, trajectory_criteria: DataDict, trajectory_results: DataDict, **kwargs) -> Tuple[float, list[float]]:
+        
+        return 0, []
 
 class PositioningReward():
     """Mean position error for the trajectory"""
@@ -166,7 +172,7 @@ class PositioningConstrain():
 
         return total_error, results
 
-
+from operator import itemgetter
 class RewardManager():
     """Manager class to aggregate trajectories and corresponding rewards
 
@@ -178,6 +184,8 @@ class RewardManager():
         self.rewards = {}
         self.crag = crag
         self.precalculated_trajectories = None
+        self.agg_list = []
+        self.reward_description = []
 
     def add_trajectory(self, trajectory, idx):
         if not (idx in self.trajectories):
@@ -192,6 +200,39 @@ class RewardManager():
             self.rewards[trajectory_id].append((reward, weight))
         else:
             raise KeyError('Trajectory id not in the trajectories dict')
+
+    def add_trajectory_aggregator(self, trajectory_list, agg_type: str):
+        if not (agg_type in ['mean', 'median', 'min', 'max']):
+            raise ValueError('Wrong aggregation type!')
+
+        if not set(trajectory_list).issubset(set(self.trajectories.keys())):
+            raise ValueError('add trajectory before aggregation')
+
+        for lt, _ in self.agg_list:
+            if len(set(lt).intersection(set(trajectory_list))) > 0:
+                raise ValueError('Each trajectory can be aggregated only once')
+
+        if len(set(map(len,itemgetter(*trajectory_list)(self.rewards))))>1:
+            raise ValueError('Each trajectory in aggregation must have the same number of rewards')
+
+        self.agg_list.append((trajectory_list, agg_type))
+
+    def close_trajectories(self):
+        total_rewards = 0
+        exclusion_list = []
+        for lst, _ in self.agg_list:
+            exclusion_list += lst
+            tmp = len(self.rewards[lst[0]])
+            self.reward_description.append((lst, tmp))
+            total_rewards+=tmp
+
+        for idx, rewards in self.rewards.items() :
+            if idx not in exclusion_list:
+                tmp = len(rewards)
+                self.reward_description.append((lst, tmp))
+                total_rewards+=tmp
+
+        return total_rewards
 
     def calculate_total(self, fixed_robot, free_robot, motor):
         trajectory_rewards = []
@@ -218,9 +259,41 @@ class RewardManager():
             trajectory_rewards.append((trajectory_id, reward_at_trajectory))
             partial_rewards.append(partial_reward)
 
+        # if len(self.agg_list) > 0:
+        final_partial = []
+        exclusion_list = []
+        for lst, agg_type in self.agg_list:
+            exclusion_list += lst
+            local_partial = []
+            for v in partial_rewards:
+                if v[0] in lst:
+                    local_partial.append(v)
+
+            tmp_array = np.array(local_partial)
+
+            if agg_type == 'mean':
+                res = np.mean(tmp_array, axis=0)
+            elif agg_type == 'median':
+                res = np.median(tmp_array, axis=0)
+            elif agg_type == 'min':
+                res = np.min(tmp_array, axis=0)
+            elif agg_type == 'max':
+                res = np.max(tmp_array, axis=0)
+
+            final_partial+=list(res[1::])
+
+        trajectoryless_pertials = []
+        for v in partial_rewards:
+            if v[0] not in exclusion_list:
+                final_partial+=v[1::]
+            trajectoryless_pertials+=v[1::]
+
         # calculate the total reward
-        total_reward = -sum([reward for _, reward in trajectory_rewards])
-        return total_reward, partial_rewards
+        # total_reward = -sum([reward for _, reward in trajectory_rewards])
+
+        total_reward = -np.sum(final_partial)
+        
+        return total_reward, trajectoryless_pertials, final_partial
 
     def dummy_partial(self):
         """Create partial reward with zeros to add for robots that failed constrains"""
