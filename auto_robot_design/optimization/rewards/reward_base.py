@@ -172,7 +172,7 @@ class PositioningConstrain():
 
         return total_error, results
 
-
+from operator import itemgetter
 class RewardManager():
     """Manager class to aggregate trajectories and corresponding rewards
 
@@ -185,6 +185,7 @@ class RewardManager():
         self.crag = crag
         self.precalculated_trajectories = None
         self.agg_list = []
+        self.reward_description = []
 
     def add_trajectory(self, trajectory, idx):
         if not (idx in self.trajectories):
@@ -211,7 +212,27 @@ class RewardManager():
             if len(set(lt).intersection(set(trajectory_list))) > 0:
                 raise ValueError('Each trajectory can be aggregated only once')
 
+        if len(set(map(len,itemgetter(*trajectory_list)(self.rewards))))>1:
+            raise ValueError('Each trajectory in aggregation must have the same number of rewards')
+
         self.agg_list.append((trajectory_list, agg_type))
+
+    def close_trajectories(self):
+        total_rewards = 0
+        exclusion_list = []
+        for lst, _ in self.agg_list:
+            exclusion_list += lst
+            tmp = len(self.rewards[lst[0]])
+            self.reward_description.append((lst, tmp))
+            total_rewards+=tmp
+
+        for idx, rewards in self.rewards.items() :
+            if idx not in exclusion_list:
+                tmp = len(rewards)
+                self.reward_description.append((lst, tmp))
+                total_rewards+=tmp
+
+        return total_rewards
 
     def calculate_total(self, fixed_robot, free_robot, motor):
         trajectory_rewards = []
@@ -258,18 +279,21 @@ class RewardManager():
                 res = np.min(tmp_array, axis=0)
             elif agg_type == 'max':
                 res = np.max(tmp_array, axis=0)
-            res[0] = tmp_array[0][0]
-            final_partial.append(res)
 
+            final_partial+=list(res[1::])
+
+        trajectoryless_pertials = []
         for v in partial_rewards:
             if v[0] not in exclusion_list:
-                final_partial.append(v)
+                final_partial+=v[1::]
+            trajectoryless_pertials+=v[1::]
 
         # calculate the total reward
         # total_reward = -sum([reward for _, reward in trajectory_rewards])
-        final_rewards = (np.array(final_partial)[:, 1:]).flatten()
-        total_reward = -np.sum(final_rewards)
-        return total_reward, partial_rewards, final_rewards
+
+        total_reward = -np.sum(final_partial)
+        
+        return total_reward, trajectoryless_pertials, final_partial
 
     def dummy_partial(self):
         """Create partial reward with zeros to add for robots that failed constrains"""
