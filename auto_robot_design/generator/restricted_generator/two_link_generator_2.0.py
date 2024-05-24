@@ -34,7 +34,7 @@ class TwoLinkGenerator():
         self.current_main_branch = []
         self.graph = nx.Graph()
 
-    def build_standard_two_linker(self, l1:float, l2:float, q1:float, q2:float):
+    def build_standard_two_linker(self, l1:float=0.5, l2:float=0.5, q1:float=0, q2:float=0):
         """Create graph for standard two-link branch
 
         Args:
@@ -43,6 +43,7 @@ class TwoLinkGenerator():
             q1 (float): hip angle
             q2 (float): knee angle
         """
+        
         # ground joint of the main branch
         ground_joint = JointPoint(
             r=np.zeros(3),
@@ -74,3 +75,27 @@ class TwoLinkGenerator():
         self.constrain_dict[ee.name] = {
             'optim': False, 'x_range': (-0.2, 0.2), 'z_range': (-0.2, 0.2)}
         add_branch(self.graph, self.current_main_branch)
+
+    def build_five_bar(self, ground_shift:Tuple[float, float] = [0.3, 0], secondary_hip_length:float = 0.5, secondary_q1:float = 0.1, connection_shift:Tuple[float, float] = [0.02, 0.02]):
+        ground_connection = np.array([ground_shift[0],0,ground_shift[1]])
+        ground_joint = JointPoint(r=ground_connection,
+                            w=np.array([0, 1, 0]),
+                            attach_ground=True,
+                            active=True,
+                            name=f"2L_ground")
+        
+        self.constrain_dict[ground_joint.name] = {
+            'optim': True, 'x_range': self.ground_x_movement, 'z_range': self.ground_z_movement}
+        
+        connection_joints = {ground_joint: []}
+
+        link_connection_points = [
+            (self.current_main_branch[i-1].r + self.current_main_branch[i].r)/2 for i in range(1, len(self.current_main_branch))]
+        
+        bot_connection = link_connection_points[1]+np.array([connection_shift[0],0,connection_shift[1]])
+        bot_link_joint = JointPoint(
+            r=link_connection_points[1], w=np.array([0, 1, 0]), name=f'2L_bot')
+        self.constrain_dict[bot_link_joint.name] = {
+            'optim': True, 'x_range': self.bound_x_movement, 'z_range': self.bound_z_movement}
+        connection_joints[bot_link_joint] = [
+            [self.current_main_branch[1], self.current_main_branch[2]]]
