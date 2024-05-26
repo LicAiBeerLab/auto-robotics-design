@@ -30,6 +30,7 @@ def calc_parab_ineq(m_bounds, m_ind: int, p_ind: int, vector_size: int):
     return A_ub, b_ub
 
 def calc_plane_coeffs(p1,p2,p3):
+    """Calculate the coefficients of a plane A*x+B*y+C*z=Dn which is defined by three points."""
     x1,y1,z1 = p1[0],p1[1],p1[2]
     x2,y2,z2 = p2[0],p2[1],p2[2]
     x3,y3,z3 = p3[0],p3[1],p3[2]
@@ -71,6 +72,22 @@ def calc_hyberb_ineq(m_bounds, n_bounds, m_ind: int, n_ind: int, p_ind: int, vec
 
 #TODO fix overlapping boxes issue, not critical
 def approximate_boxes(B, A_eq, b_eq, sqr_pairs=[], cross_triplets=[], threshold_s=[0.1], threshold_v=0.95):
+    """
+    Initial single-threaded version of box approximation (all-in-one function). Works faster than box_serial().
+
+    Args:
+        B (np.ndarray): Initial bounding box.
+        A_eq (np.ndarray): Matrix of linear equations.
+        b_eq (np.ndarray): Vector rhs of linear equations.
+        sqr_pairs (list, optional): list of pairs of indexes, binding variable m with its square variable m**2. Defaults to [].
+        cross_triplets (list, optional): list of triplets of indexes, binding two variables m,n with its product variable m*n. Defaults to [].
+        threshold_s (list|np.ndarray, optional): Vector of 1 or len(B) elements, defining min allowed length of the 
+        longest (or corresponding to vector) side of the boxes. Defines which box is considered ready solution. Defaults to [0.1].
+        threshold_v (float, optional): max allowed ratio of box volume after shrinking to volume before. Defines when to stop shrinking a particular box. Defaults to 0.95.
+
+    Returns:
+        list: all solutions' bounding boxes.
+    """
     n = np.shape(B)[0]
     is_sigma_simple = len(threshold_s) == 1
 
@@ -91,7 +108,7 @@ def approximate_boxes(B, A_eq, b_eq, sqr_pairs=[], cross_triplets=[], threshold_
     # minim = linprog(-c,A_eq=A_eq,b_eq=b_eq,bounds=B)
     # print(-minim.fun)
     # print(f'suc{minim.success}, stat{minim.status}, nit{minim.nit}\nmsg: {minim.message}')
-
+    print(f'Starting single-threaded box approximation.')
     sols = []
     P = [B]
     while len(P) > 0:
@@ -429,7 +446,25 @@ def process_box(B_c, A_eq, b_eq,
 def box_parallel(boxes, A_eq, b_eq, 
                  sqr_pairs=[], cross_triplets=[], 
                  threshold_s=[0.1], threshold_v=0.95,
-                 n_processes=2,batch=256):
+                 n_processes=cpu_count()-1,batch=10**4):
+    """
+    Multi-threaded version of box approximation.
+
+    Args:
+        boxes (list): Initial bounding boxes.
+        A_eq (np.ndarray): Matrix of linear equations.
+        b_eq (np.ndarray): Vector rhs of linear equations.
+        sqr_pairs (list, optional): list of pairs of indexes, binding variable m with its square variable m**2. Defaults to [].
+        cross_triplets (list, optional): list of triplets of indexes, binding two variables m,n with its product variable m*n. Defaults to [].
+        threshold_s (list|np.ndarray, optional): Vector of 1 or len(B) elements, defining min allowed length of the 
+        longest (or corresponding to vector) side of the boxes. Defines which box is considered ready solution. Defaults to [0.1].
+        threshold_v (float, optional): max allowed ratio of box volume after shrinking to volume before. Defines when to stop shrinking a particular box. Defaults to 0.95.
+        n_processes (int): number of processes to run for the solver. Defaults to cpu_count()-1.
+        batch (int): max number of boxes to add to a processing queue in one go. More->better, may be auto-selected in the future. Defaults to 10 000.
+
+    Returns:
+        list: all solutions' bounding boxes.
+    """
     freeze_support()
     # manager=Manager()
     
@@ -440,6 +475,7 @@ def box_parallel(boxes, A_eq, b_eq,
 
     # n_processes = cpu_count()//2
     pool = Pool(n_processes)
+    print(f'Starting box approximation on {n_processes} processes.')
     # with Pool(4) as pool: #cpu_count()
     # P = [B]
     # P = boxes.copy()
@@ -509,9 +545,25 @@ def box_parallel(boxes, A_eq, b_eq,
 def box_serial(boxes, A_eq, b_eq, 
                 sqr_pairs=[], cross_triplets=[], 
                 threshold_s=[0.1], threshold_v=0.95):
+    """
+    Single-threaded version of box approximation. Works slower than approximate_boxes(), but is more fair for comparison with box_parallel().
+
+    Args:
+        boxes (list): Initial bounding boxes.
+        A_eq (np.ndarray): Matrix of linear equations.
+        b_eq (np.ndarray): Vector rhs of linear equations.
+        sqr_pairs (list, optional): list of pairs of indexes, binding variable m with its square variable m**2. Defaults to [].
+        cross_triplets (list, optional): list of triplets of indexes, binding two variables m,n with its product variable m*n. Defaults to [].
+        threshold_s (list|np.ndarray, optional): Vector of 1 or len(B) elements, defining min allowed length of the 
+        longest (or corresponding to vector) side of the boxes. Defines which box is considered ready solution. Defaults to [0.1].
+        threshold_v (float, optional): max allowed ratio of box volume after shrinking to volume before. Defines when to stop shrinking a particular box. Defaults to 0.95.
+
+    Returns:
+        list: all solutions' bounding boxes.
+    """
     P = collections.deque(boxes)
     sols = []
-
+    print(f'Starting single-threaded box approximation.')
     print('-------------------') 
     process_box_ = partial(process_box, A_eq=A_eq, b_eq=b_eq, 
                            sqr_pairs=sqr_pairs, cross_triplets=cross_triplets, 
