@@ -185,7 +185,7 @@ class RewardManager():
         self.crag = crag
         self.precalculated_trajectories = None
         self.agg_list = []
-        # self.reward_description = []
+        self.reward_description = []
 
     def add_trajectory(self, trajectory, idx):
         if not (idx in self.trajectories):
@@ -223,13 +223,13 @@ class RewardManager():
         for lst, _ in self.agg_list:
             exclusion_list += lst
             tmp = len(self.rewards[lst[0]])
-            # self.reward_description.append((lst, tmp))
+            self.reward_description.append((lst, tmp))
             total_rewards+=tmp
 
         for idx, rewards in self.rewards.items() :
             if idx not in exclusion_list:
                 tmp = len(rewards)
-                # self.reward_description.append((lst, tmp))
+                self.reward_description.append((idx, tmp))
                 total_rewards+=tmp
 
         return total_rewards
