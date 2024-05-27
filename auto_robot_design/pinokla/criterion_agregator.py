@@ -87,7 +87,7 @@ class CriteriaAggregator:
                                                   res_dict_free, res_dict_fixed)
         # calculate criteria that characterize the performance along the whole trajectory  
         trajectory_criteria = along_criteria_calc(self.dict_along_criteria,res_dict_free,
-                                                res_dict_fixed, fixed_robot)
+                                                res_dict_fixed, fixed_robot, free_robot)
 
         return point_criteria_vector, trajectory_criteria, res_dict_fixed
 
