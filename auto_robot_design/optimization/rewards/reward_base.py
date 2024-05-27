@@ -229,7 +229,7 @@ class RewardManager():
         for idx, rewards in self.rewards.items() :
             if idx not in exclusion_list:
                 tmp = len(rewards)
-                self.reward_description.append((lst, tmp))
+                self.reward_description.append((idx, tmp))
                 total_rewards+=tmp
 
         return total_rewards
@@ -303,7 +303,7 @@ class RewardManager():
             partial_reward = [trajectory_id]
             for _, _ in rewards:
                 partial_reward.append(0)
-            partial_rewards.append(partial_reward)
+            partial_rewards+=partial_reward[1::]
         return partial_rewards
 
     def check_constrain_trajectory(self, trajectory, results):
