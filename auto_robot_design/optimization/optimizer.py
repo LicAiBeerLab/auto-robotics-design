@@ -1,6 +1,7 @@
 import os
 import dill
 
+import numpy as np
 
 class PymooOptimizer:
     def __init__(self, problem, algortihm, saver=None) -> None:
@@ -19,16 +20,17 @@ class PymooOptimizer:
         while self.algorithm.has_next():
 
             pop = self.algorithm.ask()
-
             self.algorithm.evaluator.eval(self.problem, pop)
 
-            for p in pop:
+            arrs_F = np.zeros((len(pop), self.problem.n_obj))
+            for pop_id, p in enumerate(pop):
                 self.history["X"].append(p.X)
                 self.history["F"].append(p.F)
                 self.history["Fs"].append(p.get("Fs"))
+                arrs_F[pop_id] = p.F
 
             self.algorithm.tell(infills=pop)
-            # self.history["Mean"].append(self.algorithm.output.f_avg.value)
+            self.history["Mean"].append(np.mean(arrs_F, axis=0))
 
             if checkpoint:
                 assert self.saver is not None
