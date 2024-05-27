@@ -303,7 +303,7 @@ class RewardManager():
             partial_reward = [trajectory_id]
             for _, _ in rewards:
                 partial_reward.append(0)
-            partial_rewards.append(partial_reward)
+            partial_rewards += partial_reward[1:] # Draw trianle if chicken usualy dead
         return partial_rewards
 
     def check_constrain_trajectory(self, trajectory, results):
