@@ -59,6 +59,8 @@ class CalculateCriteriaProblemByWeigths(ElementwiseProblem):
         self.opt_joints = list(self.jp2limits.keys())
         self.soft_constrain = soft_constrain
         self.rewards_and_trajectories: RewardManager = rewards_and_trajectories
+        self.rewards_and_trajectories.close_trajectories()
+        
         self.initial_xopt, __, upper_bounds, lower_bounds = self.convert_joints2x_opt()
         super().__init__(
             n_var=len(self.initial_xopt),
@@ -139,10 +141,11 @@ class CalculateMultiCriteriaProblem(ElementwiseProblem):
         self.opt_joints = list(self.jp2limits.keys())
         self.soft_constrain = soft_constrain
         self.rewards_and_trajectories: RewardManager = rewards_and_trajectories
+        num_objs = self.rewards_and_trajectories.close_trajectories()
         self.initial_xopt, __, upper_bounds, lower_bounds = self.convert_joints2x_opt()
         super().__init__(
             n_var=len(self.initial_xopt),
-            n_obj=2,#len(self.rewards_and_trajectories.rewards),
+            n_obj=num_objs,#len(self.rewards_and_trajectories.rewards),
             xu=upper_bounds,
             xl=lower_bounds,
             **kwargs,
