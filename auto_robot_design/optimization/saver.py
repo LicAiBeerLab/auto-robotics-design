@@ -40,11 +40,7 @@ class ProblemSaver:
 
     def save_nonmutable(self):
         with open(os.path.join(self.path, "problem_data.pkl"), "wb") as f:
-            dill.dump(self.problem.graph, f)
-            dill.dump(self.problem.opt_joints, f)
-            dill.dump(self.problem.initial_xopt, f)
-            dill.dump(self.problem.jp2limits, f)
-            #dill.dump(self.problem.rewards_and_trajectories, f)
+            dill.dump(self.problem, f)
         draw_joint_point(self.problem.graph)
         plt.savefig(os.path.join(self.path, "initial_mechanism.png"))
         plt.close()

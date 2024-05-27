@@ -115,15 +115,9 @@ class CalculateCriteriaProblemByWeigths(ElementwiseProblem):
     @classmethod
     def load(cls, path, **kwargs):
         with open(os.path.join(path, "problem_data.pkl"), "rb") as f:
-            graph = dill.load(f)
-            opt_joints = dill.load(f)
-            initial_xopt = dill.load(f)
-            jp2limits = dill.load(f)
-            criteria = dill.load(f)
-        istance = cls(graph, jp2limits, criteria,
-                      np.ones(len(criteria)), **kwargs)
-        istance.initial_xopt = initial_xopt
-        return istance
+            new_prb_inst: CalculateCriteriaProblemByWeigths = dill.load(f)
+            new_prb_inst.mutate_JP_by_xopt(new_prb_inst.initial_xopt)
+        return new_prb_inst
 
 
 class CalculateMultiCriteriaProblem(ElementwiseProblem):
