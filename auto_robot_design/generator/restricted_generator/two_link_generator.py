@@ -23,12 +23,7 @@ class TwoLinkGenerator():
         self.current_main_branch = []
         self.graph = nx.Graph()
         self.ground_x_movement = (-0.1, 0.1)
-        self.ground_x_movement = (-0.1, 0.1)
         self.ground_z_movement = (-0.01,0)
-        self.free_x_movement = (-0.1, 0.1)
-        self.free_z_movement = (-0.1, 0.1)
-        self.bound_x_movement = (-0.1, 0.1)
-        self.bound_z_movement = (-0.1, 0.1)
         self.free_x_movement = (-0.1, 0.1)
         self.free_z_movement = (-0.1, 0.1)
         self.bound_x_movement = (-0.1, 0.1)
