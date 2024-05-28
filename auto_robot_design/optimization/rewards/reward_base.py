@@ -292,7 +292,7 @@ class RewardManager():
         # total_reward = -sum([reward for _, reward in trajectory_rewards])
 
         total_reward = -np.sum(final_partial)
-        
+
         return total_reward, trajectoryless_pertials, final_partial
 
     def dummy_partial(self):
