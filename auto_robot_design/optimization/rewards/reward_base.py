@@ -229,7 +229,7 @@ class RewardManager():
         for idx, rewards in self.rewards.items() :
             if idx not in exclusion_list:
                 tmp = len(rewards)
-                self.reward_description.append((lst, tmp))
+                self.reward_description.append((idx, tmp))
                 total_rewards+=tmp
 
         return total_rewards

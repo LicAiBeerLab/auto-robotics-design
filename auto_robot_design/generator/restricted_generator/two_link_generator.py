@@ -52,7 +52,7 @@ class TwoLinkGenerator():
         knee_joint = JointPoint(
             r=knee_joint_pos, w=np.array([0, 1, 0]), name="Main_knee")
         self.constrain_dict[knee_joint.name] = {
-            'optim': True, 'x_range': (-0.5, 0.0), 'z_range': (-0.02, 0.02)}
+            'optim': True, 'x_range': (-0.05, 0.05), 'z_range': (-0.02, 0.02)}
         self.current_main_branch.append(knee_joint)
         ee = JointPoint(
             r=np.array([0, 0, -nominal_length]),
