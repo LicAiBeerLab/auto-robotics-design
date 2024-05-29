@@ -290,7 +290,7 @@ def process_box(B_c, A_eq, b_eq,
             minim = linprog(c,A_eq=A_eq,b_eq=b_eq,bounds=B_c, A_ub=A_ub, b_ub=b_ub,options={'presolve':False}) #method='highs-ipm' #slower but more boxes with presolve 
             if not minim.success:
                 is_empty = True
-                print(minim.message)
+                print('min',minim.message,flush=True)
                 # if minim.status != 2:
                 #     print(minim.message)
                 break
@@ -313,7 +313,7 @@ def process_box(B_c, A_eq, b_eq,
             maxim = linprog(-c,A_eq=A_eq,b_eq=b_eq,bounds=B_c, A_ub=A_ub, b_ub=b_ub,options={'presolve':False}) #method='highs-ipm'
             if not maxim.success:
                 is_empty = True
-                print(maxim.message)
+                print('max',maxim.message,flush=True)
                 # if maxim.status != 2:
                 #     print(maxim.message)
                 break
@@ -353,8 +353,16 @@ def process_box(B_c, A_eq, b_eq,
             B2 = B_c.copy()
             B2[longest_dim_ind,0] += half_length
             return (2,B1,B2)
-            # P.append(B1)
-            # P.append(B2)
+        
+            # half_length = lengths_c[longest_dim_ind]/3.
+            # B1 = B_c.copy()
+            # B1[longest_dim_ind,1] -= 2*half_length
+            # B2 = B_c.copy()
+            # B2[longest_dim_ind,1] -= half_length
+            # B2[longest_dim_ind,0] += half_length
+            # B3 = B_c.copy()
+            # B3[longest_dim_ind,0] += 2*half_length
+            # return (3,B1,B2,B3)
     return (0,)
 
 # def append_split(res, P):
@@ -512,8 +520,8 @@ def box_parallel(boxes, A_eq, b_eq,
                     sols.append(r[1])
                     # print('sol')
                 else:
-                    P.append(r[1])
-                    P.append(r[2])
+                    for i in range(1,len(r)):
+                        P.append(r[i])
                     # print('split')
             # time.sleep(1)
         else:
@@ -583,8 +591,8 @@ def box_serial(boxes, A_eq, b_eq,
             sols.append(r[1])
             # print('sol')
         else:
-            P.append(r[1])
-            P.append(r[2])
+            for i in range(1,len(r)):
+                P.append(r[i])
             # print('split')    
 
     print(f'Search took {time.time()-t2:.3f} seconds')
