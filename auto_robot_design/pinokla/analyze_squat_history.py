@@ -14,12 +14,42 @@ from auto_robot_design.description.utils import (
 
 from auto_robot_design.generator.restricted_generator.two_link_generator import TwoLinkGenerator
 from auto_robot_design.optimization.optimizer import PymooOptimizer
-from auto_robot_design.optimization.problems import CalculateCriteriaProblemByWeigths
+from auto_robot_design.optimization.problems import CalculateCriteriaProblemByWeigths, CalculateMultiCriteriaProblem
 from auto_robot_design.optimization.saver import load_checkpoint
 from auto_robot_design.pinokla.criterion_agregator import load_criterion_traj, save_criterion_traj
 from auto_robot_design.pinokla.squat import SquatHopParameters, SimulateSquatHop
 import dill
 import os
+
+
+def pareto_front_with_indices(data):
+    """
+    Extract the Pareto front and their indices from a set of multi-objective data points.
+
+    Parameters:
+    data (np.ndarray): A 2D array where each row is a solution and each column is an objective.
+
+    Returns:
+    tuple: A tuple containing:
+        - np.ndarray: A 2D array containing the Pareto front.
+        - np.ndarray: A 1D array containing the indices of the Pareto front solutions.
+    """
+    # Initialize a boolean array to mark dominated solutions
+    is_dominated = np.zeros(data.shape[0], dtype=bool)
+
+    # Compare each solution with every other solution
+    for i in range(data.shape[0]):
+        for j in range(data.shape[0]):
+            if i != j:
+                if all(data[j] <= data[i]) and any(data[j] < data[i]):
+                    is_dominated[i] = True
+                    break
+
+    # Extract non-dominated solutions and their indices
+    pareto_front = data[~is_dominated]
+    pareto_indices = np.where(~is_dominated)[0]
+
+    return pareto_front, pareto_indices
 
 
 def reward_vel_with_context(sim_hopp: SimulateSquatHop, robo_urdf: str,
@@ -95,15 +125,70 @@ def min_pos_error_control_brute_force(min_fun: Callable[[float], float]):
 
 
 def get_history_and_problem(path):
-    problem = CalculateCriteriaProblemByWeigths.load(
+    problem = CalculateMultiCriteriaProblem.load(
         path)
     checklpoint = load_checkpoint(path)
 
     optimizer = PymooOptimizer(problem, checklpoint)
     optimizer.load_history(path)
-
     return optimizer.history, problem
 
+
+def get_optimizer_and_problem(path) -> tuple[PymooOptimizer, CalculateMultiCriteriaProblem]:
+    problem = CalculateMultiCriteriaProblem.load(
+        path)
+    checklpoint = load_checkpoint(path)
+
+    optimizer = PymooOptimizer(problem, checklpoint)
+    optimizer.load_history(path)
+    res = optimizer.run()
+
+    return optimizer, problem, res
+
+
+def get_pareto_sample_linspace(res, sample_len: int):
+
+    sample_indices = np.linspace(0, len(res.F) - 1, sample_len, dtype=int)
+    sample_x = res.X[sample_indices]
+    sample_F = res.F[sample_indices]
+
+    return sample_x, sample_F
+
+
+def get_pareto_sample_histogram(res, sample_len: int):
+    """Histogram uses 0 from reword vector
+
+    Args:
+        res (_type_): _description_
+        sample_len (int): _description_
+
+    Returns:
+        _type_: _description_
+    """
+    rewards = res.F
+    _, bins_edg = np.histogram(rewards[:,0], sample_len)
+    bin_indices = np.digitize(rewards[:,0], bins_edg, right=True)
+    bins_set_id = [np.where(bin_indices == i)[0]
+                   for i in range(1, len(bins_edg))]
+    best_in_bins = [i[0] for i in bins_set_id]
+    sample_F = rewards[best_in_bins]
+    sample_X = res.X[best_in_bins]
+    return sample_X, sample_F
+
+def get_urdf_from_problem(sample_X: np.ndarray, problem: CalculateMultiCriteriaProblem):
+    problem.mutate_JP_by_xopt(problem.initial_xopt)
+    graphs = []
+    urdf_j_des_l_des = []
+    for x_i in sample_X:
+        problem.mutate_JP_by_xopt(x_i)
+        mutated_graph = deepcopy(problem.graph)
+
+        robo_urdf, joint_description, loop_description = jps_graph2urdf_by_bulder(
+            mutated_graph, problem.builder)
+        graphs.append(mutated_graph)
+        urdf_j_des_l_des.append(
+            (robo_urdf, joint_description, loop_description))
+    return graphs, urdf_j_des_l_des
 
 def get_sorted_history(history: dict):
     rewards = np.array(history["F"]).flatten()
@@ -186,20 +271,6 @@ def get_sample_torque_traj_from_sample(path):
                             loop_description_i, joint_description_i, saved_dict)
 
 
-
-
-actuator = MyActuator_RMD_MT_RH_17_100_N()
-thickness = 0.04
-builder = ParametrizedBuilder(
-    DetailedURDFCreatorFixedEE,
-    size_ground=np.array([thickness * 5, thickness * 10, thickness * 2]),
-    actuator=actuator,
-    thickness=thickness)
-
-paths = ["results\\th_1909_num4_2024-05-08_19-26-31", "results\\th_1909_num6_2024-05-08_19-35-39", "results\\th_1909_num8_2024-05-08_19-46-12"]
-for path_i in paths:
-    print(path_i)
-    get_sample_torque_traj_from_sample(path_i, builder)
 # load_criterion_traj()
 # plt.figure()
 

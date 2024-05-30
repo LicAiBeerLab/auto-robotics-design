@@ -34,6 +34,25 @@ from auto_robot_design.description.utils import (
 
 from auto_robot_design.generator.restricted_generator.two_link_generator import TwoLinkGenerator
 from auto_robot_design.pinokla.squat import SquatHopParameters, SimulateSquatHop
-from auto_robot_design.pinokla.analyze_squat_history import get_sample_torque_traj_from_sample
+from auto_robot_design.optimization.analyze import get_optimizer_and_problem, get_pareto_sample_linspace, get_pareto_sample_histogram
 
-get_sample_torque_traj_from_sample("results\\multi_opti_preset2\\topology_0_2024-05-29_18-48-58")
+optimizer, problem, res = get_optimizer_and_problem(
+    "results\\multi_opti_preset2\\topology_0_2024-05-29_18-48-58")
+sample_x, sample_F = get_pareto_sample_linspace(res, 10)
+sample_x2, sample_F2 = get_pareto_sample_histogram(res, 10)
+
+
+
+plt.figure()
+plt.scatter(sample_F[:, 0], sample_F[:, 1])
+plt.title("from res1")
+
+
+plt.figure()
+plt.scatter(res.F[:, 0], res.F[:, 1])
+plt.title("all")
+
+plt.figure()
+plt.scatter(sample_F2[:, 0], sample_F2[:, 1])
+plt.title("from res2")
+plt.show()

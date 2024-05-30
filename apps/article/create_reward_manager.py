@@ -70,3 +70,52 @@ def get_manager_preset_2_stair_climber(graph: Graph, optimizing_joints: dict, wo
     reward_manager.close_trajectories()
 
     return reward_manager, crag, soft_constrain
+
+
+
+def get_manager_preset_2_stair_single(graph: Graph, optimizing_joints: dict, workspace_traj: np.ndarray, step_trajs: list[np.ndarray], squat_trajs: list[np.ndarray]):
+    dict_trajectory_criteria = {
+        "MASS": NeutralPoseMass()
+    }
+    # criteria calculated for each point on the trajectory
+    dict_point_criteria = {
+        "Effective_Inertia": EffectiveInertiaCompute(),
+        "Actuated_Mass": ActuatedMass(),
+        "Manip_Jacobian": ManipJacobian(MovmentSurface.XZ)
+    }
+
+    crag = CriteriaAggregator(dict_point_criteria, dict_trajectory_criteria)
+    error_calculator = PositioningErrorCalculator(
+        error_key='error', jacobian_key="Manip_Jacobian")
+    soft_constrain = PositioningConstrain(
+        error_calculator=error_calculator, points=[workspace_traj])
+    reward_manager = RewardManager(crag=crag)
+    reward_manager.add_trajectory_aggregator
+    acceleration_capability = MinAccelerationCapability(manipulability_key='Manip_Jacobian',
+                                                        trajectory_key="traj_6d", error_key="error", actuated_mass_key="Actuated_Mass")
+
+    heavy_lifting = HeavyLiftingReward(
+        manipulability_key='Manip_Jacobian', trajectory_key="traj_6d", error_key="error", mass_key="MASS")
+    # reward_manager.agg_list =
+    reward_manager.add_trajectory(step_trajs[0], 0)
+    reward_manager.add_trajectory(step_trajs[1], 1)
+    reward_manager.add_trajectory(step_trajs[2], 2)
+
+    reward_manager.add_trajectory(squat_trajs[0], 10)
+    reward_manager.add_trajectory(squat_trajs[1], 11)
+    reward_manager.add_trajectory(squat_trajs[2], 12)
+
+    reward_manager.add_reward(acceleration_capability, 0, weight=1)
+    reward_manager.add_reward(acceleration_capability, 1, weight=1)
+    reward_manager.add_reward(acceleration_capability, 2, weight=1)
+
+    reward_manager.add_reward(heavy_lifting, 10, weight=1)
+    reward_manager.add_reward(heavy_lifting, 11, weight=1)
+    reward_manager.add_reward(heavy_lifting, 12, weight=1)
+
+    reward_manager.add_trajectory_aggregator([0, 1, 2], 'mean')
+    reward_manager.add_trajectory_aggregator([10, 11, 12], 'mean')
+
+    reward_manager.close_trajectories()
+
+    return reward_manager, crag, soft_constrain

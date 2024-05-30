@@ -68,6 +68,8 @@ def run_one_optic_topology(topology_num):
 
 
 if __name__ == '__main__':
-    run_one_optic_topology(8)
-        # except:
-        #     print(f"Fall optimization topology {i}")
+    for i in range(1, 8):
+        try:
+            run_one_optic_topology(i)
+        except:
+            print(f"Fall optimization topology {i}")
