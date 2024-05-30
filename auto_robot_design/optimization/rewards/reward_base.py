@@ -60,7 +60,7 @@ class PositioningReward():
 class PositioningErrorCalculatorOld():
     def __init__(self, error_key):
         self.error_key = error_key
-        self.point_threshold = 1e-6
+        self.point_threshold = 1e-4
 
     def calculate(self, trajectory_results: DataDict):
         errors = trajectory_results[self.error_key]

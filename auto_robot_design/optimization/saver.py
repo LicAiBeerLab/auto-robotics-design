@@ -13,8 +13,6 @@ def load_checkpoint(path: str):
     with open(os.path.join(path, "checkpoint.pkl"), "rb") as f:
         algorithm = dill.load(f)
     return algorithm
-
-
 class ProblemSaver:
     def __init__(
         self, problem: Problem, folder_name: str, use_date: bool = True
@@ -31,11 +29,17 @@ class ProblemSaver:
         folders = ["results", self.folder_name]
         path = "./"
         for folder in folders:
-            path = os.path.join(path, folder)
-            if not os.path.exists(path):
-                os.mkdir(path)
+            folder = folder.split('\\')
+            for sub_folder in folder:
+                path = os.path.join(path, sub_folder)
+                if not os.path.exists(path):
+                    os.mkdir(path)
         path = os.path.abspath(path)
 
+        #     path = Path.joinpath(Path(path),Path(folder))
+        #     if not Path.exists(path):
+        #         Path.mkdir(path)
+        # path = Path.absolute(path)
         return path
 
     def save_nonmutable(self):
