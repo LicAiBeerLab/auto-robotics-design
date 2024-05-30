@@ -36,10 +36,6 @@ class ProblemSaver:
                     os.mkdir(path)
         path = os.path.abspath(path)
 
-        #     path = Path.joinpath(Path(path),Path(folder))
-        #     if not Path.exists(path):
-        #         Path.mkdir(path)
-        # path = Path.absolute(path)
         return path
 
     def save_nonmutable(self):
