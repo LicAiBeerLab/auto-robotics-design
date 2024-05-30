@@ -23,9 +23,9 @@ class TwoLinkGenerator():
         self.current_main_branch = []
         self.graph = nx.Graph()
         self.ground_x_movement = (-0.1, 0.1)
-        self.ground_z_movement = (-0.01,0)
-        self.free_x_movement = (-0.1, 0.1)
-        self.free_z_movement = (-0.1, 0.1)
+        self.ground_z_movement = (-0.01,0.1)
+        self.free_x_movement = (-0.15, 0.15)
+        self.free_z_movement = (-0.15, 0.15)
         self.bound_x_movement = (-0.1, 0.1)
         self.bound_z_movement = (-0.1, 0.1)
 
@@ -35,7 +35,8 @@ class TwoLinkGenerator():
         self.current_main_branch = []
         self.graph = nx.Graph()
 
-    def build_standard_two_linker(self, knee_pos: float = -0.148, nominal_length=0.27577, right_shift=-0.148):
+    #def build_standard_two_linker(self, knee_pos: float = -0.148, nominal_length=0.27577, right_shift=-0.148): old version
+    def build_standard_two_linker(self, knee_pos: float = -0.15, nominal_length=0.3, right_shift=0):
         ground_joint = JointPoint(
             r=np.zeros(3),
             w=np.array([0, 1, 0]),
@@ -52,7 +53,7 @@ class TwoLinkGenerator():
         knee_joint = JointPoint(
             r=knee_joint_pos, w=np.array([0, 1, 0]), name="Main_knee")
         self.constrain_dict[knee_joint.name] = {
-            'optim': True, 'x_range': (-0.05, 0.05), 'z_range': (-0.02, 0.02)}
+            'optim': True, 'x_range': (-0.1, 0.1), 'z_range': (-0.1, 0.1)}
         self.current_main_branch.append(knee_joint)
         ee = JointPoint(
             r=np.array([0, 0, -nominal_length]),
