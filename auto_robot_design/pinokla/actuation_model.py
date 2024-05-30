@@ -14,13 +14,15 @@ class ActuationModel():
     """
     def __init__(self, model, names):
         self.motname = names
+        self.motname2id_q = {}
+        self.motname2id_v = {}
         self.idMotJoints = []
         self.getMotId_q(model)
         self.getFreeId_q(model)
         self.getMotId_v(model)
         self.getFreeId_v(model)
 
-        
+
     def __str__(self):
         return(print("Id q motor: " + str(self.idqmot) + "\r" "Id v motor: " + str(self.idvmot) ))
     
@@ -43,6 +45,7 @@ class ActuationModel():
                 nq=model.joints[i].nq
                 for j in range(nq):
                     Lidq.append(idq+j)
+                self.motname2id_q[name] = np.array([idq+j for j in range(nq)])
         self.idqmot=Lidq
 
     def getMotId_v(self,model):
@@ -62,6 +65,7 @@ class ActuationModel():
                 nv=model.joints[i].nv
                 for j in range(nv):
                     Lidv.append(idv+j)
+                self.motname2id_v[name] = np.array([idv+j for j in range(nv)])
         self.idvmot=Lidv
 
     def getFreeId_q(self,model):

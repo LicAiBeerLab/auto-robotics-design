@@ -1,11 +1,11 @@
 <robot name="onshape">
-<link name="part_1">
+<link name="centre_hanche">
 <visual>
 <origin xyz="-3.3890050933045874864e-18 -0.050000000000000002776 -6.0418025497071217476e-18" rpy="-6.1232339957367660359e-17 -0 3.141592653589793116" />
 <geometry>
 <mesh filename="package:///part_1.stl"/>
 </geometry>
-<material name="part_1_material">
+<material name="centre_hanche_material">
 <color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0"/>
 </material>
 </visual>
@@ -14,7 +14,7 @@
 <geometry>
 <mesh filename="package:///part_1.stl"/>
 </geometry>
-<material name="part_1_material">
+<material name="centre_hanche_material">
 <color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0"/>
 </material>
 </collision>
@@ -103,17 +103,17 @@
 </inertial>
 </link>
 
-<link name="effecteur">
+<link name="bout_pied">
 <inertial>
 <origin xyz="0 0 0" rpy="0 0 0" />
 <mass value="1e-9" />
 <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0" />
 </inertial>
 </link>
-<joint name="effecteur_frame" type="fixed">
+<joint name="bout_pied_frame" type="fixed">
 <origin xyz="0.025000000000000022204 -0.18000000000000015987 -0.067499999999999976685" rpy="-3.141592653589793116 -1.5132630134575502908e-16 -1.570796326794896558" />
 <parent link="part_4" />
-<child link="effecteur" />
+<child link="bout_pied" />
 <axis xyz="0 0 0"/>
 </joint>
 
@@ -186,7 +186,7 @@
 
 <joint name="mot1" type="revolute">
 <origin xyz="-0.15000000000000004996 -0.10000000000000000555 6.9388939039072283776e-17" rpy="-1.570796326794896558 0.45081921610076958196 2.6893697541334155267e-17" />
-<parent link="part_1" />
+<parent link="centre_hanche" />
 <child link="part_2" />
 <axis xyz="0 0 1"/>
 <limit effort="1" velocity="20" />
@@ -270,7 +270,7 @@
 
 <joint name="libre2" type="revolute">
 <origin xyz="0.1500000000000000222 -0.10000000000000000555 -2.4112656316077618612e-16" rpy="1.570796326794896558 0.058234987822223291398 3.141592653589793116" />
-<parent link="part_1" />
+<parent link="centre_hanche" />
 <child link="part_2_2" />
 <axis xyz="0 0 1"/>
 <limit effort="1" velocity="20" />

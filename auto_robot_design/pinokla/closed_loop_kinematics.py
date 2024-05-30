@@ -25,7 +25,7 @@ def closedLoopInverseKinematicsProximal(
     q_start = None,
     onlytranslation=False,
     
-    max_it=1000,
+    max_it=300,
     eps=5e-11,
     rho=1e-10,
     mu=1e-3,
@@ -79,7 +79,7 @@ def closedLoopInverseKinematicsProximal(
 
     data = model.createData()
     constraint_data = [cm.createData() for cm in constraint_model]
- 
+
     # proximal solver (black magic)
     if q_start is None:
         q = pin.neutral(model)
@@ -279,7 +279,7 @@ def ForwardK(
     Lid = actuation_model.idMotJoints
     Lid_q = actuation_model.idqmot
 
-    (reduced_model, reduced_constraint_models) = freezeJointsWithoutVis(
+    (reduced_model, reduced_constraint_models, reduced_actuation_model) = freezeJointsWithoutVis(
         model, constraint_model, None, Lid, q_prec
     )
 

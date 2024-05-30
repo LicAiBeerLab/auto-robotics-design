@@ -9,6 +9,7 @@ import pinocchio as pin
 import numpy as np
 from numpy.linalg import norm
 # from loader_tools import *
+# from apps.results_humanoid_2023.criterion_test import Li
 from auto_robot_design.pinokla.closed_loop_kinematics import *
 from pinocchio.robot_wrapper import RobotWrapper
 import os
@@ -133,6 +134,100 @@ def dq_dqmot(model,actuation_model,LJ):
     return(dq)
 
 
+def constraint_jacobian_active_to_passive(model,data,constraint_model,constraint_data,actuation_model,q0):
+    #update of the jacobian an constraint model
+    # pin.computeJointJacobians(model,data,q0)
+    LJ=[np.array(())]*len(constraint_model)
+    for (cm,cd,i) in zip(constraint_model,constraint_data,range(len(LJ))):
+        LJ[i]=pin.getConstraintJacobian(model,data,cm,cd)
+        
+
+    #init of constant
+    Lidmot=actuation_model.idvmot
+    Lidfree=actuation_model.idvfree
+    nv=model.nv
+    nv_mot=len(Lidmot)
+    nv_free=len(Lidfree)
+    Lnc=[J.shape[0] for J in LJ]
+    nc=int(np.sum(Lnc))
+    
+    
+    Jmot=np.zeros((nc,nv_mot))
+    Jfree=np.zeros((nc,nv_free))
+    
+
+
+    #separation between Jmot and Jfree
+    
+    nprec=0
+    for J,n in zip(LJ,Lnc):
+        Smot=np.zeros((nv,nv_mot))
+        Smot[Lidmot,range(nv_mot)]=1
+        Sfree=np.zeros((nv,nv_free))
+        Sfree[Lidfree,range(nv_free)]=1
+
+
+        Jmot[nprec:nprec+n,:]=J@Smot
+        Jfree[nprec:nprec+n,:]=J@Sfree
+
+        nprec=nprec+n
+
+    E_tau = np.zeros((nv, nv))
+    E_tau[range(nv_mot), Lidmot] = 1
+    E_tau[range(nv_mot,nv), Lidfree] = 1
+    # computation of dq/dqmot
+
+    pinvJfree=np.linalg.pinv(Jfree)
+    dq_dmot_no=np.concatenate((np.identity(nv_mot),-pinvJfree@Jmot))
+    
+    
+    #re order dq/dqmot
+    dq_dmot=dq_dmot_no.copy()
+    dq_dmot[Lidmot]=dq_dmot_no[:nv_mot,:]
+    dq_dmot[Lidfree]=dq_dmot_no[nv_mot:,:]
+    
+    return dq_dmot_no, E_tau
+
+
+def jacobian_constraint(model,data,constraint_model,constraint_data,actuation_model,q0):
+    #update of the jacobian an constraint model
+    # pin.computeJointJacobians(model,data,q0)
+    LJ=[np.array(())]*len(constraint_model)
+    for (cm,cd,i) in zip(constraint_model,constraint_data,range(len(LJ))):
+        LJ[i]=pin.getConstraintJacobian(model,data,cm,cd)
+        
+
+    #init of constant
+    Lidmot=actuation_model.idvmot
+    Lidfree=actuation_model.idvfree
+    nv=model.nv
+    nv_mot=len(Lidmot)
+    nv_free=len(Lidfree)
+    Lnc=[J.shape[0] for J in LJ]
+    nc=int(np.sum(Lnc))
+    
+    
+    Jmot=np.zeros((nc,nv_mot))
+    Jfree=np.zeros((nc,nv_free))
+    
+
+
+    #separation between Jmot and Jfree
+    
+    nprec=0
+    for J,n in zip(LJ,Lnc):
+        Smot=np.zeros((nv,nv_mot))
+        Smot[Lidmot,range(nv_mot)]=1
+        Sfree=np.zeros((nv,nv_free))
+        Sfree[Lidfree,range(nv_free)]=1
+
+
+        Jmot[nprec:nprec+n,:]=J@Smot
+        Jfree[nprec:nprec+n,:]=J@Sfree
+
+        nprec=nprec+n
+    
+    return Jmot, Jfree
 
 def inverseConstraintKinematicsSpeed(model,data,constraint_model,constraint_data,actuation_model,q0,ideff,veff):
     """
@@ -157,7 +252,7 @@ def inverseConstraintKinematicsSpeed(model,data,constraint_model,constraint_data
             - Jf_closed (np.array): Closed loop Jacobian on frame `ideff`.
     """
     #update of the jacobian an constraint model
-    pin.computeJointJacobians(model,data,q0)
+    # pin.computeJointJacobians(model,data,q0)
     LJ=[np.array(())]*len(constraint_model)
     for (cm,cd,i) in zip(constraint_model,constraint_data,range(len(LJ))):
         LJ[i]=pin.getConstraintJacobian(model,data,cm,cd)
@@ -170,7 +265,7 @@ def inverseConstraintKinematicsSpeed(model,data,constraint_model,constraint_data
     nv_mot=len(Lidmot)
     nv_free=len(Lidfree)
     Lnc=[J.shape[0] for J in LJ]
-    nc=np.sum(Lnc)
+    nc=int(np.sum(Lnc))
     
     
     Jmot=np.zeros((nc,nv_mot))
@@ -205,7 +300,11 @@ def inverseConstraintKinematicsSpeed(model,data,constraint_model,constraint_data
     dq_dmot[Lidfree]=dq_dmot_no[nv_mot:,:]
 
     #computation of the closed-loop jacobian
-    Jf_closed=pin.computeFrameJacobian(model,data,q0,ideff,pin.LOCAL)@dq_dmot
+    # Jf_closed = pin.computeFrameJacobian(model,data,q0,ideff,pin.LOCAL)@dq_dmot
+    Jf_closed = pin.computeFrameJacobian(model,data,q0,ideff,pin.LOCAL_WORLD_ALIGNED)@dq_dmot
+    
+    # pin.forwardKinematics(model,data, q0)
+    # data.oMi[model.getFrameId(ideff)]
     
     #computation of the kinematics
     vqmot=np.linalg.pinv(Jf_closed)@veff 
