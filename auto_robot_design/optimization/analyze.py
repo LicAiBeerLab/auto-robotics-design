@@ -31,7 +31,7 @@ def get_pareto_sample_linspace(res, sample_len: int):
 
 
 def get_pareto_sample_histogram(res, sample_len: int):
-    """Histogram uses 0 from reword vector
+    """Histogram uses 0 from reward vector
 
     Args:
         res (_type_): _description_
