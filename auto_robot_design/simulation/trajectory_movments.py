@@ -418,35 +418,35 @@ class TrajectoryMovements:
         ## problem = ControlOptProblem(self, robot, xl=bounds[:,0], xu=bounds[:,1])#, elementwise_runner=runner)
         ## algorithm = PSO(25, max_velocity_rate=500)
 
-        # problem = ControlOptProblem(self, robot)
-        # results = shgo(
-        #     problem.evaluate,
-        #     bounds,
-        #     n=10,
-        #     options={"disp": True, "f_min": 1, "f_tol": 0.5},
-        # )
+        problem = ControlOptProblem(self, robot)
+        results = shgo(
+            problem.evaluate,
+            bounds,
+            n=10,
+            options={"disp": True, "f_min": 1, "f_tol": 0.5},
+        )
 
         ## results = minimize(problem, algorithm, termination=("n_gen",5), seed=1, verbose=True)
 
         Kp = np.zeros((6, 6))
         Kd = np.zeros((6, 6))
         
-        Kp[0, 0] = np.random.uniform(300, 1000)
-        Kp[2, 2] = np.random.uniform(300, 1000)
-        Kd[0, 0] = np.random.uniform(10, 200)
-        Kd[2, 2] = np.random.uniform(10,200)
+        # Kp[0, 0] = np.random.uniform(300, 1000)
+        # Kp[2, 2] = np.random.uniform(300, 1000)
+        # Kd[0, 0] = np.random.uniform(10, 200)
+        # Kd[2, 2] = np.random.uniform(10,200)
         
 
-        # Kp[0, 0] = results.x[0]
-        # Kp[2, 2] = results.x[1]
-        # Kd[0, 0] = results.x[2]
-        # Kd[2, 2] = results.x[3]
+        Kp[0, 0] = results.x[0]
+        Kp[2, 2] = results.x[1]
+        Kd[0, 0] = results.x[2]
+        Kd[2, 2] = results.x[3]
         
         ## Kp[0,0] = results.X[0]
         ## Kp[2,2] = results.X[1]
         ## Kd[0,0] = results.X[2]
         ## Kd[2,2] = results.X[3]
-        return Kp, Kd, np.random.randint(1, 100) #results.fun
+        return Kp, Kd, results.fun # np.random.randint(1, 100) #
 
 
 if __name__ == "__main__":
