@@ -223,6 +223,7 @@ def process_box(B_c, A_eq, b_eq,
                 threshold_s=[0.1], threshold_v=0.95):
     
     is_sigma_simple = len(threshold_s) == 1
+    B_c = B_c.copy()
     n = A_eq.shape[1]
     # if len(P) == 0:
     #     return
@@ -340,6 +341,186 @@ def process_box(B_c, A_eq, b_eq,
         # print(V_c,V_p)
         is_shrinkable = V_c/V_p <= threshold_v
         # print(is_shrinkable)
+
+    if not is_empty:
+        if is_small_enough:
+            return (1,B_c)
+            # sols.append(B_c)
+        else:
+            #split
+            half_length = lengths_c[longest_dim_ind]/2.
+            B1 = B_c.copy()
+            B1[longest_dim_ind,1] -= half_length
+            B2 = B_c.copy()
+            B2[longest_dim_ind,0] += half_length
+            return (2,B1,B2)
+        
+            # half_length = lengths_c[longest_dim_ind]/3.
+            # B1 = B_c.copy()
+            # B1[longest_dim_ind,1] -= 2*half_length
+            # B2 = B_c.copy()
+            # B2[longest_dim_ind,1] -= half_length
+            # B2[longest_dim_ind,0] += half_length
+            # B3 = B_c.copy()
+            # B3[longest_dim_ind,0] += 2*half_length
+            # return (3,B1,B2,B3)
+    return (0,)
+
+def process_box_lazy_split(B_c, A_eq, b_eq, 
+                sqr_pairs=[], cross_triplets=[], 
+                threshold_s=0.1, threshold_v=0.999):
+    
+    if hasattr(type(threshold_s), '__len__'):
+        if isinstance(threshold_s,dict):
+            # sigma_inds = list(threshold_s.keys())
+            is_sigma_simple = False
+        elif len(threshold_s) == 1:
+            threshold_s = threshold_s[0]
+            is_sigma_simple = True
+        else:
+            is_sigma_simple = False
+        # else:
+        #     raise NotImplementedError('this method accepts dicts, numbers and len 1 sequences')
+        #np.distutils.misc_util.is_sequence(threshold_s)
+    else:
+        is_sigma_simple = True
+    
+    B_c = B_c.copy()
+    n = A_eq.shape[1]
+    # if len(P) == 0:
+    #     return
+    # try:
+    #     B_c = P.pop() #0
+    # except(IndexError):
+    #     return
+    
+    # print('B',B_c)
+    # print(P)
+
+    # print(B)
+    # A_ub = np.zeros((3*len(sqr_pairs), n))
+    # b_ub = np.zeros(3*len(sqr_pairs))
+    A_ub = np.full((3*len(sqr_pairs)+4*len(cross_triplets), n),None)
+    b_ub = np.full(3*len(sqr_pairs)+4*len(cross_triplets),None)
+
+    # Blist = [(B[i,0],B[i,1]) for i in range(n)]
+    # print(Blist)
+    # c = np.zeros(n)
+    # c[0] = 1
+    # minim = linprog(c,A_eq=A_eq,b_eq=b_eq,bounds=B)
+    # print(minim.fun)
+    # print(f'suc{minim.success}, stat{minim.status}, nit{minim.nit}\nmsg: {minim.message}')
+
+    # minim = linprog(-c,A_eq=A_eq,b_eq=b_eq,bounds=B)
+    # print(-minim.fun)
+    # print(f'suc{minim.success}, stat{minim.status}, nit{minim.nit}\nmsg: {minim.message}')
+
+
+    lengths_c = B_c[:,1] - B_c[:,0]
+    # valid_inds = (lengths_c > 0).nonzero()
+    # print('valind',valid_inds)
+    # print('valleng',lengths_c[valid_inds])
+    
+    is_empty = False
+    is_shrinkable = True
+    if is_sigma_simple:
+        is_small_enough = np.max(lengths_c) <= threshold_s
+    else:
+        if isinstance(threshold_s,dict):
+            is_small_enough = 1
+            for k,v in threshold_s.items():
+                is_small_enough *= int(lengths_c[k] <= v)
+        else:
+            is_small_enough = (lengths_c <= threshold_s).all()
+    
+    while not is_empty and is_shrinkable and not is_small_enough:  #uncomment for better timings
+        lengths_p = lengths_c
+        # valid_inds_p = np.transpose((lengths_p > 0).nonzero())
+        valid_inds_p = (lengths_p > 0).nonzero()[0]
+
+        #shrink
+        for i in valid_inds_p: #range(n):
+            c = np.zeros(n)
+            c[i] = 1
+
+            #inequalities for current bounds
+            shift = 0
+            for j, (m_ind, p_ind) in enumerate(sqr_pairs):
+                A, b = calc_parab_ineq(B_c[m_ind,:], m_ind, p_ind, n)
+                A_ub[3*j:3*j+3,:] = A
+                b_ub[3*j:3*j+3] = b
+                shift += 3
+            for j, (m_ind, n_ind, p_ind) in enumerate(cross_triplets):
+                A, b = calc_hyberb_ineq(B_c[m_ind,:], B_c[n_ind,:], m_ind, n_ind, p_ind, n)
+                A_ub[4*j+shift:4*j+4+shift,:] = A
+                b_ub[4*j+shift:4*j+4+shift] = b
+
+            minim = linprog(c,A_eq=A_eq,b_eq=b_eq,bounds=B_c, A_ub=A_ub, b_ub=b_ub,options={'presolve':False}) #method='highs-ipm' #slower but more boxes with presolve 
+            if not minim.success:
+                is_empty = True
+                print('min',minim.message,flush=True)
+                # if minim.status != 2:
+                #     print(minim.message)
+                break
+
+            B_c[i,0] = minim.fun
+
+            #comment for better timings
+            #inequalities for updated bounds
+            shift = 0
+            for j, (m_ind, p_ind) in enumerate(sqr_pairs):
+                A, b = calc_parab_ineq(B_c[m_ind,:], m_ind, p_ind, n)
+                A_ub[3*j:3*j+3,:] = A
+                b_ub[3*j:3*j+3] = b
+                shift += 3
+            for j, (m_ind, n_ind, p_ind) in enumerate(cross_triplets):
+                A, b = calc_hyberb_ineq(B_c[m_ind,:], B_c[n_ind,:], m_ind, n_ind, p_ind, n)
+                A_ub[4*j+shift:4*j+4+shift,:] = A
+                b_ub[4*j+shift:4*j+4+shift] = b
+
+            maxim = linprog(-c,A_eq=A_eq,b_eq=b_eq,bounds=B_c, A_ub=A_ub, b_ub=b_ub,options={'presolve':False}) #method='highs-ipm'
+            if not maxim.success:
+                is_empty = True
+                print('max',maxim.message,flush=True)
+                # if maxim.status != 2:
+                #     print(maxim.message)
+                break
+
+            # B_c[i,0] = minim.fun
+            B_c[i,1] = -maxim.fun
+
+            # if is_small_enough: #worse than without checking, but better time
+            #     break
+
+        lengths_c = B_c[:,1] - B_c[:,0] #TODO if move below is_shrinkable, will be 2 times faster but why???
+        # probably if move below, it compares length p to length p, so it is always 1 except it deleted some dims 
+
+        valid_inds = (lengths_c > 0).nonzero()
+        print('valid indexes',valid_inds[0])
+        # print('valleng',lengths_c[valid_inds])
+        V_p = np.prod(lengths_p[valid_inds])
+        V_c = np.prod(lengths_c[valid_inds])
+        # print(V_c,V_p)
+        is_shrinkable = V_c/V_p <= threshold_v
+        # print(is_shrinkable)
+
+        
+        longest_dim_ind = np.argmax(lengths_c)
+        if is_sigma_simple:
+            is_small_enough = lengths_c[longest_dim_ind] <= threshold_s
+        else:
+            if isinstance(threshold_s,dict):
+                # buf_lengths = np.zeros(len(lengths_c))
+                # for k in threshold_s.keys():
+                #     buf_lengths[k] = lengths_c[k]
+                # longest_dim_ind = np.argmax(buf_lengths)
+                is_small_enough = 1
+                for k,v in threshold_s.items():
+                    is_small_enough *= int(lengths_c[k] <= v)
+            else:
+                is_small_enough = (lengths_c <= threshold_s).all()
+
+        
 
     if not is_empty:
         if is_small_enough:
@@ -497,7 +678,7 @@ def box_parallel(boxes, A_eq, b_eq,
     # print(sharedP)
     print('-------------------')
     # mockup_ = partial(process_box, P=sharedP, sols=sharedsols, threshold_s=[0.5])
-    process_box_ = partial(process_box, A_eq=A_eq, b_eq=b_eq, 
+    process_box_ = partial(process_box_lazy_split, A_eq=A_eq, b_eq=b_eq, 
                            sqr_pairs=sqr_pairs, cross_triplets=cross_triplets, 
                            threshold_s=threshold_s, threshold_v=threshold_v)
     # add_solution_ = partial(add_solution, sols=sharedsols)
@@ -573,7 +754,7 @@ def box_serial(boxes, A_eq, b_eq,
     sols = []
     print(f'Starting single-threaded box approximation.')
     print('-------------------') 
-    process_box_ = partial(process_box, A_eq=A_eq, b_eq=b_eq, 
+    process_box_ = partial(process_box_lazy_split, A_eq=A_eq, b_eq=b_eq, 
                            sqr_pairs=sqr_pairs, cross_triplets=cross_triplets, 
                            threshold_s=threshold_s, threshold_v=threshold_v)
     t2 = time.time()
