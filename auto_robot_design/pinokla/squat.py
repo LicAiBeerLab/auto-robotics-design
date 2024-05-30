@@ -237,6 +237,7 @@ class SimulateSquatHop:
                  robo_urdf: str,
                  joint_description: dict,
                  loop_description: dict,
+                 control_coefficient=0.8,
                  actuator_context=None,
                  is_vis=False):
         """Simulate squat and hop process. Uses method
@@ -296,7 +297,7 @@ class SimulateSquatHop:
                                        self.dynamic_settings)
             current_time = i * self.time_step
             des_pos, des_vel, des_acc = traj_fun(current_time)
-            tau_q = self.get_torques(des_acc, q, grav_force, total_mass)
+            tau_q = self.get_torques(des_acc, q, grav_force, total_mass, control_coefficient=control_coefficient)
             vq += a * self.time_step
             q = pin.integrate(self.hop_robo.model, q, vq * self.time_step)
             # First coordinate is root_joint            
@@ -376,7 +377,7 @@ class SimulateSquatHop:
         return torques
 
     def get_torques(self, desired_acceleration: float, current_q: np.ndarray,
-                    grav_force: float, total_mass: float) -> np.ndarray:
+                    grav_force: float, total_mass: float, control_coefficient) -> np.ndarray:
         """Calculate actuator torques. With size self.hop_robo.model.nv.
 
         Args:
@@ -400,7 +401,7 @@ class SimulateSquatHop:
             ground_as_ee_id,
             self.hop_robo.data.oMf[ground_as_ee_id].action @ np.zeros(6),
         )
-        COMPENSATE_COEFFICIENT = 0.81
+        COMPENSATE_COEFFICIENT = control_coefficient
         desired_end_effector_force = COMPENSATE_COEFFICIENT * \
             grav_force + total_mass * desired_acceleration
         desired_end_effector_wrench = self.scalar_force_to_wrench(

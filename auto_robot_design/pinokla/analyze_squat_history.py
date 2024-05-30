@@ -166,14 +166,15 @@ def get_pareto_sample_histogram(res, sample_len: int):
         _type_: _description_
     """
     rewards = res.F
-    _, bins_edg = np.histogram(rewards[:,0], sample_len)
-    bin_indices = np.digitize(rewards[:,0], bins_edg, right=True)
+    _, bins_edg = np.histogram(rewards[:, 0], sample_len)
+    bin_indices = np.digitize(rewards[:, 0], bins_edg, right=True)
     bins_set_id = [np.where(bin_indices == i)[0]
                    for i in range(1, len(bins_edg))]
     best_in_bins = [i[0] for i in bins_set_id]
     sample_F = rewards[best_in_bins]
     sample_X = res.X[best_in_bins]
     return sample_X, sample_F
+
 
 def get_urdf_from_problem(sample_X: np.ndarray, problem: CalculateMultiCriteriaProblem):
     problem.mutate_JP_by_xopt(problem.initial_xopt)
@@ -189,6 +190,7 @@ def get_urdf_from_problem(sample_X: np.ndarray, problem: CalculateMultiCriteriaP
         urdf_j_des_l_des.append(
             (robo_urdf, joint_description, loop_description))
     return graphs, urdf_j_des_l_des
+
 
 def get_sorted_history(history: dict):
     rewards = np.array(history["F"]).flatten()
@@ -270,6 +272,51 @@ def get_sample_torque_traj_from_sample(path):
         save_criterion_traj(robo_urdf_i, PATH_CURRENT_MECH,
                             loop_description_i, joint_description_i, saved_dict)
 
+
+def get_sample_torque_traj_from_sample_multi(path, is_vis = False):
+
+    path_to_save_result = Path(path) / "squat_compare"
+    optimizer, problem, res = get_optimizer_and_problem(path)
+ 
+    sample_X, sample_F = get_pareto_sample_histogram(res, 10)
+    graphs, urdf_j_des_l_des = get_urdf_from_problem(sample_X, problem)
+    sqh_p = SquatHopParameters(hop_flight_hight=0.10,
+                               squatting_up_hight=0.0,
+                               squatting_down_hight=-0.04,
+                               total_time=0.2)
+    hoppa = SimulateSquatHop(sqh_p)
+
+
+    for i, (robo_urdf_i, joint_description_i, loop_description_i) in enumerate(urdf_j_des_l_des):
+        opti = partial(reward_vel_with_context, hoppa, robo_urdf_i, joint_description_i,
+                       loop_description_i)
+        res = min_vel_error_control_brute_force(opti)
+        q_act, vq_act, acc_act, tau = hoppa.simulate(robo_urdf_i,
+                                                     joint_description_i,
+                                                     loop_description_i,
+                                                     control_coefficient=res[0],
+                                                     is_vis=is_vis)
+        max1t = max(np.abs(tau[:, 0]))
+        max2t = max(np.abs(tau[:, 1]))
+        trj_f = hoppa.create_traj_equation()
+        t = np.linspace(0, sqh_p.total_time, len(q_act))
+        list__234 = np.array(list(map(trj_f, t)))
+
+        saved_dict = {}
+        saved_dict["Graph"] = graphs[i]
+        saved_dict["ControlConst"] = res[0]
+        saved_dict["ControlError"] = res[1]
+        saved_dict["Reward"] = sample_F[i]
+        saved_dict["X"] = sample_X[i]
+        saved_dict["pos_act"] = q_act[:, 0]
+        saved_dict["v_act"] = vq_act[:, 0]
+        saved_dict["acc_act"] = acc_act[:, 0]
+        saved_dict["tau"] = tau
+        saved_dict["HopParams"] = sqh_p
+        print(
+            f"Max 1 act: {max1t}, Max 2 act: {max2t}, Reward:{sample_F[i]}, Error vel: {res[1]}")
+        save_criterion_traj(robo_urdf_i, path_to_save_result,
+                            loop_description_i, joint_description_i, saved_dict)
 
 # load_criterion_traj()
 # plt.figure()
