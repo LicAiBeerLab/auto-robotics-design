@@ -32,7 +32,7 @@ plt.rcParams.update(
 MAGIC_TRAJECTORY_INDEX = 1
 
 SAVE = True
-SHOW = True
+SHOW = False
 
 PATH = r"results/topology_0_2024-05-29_18-48-58"
 FOLDER_NAME_PLOTS = "plots"
@@ -159,18 +159,19 @@ for i, x_opt in enumerate(arr_X_test):
     test.Kd = Kd
     optimal_coeffs_traj.append((x_opt, Kp, Kd, input_for_task, fun))
 
-if os.path.exists(os.path.join(PATH, "coeffs_OpPD_step.pkl")):
-    with open(os.path.join(PATH, "coeffs_OpPD_step.pkl"), "rb") as f:
-        optimal_coeffs_traj_old = dill.load(f)
+# if os.path.exists(os.path.join(PATH, "coeffs_OpPD_step.pkl")):
+#     with open(os.path.join(PATH, "coeffs_OpPD_step.pkl"), "rb") as f:
+#         optimal_coeffs_traj_old = dill.load(f)
 
-    for i,  x_opt in enumerate(arr_X_test):
-        if (
-            x_opt in optimal_coeffs_traj_old
-            and optimal_coeffs_traj_old[i][3] == optimal_coeffs_traj[i][3]
-            and optimal_coeffs_traj_old[i][4] < optimal_coeffs_traj[i][4]
-        ):
-            del optimal_coeffs_traj_old[i]
-    optimal_coeffs_traj.update(optimal_coeffs_traj_old)
+#     for i,  x_opt in enumerate(arr_X_test):
+#         old_coeffs = list(filter(lambda x: np.all(x[0] == x_opt), optimal_coeffs_traj_old))
+#         if old_coeffs > 0 and old_coeffs[0][4] < optimal_coeffs_traj[i][4]:
+            
+#             and optimal_coeffs_traj_old[i][3] == optimal_coeffs_traj[i][3]
+#             and optimal_coeffs_traj_old[i][4] < optimal_coeffs_traj[i][4]
+#         ):
+#             del optimal_coeffs_traj_old[i]
+#     optimal_coeffs_traj.update(optimal_coeffs_traj_old)
     
 
 with open(os.path.join(PATH, "coeffs_OpPD_step.pkl"), "wb") as f:
