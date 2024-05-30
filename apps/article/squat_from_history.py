@@ -37,7 +37,9 @@ from auto_robot_design.generator.restricted_generator.two_link_generator import 
 from auto_robot_design.pinokla.squat import SquatHopParameters, SimulateSquatHop
 from auto_robot_design.optimization.analyze import get_optimizer_and_problem, get_pareto_sample_linspace, get_pareto_sample_histogram, get_urdf_from_problem
 
-paths = ["results\\multi_opti_preset2\\topology_1_2024-05-29_19-37-36",
+paths = [
+        "results\\multi_opti_preset2\\topology_0_2024-05-29_18-48-58",
+         "results\\multi_opti_preset2\\topology_1_2024-05-29_19-37-36",
          "results\\multi_opti_preset2\\topology_3_2024-05-29_23-01-44",
          "results\\multi_opti_preset2\\topology_4_2024-05-29_23-46-17",
          "results\\multi_opti_preset2\\topology_5_2024-05-30_00-32-21",
@@ -45,5 +47,6 @@ paths = ["results\\multi_opti_preset2\\topology_1_2024-05-29_19-37-36",
          "results\\multi_opti_preset2\\topology_8_2024-05-30_10-40-12",
          ]
 
-for path_i in paths:
-    get_sample_torque_traj_from_sample_multi(path_i, False)
+# for path_i in paths:
+#     get_sample_torque_traj_from_sample_multi(path_i, False)
+get_sample_torque_traj_from_sample_multi("results\\multi_opti_preset2\\topology_0_2024-05-29_18-48-58", False)

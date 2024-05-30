@@ -133,6 +133,22 @@ class SimulateSquatHop:
             actuator_context=None,
             fixed=True)
 
+        self.trans_base_robo = build_model_with_extensions(
+            robo_urdf,
+            joint_description=joint_description,
+            loop_description=loop_description,
+            actuator_context=None,
+            fixed=False,
+            root_joint_type=pin.JointModelTranslation(),
+            is_act_root_joint=False)
+
+        q_nominal = self.calc_nominal_q()
+        qushka = np.concatenate([np.zeros(2), q_nominal])
+        # qushka = q_nominal
+        self.trans_base_robo = add_3d_constrain_current_q(
+            self.trans_base_robo, self.squat_hop_parameters.end_effector_name,
+            qushka)
+
         if self.squat_hop_parameters.hop_direction == HopDirection.Z:
             root_joint_type = pin.JointModelPZ()
         else:
@@ -229,7 +245,7 @@ class SimulateSquatHop:
         accuracy = 1e-8
         mu_sim = 1e-8
         max_it = 10000
-        DT = 5e-4
+        DT = 10e-4
         self.dynamic_settings = pin.ProximalSettings(accuracy, mu_sim, max_it)
         self.time_step = DT
 
@@ -237,7 +253,7 @@ class SimulateSquatHop:
                  robo_urdf: str,
                  joint_description: dict,
                  loop_description: dict,
-                 control_coefficient=0.8,
+                 control_coefficient: float = 0.8,
                  actuator_context=None,
                  is_vis=False):
         """Simulate squat and hop process. Uses method
@@ -290,17 +306,19 @@ class SimulateSquatHop:
             viz.display(q)
 
         for i in range(simulate_steps):
+            current_time = i * self.time_step
+            des_pos, des_vel, des_acc = traj_fun(current_time)
+            tau_q = self.get_torques(
+                des_acc, q, grav_force, total_mass, control_coefficient)
             a = pin.constraintDynamics(self.hop_robo.model, self.hop_robo.data,
                                        q, vq, tau_q,
                                        self.hop_robo.constraint_models,
                                        self.hop_robo.constraint_data,
                                        self.dynamic_settings)
-            current_time = i * self.time_step
-            des_pos, des_vel, des_acc = traj_fun(current_time)
-            tau_q = self.get_torques(des_acc, q, grav_force, total_mass, control_coefficient=control_coefficient)
+
             vq += a * self.time_step
             q = pin.integrate(self.hop_robo.model, q, vq * self.time_step)
-            # First coordinate is root_joint            
+            # First coordinate is root_joint
             q_act[i] = q
             vq_act[i] = vq
             acc_act[i] = a
@@ -361,7 +379,8 @@ class SimulateSquatHop:
         tau[id_mt2] = torques[1]
         return tau
 
-    def generalized_q_to_act_torques(self, generalized_q: np.ndarray) -> np.ndarray:
+    def generalized_q_to_act_torques(self,
+                                     generalized_q: np.ndarray) -> np.ndarray:
         """Converts a size vector equal to self.hop_robo.model.nv 
         to an actuator size vector.
 
@@ -376,8 +395,12 @@ class SimulateSquatHop:
         torques = np.array([generalized_q[id_mt1], generalized_q[id_mt2]])
         return torques
 
-    def get_torques(self, desired_acceleration: float, current_q: np.ndarray,
-                    grav_force: float, total_mass: float, control_coefficient) -> np.ndarray:
+    def get_torques(self,
+                    desired_acceleration: float,
+                    current_q: np.ndarray,
+                    grav_force: float,
+                    total_mass: float,
+                    control_coefficient: float = 0.8) -> np.ndarray:
         """Calculate actuator torques. With size self.hop_robo.model.nv.
 
         Args:
@@ -391,6 +414,8 @@ class SimulateSquatHop:
         """
         ground_as_ee_id = self.hop_robo.model.getFrameId(
             self.squat_hop_parameters.ground_link_name)
+        ee_id = self.trans_base_robo.model.getFrameId(
+            self.squat_hop_parameters.ground_link_name)
         vq, J_closed = inverseConstraintKinematicsSpeed(
             self.hop_robo.model,
             self.hop_robo.data,
@@ -401,11 +426,33 @@ class SimulateSquatHop:
             ground_as_ee_id,
             self.hop_robo.data.oMf[ground_as_ee_id].action @ np.zeros(6),
         )
-        COMPENSATE_COEFFICIENT = control_coefficient
-        desired_end_effector_force = COMPENSATE_COEFFICIENT * \
+
+        qushka = np.concatenate(
+            [np.array([0, 0, current_q[0]]), current_q[1:]])
+
+        # qushka = current_q
+        pin.framesForwardKinematics(self.trans_base_robo.model,
+                                    self.trans_base_robo.data, qushka)
+        pin.forwardKinematics(self.trans_base_robo.model,
+                              self.trans_base_robo.data, qushka)
+        pin.computeJointJacobians(self.trans_base_robo.model,
+                                  self.trans_base_robo.data, qushka)
+        vq2, J_closed2 = inverseConstraintKinematicsSpeed(
+            self.trans_base_robo.model,
+            self.trans_base_robo.data,
+            self.trans_base_robo.constraint_models,
+            self.trans_base_robo.constraint_data,
+            self.trans_base_robo.actuation_model,
+            qushka,
+            ee_id,
+            self.trans_base_robo.data.oMf[ground_as_ee_id].action
+            @ np.zeros(6),
+        )
+
+        desired_end_effector_force = control_coefficient * \
             grav_force + total_mass * desired_acceleration
         desired_end_effector_wrench = self.scalar_force_to_wrench(
             desired_end_effector_force)
-        desired_q_torques = J_closed.T @ desired_end_effector_wrench
+        desired_q_torques = J_closed2.T @ desired_end_effector_wrench
         tau = self.act_torques_to_generalized_q(desired_q_torques)
         return tau

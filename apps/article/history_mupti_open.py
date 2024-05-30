@@ -1,31 +1,33 @@
+from pathlib import Path
 import matplotlib.pyplot as plt
-
-
 import numpy as np
-
 import matplotlib.pyplot as plt
-
-
-
 from auto_robot_design.optimization.analyze import get_optimizer_and_problem, get_pareto_sample_linspace, get_pareto_sample_histogram
 
+PATH_CS = "results\\multi_opti_preset2\\topology_8_2024-05-30_10-40-12"
 optimizer, problem, res = get_optimizer_and_problem(
-    "results\\multi_opti_preset2\\topology_0_2024-05-29_18-48-58")
-sample_x, sample_F = get_pareto_sample_linspace(res, 10)
-sample_x2, sample_F2 = get_pareto_sample_histogram(res, 10)
+    PATH_CS)
+ 
 
 
+save_p = Path(str(PATH_CS) + "/" + "plots")
+save_p.mkdir(parents=True, exist_ok=True)
 
-plt.figure()
-plt.scatter(sample_F[:, 0], sample_F[:, 1])
-plt.title("from res1")
-
+history_mean = np.array(optimizer.history["Mean"])
 
 plt.figure()
-plt.scatter(res.F[:, 0], res.F[:, 1])
-plt.title("all")
 
-plt.figure()
-plt.scatter(sample_F2[:, 0], sample_F2[:, 1])
-plt.title("from res2")
+ 
+plt.title("Mean generation reward")
+plt.xlabel("Generation")
+plt.ylabel("Reword")
+plt.plot(np.array(history_mean)[:,0])
+plt.plot(np.array(history_mean)[:,1])
+plt.legend(["ACC capability", "HeavyLifting"])
+save_current1 = save_p / "Mean_Generation_reward.svg"
+save_current2 = save_p / "Mean_Generation_reward.png"
+plt.savefig(save_current1)
+plt.savefig(save_current2)
 plt.show()
+
+pass
