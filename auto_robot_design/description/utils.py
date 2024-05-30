@@ -150,7 +150,7 @@ def draw_links(kinematic_graph, JP_graph: nx.Graph):
         nx.draw(sub_graph_l, pos, **options)
         plt.text(pos_name[0],pos_name[1], name_link, fontsize=15)
 
-def draw_joint_point(graph: nx.Graph):
+def draw_joint_point(graph: nx.Graph, show_labels=True, show_legend=True):
     pos = get_pos(graph)
     G_pos = np.array(
         list(
@@ -187,15 +187,16 @@ def draw_joint_point(graph: nx.Graph):
         node_size=150,
         with_labels=False,
     )
-    pos_labels = {g:np.array(p) + np.array([-0.2, 0.2])*la.norm(EE_pos)/5 for g, p in pos.items()}
-    nx.draw_networkx_labels(
-        graph,
-        pos_labels,
-        labels,
-        font_color = "r",
-        font_family = "monospace"
+    if show_labels:
+        pos_labels = {g:np.array(p) + np.array([-0.2, 0.2])*la.norm(EE_pos)/5 for g, p in pos.items()}
+        nx.draw_networkx_labels(
+            graph,
+            pos_labels,
+            labels,
+            font_color = "r",
+            font_family = "monospace"
 
-    )
+        )
     if nx.is_weighted(graph):
         edge_labels = nx.get_edge_attributes(graph, "weight")
         nx.draw_networkx_edge_labels(
@@ -211,7 +212,8 @@ def draw_joint_point(graph: nx.Graph):
     plt.plot(active_j_pos[:,0], active_j_pos[:,1], "og",
              markersize=20, 
              fillstyle="none", label="Active")
-    plt.legend()
+    if show_legend:
+        plt.legend()
     plt.axis("equal")
 
 

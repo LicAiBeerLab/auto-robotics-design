@@ -1,10 +1,9 @@
 from copy import deepcopy
-from auto_robot_design.description.builder import jps_graph2urdf_by_bulder
 import numpy as np
 
+from pymoo.decomposition.asf import ASF
 
-
-
+from auto_robot_design.description.builder import jps_graph2urdf_by_bulder
 from auto_robot_design.optimization.optimizer import PymooOptimizer
 from auto_robot_design.optimization.problems import CalculateMultiCriteriaProblem
 from auto_robot_design.optimization.saver import load_checkpoint
@@ -49,6 +48,33 @@ def get_pareto_sample_histogram(res, sample_len: int):
     sample_F = rewards[best_in_bins]
     sample_X = res.X[best_in_bins]
     return sample_X, sample_F
+
+def get_design_from_pareto_front(pareto_front, set_weights: np.ndarray):
+    """
+    Returns the indexes of the designs from the Pareto front based on the given set of weights (ASF method).
+
+    Args:
+        pareto_front (np.ndarray): The Pareto front containing the designs.
+        set_weights (np.ndarray): The set of weights used for optimization.
+
+    Returns:
+        np.ndarray: The indexes of the designs from the Pareto front based on the given set of weights.
+    """
+
+    approx_ideal = pareto_front.min(axis=0)
+    approx_nadir = pareto_front.max(axis=0)
+
+    nF = (pareto_front - approx_ideal) / (approx_nadir - approx_ideal)
+
+    decomp = ASF()
+
+    indexes = np.zeros(set_weights.shape[0], dtype=int)
+
+    for i, weight in enumerate(set_weights):
+        indexes[i] = decomp.do(nF, 1 / weight).argmin()
+
+    return indexes
+
 
 def get_urdf_from_problem(sample_X: np.ndarray, problem: CalculateMultiCriteriaProblem):
     problem.mutate_JP_by_xopt(problem.initial_xopt)

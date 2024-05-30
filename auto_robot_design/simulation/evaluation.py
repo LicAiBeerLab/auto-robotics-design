@@ -54,7 +54,7 @@ def power_quality(time: np.ndarray, power: np.ndarray, plot=False):
     return np.mean(PQ)
 
 
-def compare_power_quality(time: np.ndarray, power_arrs, plot=False, path=None):
+def compare_power_quality(time: np.ndarray, power_arrs, plot=False, path=None, names=None):
     """
     Evaluate the power quality of the robot
     Args:
@@ -74,8 +74,11 @@ def compare_power_quality(time: np.ndarray, power_arrs, plot=False, path=None):
             PQ[j,i] = np.sum(power_arrs[j][i])**2 - np.sum(power_arrs[j][i]**2)
         
     if plot:
-        plot_power_name = ["Design " + str(i) for i in range(1, 1+len(power_arrs))]
-        fig = plt.figure(figsize=(len(power_arrs)*6, 6))
+        if names is None:
+            plot_power_name = ["Design " + str(i) for i in range(1, 1+len(power_arrs))]
+        else:
+            plot_power_name = names
+        fig = plt.figure(figsize=(len(power_arrs)*8, 6))
         axs = fig.subplot_mosaic([plot_power_name])
         for name, power in zip(plot_power_name, power_arrs):
             axs[name].plot(time, power[:, 0], label='$P_1$', linewidth=2)
@@ -90,7 +93,7 @@ def compare_power_quality(time: np.ndarray, power_arrs, plot=False, path=None):
             plt.savefig(path + "power.svg")
         plt.figure(figsize=(6,6))
         for i in range(len(power_arrs)):
-            plt.plot(time, PQ[i, :], label='Design ' + str(i+1))
+            plt.plot(time, PQ[i, :], label=plot_power_name[i])
         plt.xlim([time[0], time[-1]])
         plt.xlabel('Time (s)')
         plt.ylabel('Power Quality')
@@ -101,7 +104,7 @@ def compare_power_quality(time: np.ndarray, power_arrs, plot=False, path=None):
 
         plt.figure()
         for i in range(len(power_arrs)):
-            plt.plot(power_arrs[i][:, 0], power_arrs[i][:, 1], label='Design ' + str(i+1))
+            plt.plot(power_arrs[i][:, 0], power_arrs[i][:, 1], label=plot_power_name[i])
         plt.axhline(0, color='black')
         plt.axvline(0, color='black')
         plt.xlabel('$P_1$')
@@ -172,7 +175,7 @@ def movments_in_xz_plane(time: np.ndarray, x: np.ndarray, des_x: np.ndarray, plo
     return np.mean(error)
 
 
-def compare_movments_in_xz_plane(time: np.ndarray, x, des_x: np.ndarray, plot=False, path=None):
+def compare_movments_in_xz_plane(time: np.ndarray, x, des_x: np.ndarray, plot=False, path=None, names=None):
     """
     Evaluate the movements in the xz plane
     Args:
@@ -191,8 +194,11 @@ def compare_movments_in_xz_plane(time: np.ndarray, x, des_x: np.ndarray, plot=Fa
             error_arrs[j, i] = np.linalg.norm((x[j][i] - des_x[i]))
         
     if plot:
-        plot_name = ["Design " + str(i) for i in range(1, 1+len(x))]
-        fig = plt.figure(figsize=(len(x)*8, 10))
+        if names is None:
+            plot_name = ["Design " + str(i) for i in range(1, 1+len(x))]
+        else:
+            plot_name = names
+        fig = plt.figure(figsize=(len(x)*10, 6))
         axs = fig.subplot_mosaic([[name + "_X" for name in plot_name],
                                   [name + "_Z" for name in plot_name]])
         for name, x_arr in zip(plot_name, x):
@@ -215,7 +221,7 @@ def compare_movments_in_xz_plane(time: np.ndarray, x, des_x: np.ndarray, plot=Fa
             plt.savefig(path + "trajectory.svg")
         plt.figure(figsize=(6,6))
         for i in range(len(x)):
-            plt.plot(time, error_arrs[i, :], label='Design ' + str(1+i))
+            plt.plot(time, error_arrs[i, :], label=names[i])
         plt.xlim([time[0], time[-1]])
         plt.xlabel('Time (s)')
         plt.ylabel('Error')
@@ -225,7 +231,7 @@ def compare_movments_in_xz_plane(time: np.ndarray, x, des_x: np.ndarray, plot=Fa
         if path is not None:
             plt.savefig(path + "error.svg")
 
-        fig = plt.figure(figsize=(len(x)*6, 6))
+        fig = plt.figure(figsize=(len(x)*8, 6))
         axs = fig.subplot_mosaic([[name + "_xz" for name in plot_name]])
         for name, x_arr in zip(plot_name, x):
             axs[name + "_xz"].set_title(name)
@@ -268,7 +274,7 @@ def torque_evaluation(time: np.ndarray, torque: np.ndarray, plot = False):
     return np.max(np.abs(torque), axis=0)
 
 
-def compare_torque_evaluation(time: np.ndarray, torque_arrs, plot = False, path=None):
+def compare_torque_evaluation(time: np.ndarray, torque_arrs, plot = False, path=None, names=None):
     """
     Evaluate the torque
     Args:
@@ -280,7 +286,10 @@ def compare_torque_evaluation(time: np.ndarray, torque_arrs, plot = False, path=
     """
     
     if plot:
-        plot_name = ["Design " + str(i) for i in range(1, 1+len(torque_arrs))]
+        if names is None:
+            plot_name = ["Design " + str(i) for i in range(1, 1+len(torque_arrs))]
+        else:
+            plot_name = names
         fig = plt.figure(figsize=(len(torque_arrs)*6, 6))
         
         axs = fig.subplot_mosaic([[name + "_tau" for name in plot_name]])
@@ -296,6 +305,20 @@ def compare_torque_evaluation(time: np.ndarray, torque_arrs, plot = False, path=
             axs[name + "_tau"].legend()
         if path is not None:
             plt.savefig(path + "torque.svg")
+        else:
+            plt.show()
+            
+        fig = plt.figure(figsize=(6,6))
+        for i in range(len(torque_arrs)):
+            plt.plot(time, np.linalg.norm(torque_arrs[i], axis=1), linewidth=2, label=plot_name[i])
+        plt.xlim([time[0], time[-1]])
+        plt.xlabel('Time (s)')
+        plt.ylabel('Torque (Nm)')
+        plt.title(r"$||\tau||$")
+        plt.grid()
+        plt.legend()
+        if path is not None:
+            plt.savefig(path + "torque_norm.svg")
         else:
             plt.show()
     
