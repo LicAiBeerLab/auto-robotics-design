@@ -1,5 +1,6 @@
 from math import tau
 import os
+from pickle import FALSE
 import re
 from turtle import pos
 
@@ -100,3 +101,50 @@ if SHOW:
     max_torques, mean_torques = eval.compare_torque_evaluation(time_arr, tau_arrs, True, names=labels)
 
 
+cmap = plt.get_cmap("rainbow")
+
+approx_ideal = res.F.min(axis=0)
+approx_nadir = res.F.max(axis=0)
+
+color_values = [mean_powers, sum_power, abs_powers, mean_errors, np.linalg.norm(mean_torques, axis=1), np.linalg.norm(max_torques, axis=1)]
+color_names = ["Mean Power, W", "Sum Power, W", "Abs Power, W", "Mean Error, m", "Mean Torque, Hm", "Max Torque, Hm"]
+
+for color_value, color_name in zip(color_values, color_names):
+    fig = plt.figure(figsize=(7, 5))
+    plt.scatter(
+        approx_ideal[0],
+        approx_ideal[1],
+        facecolors="none",
+        edgecolors="red",
+        marker="*",
+        s=100,
+        label="Ideal Point (Approx)",
+    )
+    plt.scatter(
+        approx_nadir[0],
+        approx_nadir[1],
+        facecolors="none",
+        edgecolors="black",
+        marker="p",
+        s=100,
+        label="Nadir Point (Approx)",
+    )
+    plt.scatter(res.F[list(id_design2simout.keys()), 0], res.F[list(id_design2simout.keys()), 1], c=color_value, cmap=cmap, s=100)
+    for i, idx in enumerate(id_design2simout.keys()):
+        plt.text(
+            res.F[idx, 0] + 0.04 * np.abs(res.F[idx, 0]),
+            res.F[idx, 1] + 0.04 * np.abs(res.F[idx, 1]),
+            str(idx),
+            fontsize=12,
+            verticalalignment="bottom",
+            horizontalalignment="right",
+        )
+    plt.colorbar(cmap=cmap, label=color_name)
+    plt.title("Objective Space")
+    plt.xlabel(reward_names[0])
+    plt.xlabel(reward_names[1])
+    plt.legend()
+    if SHOW:
+        plt.show()
+    if SAVE:
+        plt.savefig(os.path.join(path_plots, f"design_in_objective_space_{color_name}.svg"))

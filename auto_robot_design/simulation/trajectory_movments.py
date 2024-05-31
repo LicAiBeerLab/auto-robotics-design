@@ -390,7 +390,7 @@ class TrajectoryMovements:
 
             if not np.isclose(rew, control_obj_value, atol=1e-3):
                 warning(
-                    f"Control objective value is not equal to the current simulation value. {rew} != {control_obj_value}"
+                    f"Control objective value is not equal to the current simulation value. {rew:.3f} != {control_obj_value:.3f}"
                 )
 
         return simout
