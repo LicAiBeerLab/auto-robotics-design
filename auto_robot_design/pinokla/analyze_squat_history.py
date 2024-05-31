@@ -170,7 +170,7 @@ def get_pareto_sample_histogram(res, sample_len: int):
     bin_indices = np.digitize(rewards[:, 0], bins_edg, right=True)
     bins_set_id = [np.where(bin_indices == i)[0]
                    for i in range(1, len(bins_edg))]
-    best_in_bins = [i[0] for i in bins_set_id]
+    best_in_bins = [i[0] for i in bins_set_id if len(i) > 0]
     sample_F = rewards[best_in_bins]
     sample_X = res.X[best_in_bins]
     return sample_X, sample_F
