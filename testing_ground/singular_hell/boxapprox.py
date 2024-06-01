@@ -519,6 +519,7 @@ def process_box_lazy_split(B_c, A_eq, b_eq,
                     is_small_enough *= int(lengths_c[k] <= v)
             else:
                 is_small_enough = (lengths_c <= threshold_s).all()
+        break
 
         
 

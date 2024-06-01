@@ -86,6 +86,19 @@ def neg_interval(interval):
     """
     return np.asarray((-interval[1],-interval[0]))
 
+def gain_interval(interval, gain: float):
+    """
+     Multiply an interval by a number.
+     
+     Args:
+     	 interval (tuple|list|np.ndarray): tuple, list or np.ndarray of two floats.
+         gain (float): value to multiply the interval by.
+     
+     Returns: 
+     	 (np.ndarray) resulting interval.
+    """
+    return np.asarray((gain*interval[0],gain*interval[1])) if gain >= 0 else np.asarray((gain*interval[1],gain*interval[0]))
+
 def pow_interval(interval, p: int):
     """
      Returns the p-th power of the interval.
@@ -104,4 +117,36 @@ def pow_interval(interval, p: int):
         is_zerocross = interval[0]*interval[1]<=0
         return np.asarray((0 if is_zerocross else np.min(abs(interval))**p, 
                            np.max(abs(interval))**p))
+
+def acos_interval(interval):
+    lb = interval[0]
+    ub = interval[1]
+    lo = 0 if ub >= 1. else np.arccos(ub)
+    hi = np.pi if lb <= -1. else np.arccos(lb)
+    return np.asarray((lo,hi))
+
+def atan_intervals(interval_y,interval_x):
+    a1,a2 = interval_y[0], interval_y[1]
+    b1,b2 = interval_x[0], interval_x[1]
+    return np.asarray((np.min([np.arctan(a1/b1),np.arctan(a1/b2),np.arctan(a2/b1),np.arctan(a2/b2)]), 
+                       np.max([np.arctan(a1/b1),np.arctan(a1/b2),np.arctan(a2/b1),np.arctan(a2/b2)])))
+
+def atan2_intervals(interval_y,interval_x):
+    a1,a2 = interval_y[0], interval_y[1]
+    b1,b2 = interval_x[0], interval_x[1]
+    return np.asarray((np.min([np.arctan2(a1,b1),np.arctan2(a1,b2),np.arctan2(a2,b1),np.arctan2(a2,b2)]), 
+                       np.max([np.arctan2(a1,b1),np.arctan2(a1,b2),np.arctan2(a2,b1),np.arctan2(a2,b2)])))
+
+# def atan2_intervals(interval_sin,interval_cos):
+#     a1,a2 = acos_interval(interval_cos)
+#     a1,a2 = interval_y[0], interval_y[1]
+#     b1,b2 = interval_x[0], interval_x[1]
+#     return np.asarray((np.min([np.arctan2(a1,b1),np.arctan2(a1,b2),np.arctan2(a2,b1),np.arctan2(a2,b2)]), 
+#                        np.max([np.arctan2(a1,b1),np.arctan2(a1,b2),np.arctan2(a2,b1),np.arctan2(a2,b2)])))
+
+# def atan_intervals(interval_y,interval_x):
+#     a1,a2 = interval_y[0], interval_y[1]
+#     b1,b2 = interval_x[0], interval_x[1]
+#     return np.asarray((np.min([np.arctan2(1,b1/a1),np.arctan2(1,b1/a2),np.arctan2(1,b2/a1),np.arctan2(1,b2/a2)]), 
+#                        np.max([np.arctan2(1,b1/a1),np.arctan2(1,b1/a2),np.arctan2(1,b2/a1),np.arctan2(1,b2/a2)])))
     
