@@ -92,11 +92,30 @@ def get_all_vector_metrics(directory):
     return agr_mean_list, agr_max_list, agr_diff_list, reword_list, param_x_list
 
 
+def get_best_lifter_trq(directory):
+    sim_res_files = get_all_files_in_dir(directory)
+    sim_res = list(map(load_criterion_traj, sim_res_files))
+    sort_k = lambda x : x["Reward"][1]
+    best_lifter = sorted(sim_res, key= sort_k)[0]
+    return best_lifter["tau"]
+
 PATH_CS = "results\\multi_opti_preset2\\topology_8_2024-05-30_10-40-12\\squat_compare"
 agr_mean_list, agr_max_list, agr_diff_list, reword_list, param_x_list = get_all_vector_metrics(
     PATH_CS)
 save_p = Path(PATH_CS + "/" + "plots" + "/")
 save_p.mkdir(parents=True, exist_ok=True)
+
+best_trq = get_best_lifter_trq(PATH_CS)
+
+plt.figure()
+plt.plot(np.array(best_trq)[:,0])
+plt.plot(np.array(best_trq)[:,1])
+plt.title("Torque traj for bestheavy lifter")
+save_current1 = save_p / "Torque_traj_bestheavy_lifter.svg"
+save_current2 = save_p / "Torque_traj_bestheavy_lifter.png"
+plt.savefig(save_current1)
+plt.savefig(save_current2)
+
 
 plt.figure()
 plt.scatter(np.array(reword_list)[:, 0], np.array(
