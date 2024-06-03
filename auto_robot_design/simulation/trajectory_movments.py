@@ -1,4 +1,5 @@
 from logging import warning
+import os
 import numpy as np
 import pinocchio as pin
 
@@ -180,45 +181,89 @@ class TrajectoryMovements:
             des_traj_6d: Desired 6D trajectory.
             des_d_traj_6d: Desired 6D trajectory derivative.
         """
-        des_trajectories = np.zeros((self.num_sim_steps, 2))
-        des_trajectories[:, 0] = np.linspace(
-            self.traj[0, 0], self.traj[-1, 0], self.num_sim_steps
-        )
-        if self.traj[:, 0].max() - self.traj[:, 0].min() < 1e-3:
-            des_trajectories[:, 1] = np.linspace(
-                self.traj[0, 1], self.traj[-1, 1], self.num_sim_steps
-            )
-        else:
-            cs_z_by_x = np.polyfit(self.traj[:, 0], self.traj[:, 1], 3)
-            des_trajectories[:, 1] = np.polyval(cs_z_by_x, des_trajectories[:, 0])
+
+        x_max = self.traj[-1, 0] - self.traj[0, 0]
 
         time_arr = np.linspace(0, self.time, self.num_sim_steps)
-        des_traj_6d = convert_x_y_to_6d_traj_xz(
-            des_trajectories[:, 0], des_trajectories[:, 1]
-        )
-
         t_s = self.time / 2
-        Vs = (
-            np.array(
-                [
-                    des_trajectories[:, 0][-1] - des_trajectories[:, 0][0],
-                    (des_trajectories[:, 1].max() - des_trajectories[:, 1].min()) * 2,
-                ]
-            )
-            / t_s
-        )
+
+        ax_1 = 4 * x_max / self.time**2
+
+        # ax_2 = 2 * self.traj[-1, 0] / (self.time **2/2 - self.time)
 
         des_dtraj_2d = np.zeros((self.num_sim_steps, 2))
 
         for idx, t in enumerate(time_arr):
             if t <= t_s:
-                des_dtraj_2d[idx, :] = Vs * t
+                des_dtraj_2d[idx, 0] = ax_1 * t
             else:
-                des_dtraj_2d[idx, :] = -Vs * (t - t_s) + Vs * t_s
+                des_dtraj_2d[idx, 0] = -ax_1 * t + ax_1 * self.time
+
+        des_traj_by_t = np.zeros((self.num_sim_steps, 2))
+
+        des_traj_by_t[time_arr <= t_s, 0] = 0.5 * ax_1 * time_arr[time_arr <= t_s] ** 2
+        des_traj_by_t[time_arr > t_s, 0] = (
+            -ax_1 * time_arr[time_arr > t_s] ** 2 / 2
+            + ax_1 * self.time * time_arr[time_arr > t_s]
+            + x_max
+            - ax_1 * self.time**2 / 2
+        )
+
+        des_traj_by_t[:, 0] = des_traj_by_t[:, 0] - x_max / 2
+
+        if self.traj[:, 0].max() - self.traj[:, 0].min() < 1e-3:
+            des_traj_by_t[:, 1] = np.linspace(
+                self.traj[0, 1], self.traj[-1, 1], self.num_sim_steps
+            )
+        else:
+            cs_z_by_x = np.polyfit(self.traj[:, 0], self.traj[:, 1], 3)
+            des_traj_by_t[:, 1] = np.polyval(cs_z_by_x, des_traj_by_t[:, 0])
+
+        des_traj_6d = convert_x_y_to_6d_traj_xz(
+            des_traj_by_t[:, 0], des_traj_by_t[:, 1]
+        )
 
         des_d_traj_6d = convert_x_y_to_6d_traj_xz(
             des_dtraj_2d[:, 0], des_dtraj_2d[:, 1]
         )
+
+        # des_trajectories[:, 0] = np.linspace(
+        #     self.traj[0, 0], self.traj[-1, 0], self.num_sim_steps
+        # )
+        # if self.traj[:, 0].max() - self.traj[:, 0].min() < 1e-3:
+        #     des_trajectories[:, 1] = np.linspace(
+        #         self.traj[0, 1], self.traj[-1, 1], self.num_sim_steps
+        #     )
+        # else:
+        #     cs_z_by_x = np.polyfit(self.traj[:, 0], self.traj[:, 1], 3)
+        #     des_trajectories[:, 1] = np.polyval(cs_z_by_x, des_trajectories[:, 0])
+
+        # des_traj_6d = convert_x_y_to_6d_traj_xz(
+        #     des_trajectories[:, 0], des_trajectories[:, 1]
+        # )
+
+        # t_s = self.time / 2
+        # Vs = (
+        #     np.array(
+        #         [
+        #             des_trajectories[:, 0][-1] - des_trajectories[:, 0][0],
+        #             (des_trajectories[:, 1].max() - des_trajectories[:, 1].min()) * 2,
+        #         ]
+        #     )
+        #     / t_s
+        # )
+
+        # des_dtraj_2d = np.zeros((self.num_sim_steps, 2))
+
+        # for idx, t in enumerate(time_arr):
+        #     if t <= t_s:
+        #         des_dtraj_2d[idx, :] = Vs * t
+        #     else:
+        #         des_dtraj_2d[idx, :] = -Vs * (t - t_s) + Vs * t_s
+
+        # des_d_traj_6d = convert_x_y_to_6d_traj_xz(
+        #     des_dtraj_2d[:, 0], des_dtraj_2d[:, 1]
+        # )
 
         # des_d_traj_6d = np.diff(des_traj_6d, axis=0) / self.time_step
         # des_d_traj_6d = np.vstack((des_d_traj_6d, des_d_traj_6d[-1]))
@@ -263,7 +308,7 @@ class TrajectoryMovements:
         # }
         return time_arr, des_traj_6d, des_d_traj_6d
 
-    def simulate(self, robot, is_vis=False, control_obj_value=None) -> SimNControlData:
+    def simulate(self, robot, is_vis=False, control_obj_value=None, path_to_save_frame=None) -> SimNControlData:
         """
         Simulates the trajectory movements of a robot.
 
@@ -324,11 +369,19 @@ class TrajectoryMovements:
 
         if is_vis:
             viz = MeshcatVisualizer(robot.model, robot.visual_model, robot.visual_model)
-            viz.viewer = meshcat.Visualizer().open()
+            # viz.viewer = meshcat.Visualizer().open()
+            viz.initViewer(open=True)
+            # viz.initViewer()
+            viz.viewer["/Background"].set_property("visible", False)
+            viz.viewer["/Grid"].set_property("visible", False)
+            viz.viewer["/Axes"].set_property("visible", False)
+            viz.viewer["/Cameras/default/rotated/<object>"].set_property("position", [0,0,0.5])
             viz.clean()
             viz.loadViewerModel()
             viz.display(q)
 
+        idx_frave_image_save = np.linspace(0, self.num_sim_steps, 10, dtype=int)
+        frame_image = []
         for i in range(self.num_sim_steps):
             a = pin.constraintDynamics(
                 robot.model,
@@ -361,7 +414,12 @@ class TrajectoryMovements:
 
             if is_vis:
                 viz.display(q)
-
+                if i in idx_frave_image_save:
+                    frame_image.append(viz.viewer["/Cameras/default/rotated/"].get_image())
+                    
+        if is_vis:
+            # viz.viewer.close()
+            viz.viewer.delete()
         simout = SimNControlData(
             self.time,
             self.time_step,
@@ -384,7 +442,7 @@ class TrajectoryMovements:
                 ** 2
             )
             norm_tau = (
-                np.sum(np.linalg.norm(simout.tau[simout.id_act_vq], axis=1) ** 2) / 6e4
+                np.sum(np.linalg.norm(simout.tau[simout.id_act_vq], axis=1) ** 2) / 1e5
             )
             rew = pos_error + norm_tau
 
@@ -393,6 +451,9 @@ class TrajectoryMovements:
                     f"Control objective value is not equal to the current simulation value. {rew:.3f} != {control_obj_value:.3f}"
                 )
 
+        if path_to_save_frame:
+            for f_id, img in enumerate(frame_image):
+                img.save(os.path.join(path_to_save_frame, f"{f_id}.png"))
         return simout
 
     def optimize_control(self, robot):
@@ -430,23 +491,22 @@ class TrajectoryMovements:
 
         Kp = np.zeros((6, 6))
         Kd = np.zeros((6, 6))
-        
+
         # Kp[0, 0] = np.random.uniform(300, 1000)
         # Kp[2, 2] = np.random.uniform(300, 1000)
         # Kd[0, 0] = np.random.uniform(10, 200)
         # Kd[2, 2] = np.random.uniform(10,200)
-        
 
         Kp[0, 0] = results.x[0]
         Kp[2, 2] = results.x[1]
         Kd[0, 0] = results.x[2]
         Kd[2, 2] = results.x[3]
-        
+
         ## Kp[0,0] = results.X[0]
         ## Kp[2,2] = results.X[1]
         ## Kd[0,0] = results.X[2]
         ## Kd[2,2] = results.X[3]
-        return Kp, Kd, results.fun # np.random.randint(1, 100) #
+        return Kp, Kd, results.fun  # np.random.randint(1, 100) #
 
 
 if __name__ == "__main__":
