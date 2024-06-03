@@ -110,6 +110,8 @@ best_trq = get_best_lifter_trq(PATH_CS)
 plt.figure()
 plt.plot(np.array(best_trq)[:,0])
 plt.plot(np.array(best_trq)[:,1])
+plt.xlabel("Time")
+plt.ylabel("Torque")
 plt.title("Torque traj for bestheavy lifter")
 save_current1 = save_p / "Torque_traj_bestheavy_lifter.svg"
 save_current2 = save_p / "Torque_traj_bestheavy_lifter.png"
