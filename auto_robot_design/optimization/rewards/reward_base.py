@@ -229,14 +229,15 @@ class RewardManager():
         for idx, rewards in self.rewards.items() :
             if idx not in exclusion_list:
                 tmp = len(rewards)
-                self.reward_description.append((lst, tmp))
+                self.reward_description.append((idx, tmp))
                 total_rewards+=tmp
 
         return total_rewards
 
     def calculate_total(self, fixed_robot, free_robot, motor):
-        trajectory_rewards = []
+        #trajectory_rewards = []
         partial_rewards = []
+        weighted_partial_rewards = []
         for trajectory_id, trajectory in self.trajectories.items():
             rewards = self.rewards[trajectory_id]
             if self.precalculated_trajectories and (trajectory_id in self.precalculated_trajectories):
@@ -246,54 +247,61 @@ class RewardManager():
                 point_criteria_vector, trajectory_criteria, res_dict_fixed = self.crag.get_criteria_data(
                     fixed_robot, free_robot, trajectory)
 
-            # point_criteria_vector, trajectory_criteria, res_dict_fixed = self.crag.get_criteria_data(
-            #     fixed_robot, free_robot, trajectory)
-            reward_at_trajectory = 0
             partial_reward = [trajectory_id]
+            weighted_partial= [trajectory_id]
             for reward, weight in rewards:
                 reward_value = reward.calculate(
                     point_criteria_vector, trajectory_criteria, res_dict_fixed, Actuator=motor)[0]
                 partial_reward.append(reward_value)
-                reward_at_trajectory += weight * reward_value
+                weighted_partial.append(weight * reward_value)
             # update reward lists
-            trajectory_rewards.append((trajectory_id, reward_at_trajectory))
-            partial_rewards.append(partial_reward)
 
-        # if len(self.agg_list) > 0:
-        final_partial = []
+            partial_rewards.append(partial_reward)
+            weighted_partial_rewards.append(weighted_partial)
+
+        multicriterial_reward = []
+        aggregated_partial=[]
         exclusion_list = []
         for lst, agg_type in self.agg_list:
             exclusion_list += lst
             local_partial = []
-            for v in partial_rewards:
+            local_weighted_partial = []
+            for v,w in zip(partial_rewards,weighted_partial_rewards):
                 if v[0] in lst:
                     local_partial.append(v)
+                    local_weighted_partial.append(w)
 
             tmp_array = np.array(local_partial)
+            tmp_array_weighted = np.array(local_weighted_partial)
 
             if agg_type == 'mean':
                 res = np.mean(tmp_array, axis=0)
+                res_w = np.mean(local_weighted_partial, axis=0)
             elif agg_type == 'median':
                 res = np.median(tmp_array, axis=0)
+                res_w = np.median(local_weighted_partial, axis=0)
             elif agg_type == 'min':
                 res = np.min(tmp_array, axis=0)
+                res_w = np.min(local_weighted_partial, axis=0)
             elif agg_type == 'max':
                 res = np.max(tmp_array, axis=0)
+                res_w = np.max(local_weighted_partial, axis=0)
 
-            final_partial+=list(res[1::])
+            multicriterial_reward+=list(res[1::])
+            aggregated_partial+=list(res_w[1::])
 
-        trajectoryless_pertials = []
-        for v in partial_rewards:
+        trajectoryless_partials = []
+        for v,w in zip(partial_rewards,weighted_partial_rewards):
             if v[0] not in exclusion_list:
-                final_partial+=v[1::]
-            trajectoryless_pertials+=v[1::]
+                multicriterial_reward+=v[1::]
+                aggregated_partial+=w[1::]
+            trajectoryless_partials+=v[1::]
 
         # calculate the total reward
-        # total_reward = -sum([reward for _, reward in trajectory_rewards])
 
-        total_reward = -np.sum(final_partial)
-        
-        return total_reward, trajectoryless_pertials, final_partial
+        total_reward = -np.sum(aggregated_partial)
+
+        return total_reward, trajectoryless_partials, multicriterial_reward
 
     def dummy_partial(self):
         """Create partial reward with zeros to add for robots that failed constrains"""
@@ -303,7 +311,7 @@ class RewardManager():
             partial_reward = [trajectory_id]
             for _, _ in rewards:
                 partial_reward.append(0)
-            partial_rewards.append(partial_reward)
+            partial_rewards += partial_reward[1:] # Draw trianle if chicken usualy dead
         return partial_rewards
 
     def check_constrain_trajectory(self, trajectory, results):

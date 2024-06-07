@@ -18,6 +18,7 @@ dependencies:
     - tqdm
     - trimesh==4.1.4
     - meshcat
+    - numba
     - joblib
     - manifold3d
     - git+https://github.com/hauptmech/odio_urdf.git
