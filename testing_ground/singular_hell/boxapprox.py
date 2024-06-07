@@ -437,6 +437,7 @@ def process_box_lazy_split(B_c, A_eq, b_eq,
         lengths_p = lengths_c
         # valid_inds_p = np.transpose((lengths_p > 0).nonzero())
         valid_inds_p = (lengths_p > 0).nonzero()[0]
+        print('valid indexes p',valid_inds_p)
 
         #shrink
         for i in valid_inds_p: #range(n):
@@ -495,8 +496,8 @@ def process_box_lazy_split(B_c, A_eq, b_eq,
         lengths_c = B_c[:,1] - B_c[:,0] #TODO if move below is_shrinkable, will be 2 times faster but why???
         # probably if move below, it compares length p to length p, so it is always 1 except it deleted some dims 
 
-        valid_inds = (lengths_c > 0).nonzero()
-        print('valid indexes',valid_inds[0])
+        valid_inds = (lengths_c > 0).nonzero()[0]
+        print('valid indexes',valid_inds)
         # print('valleng',lengths_c[valid_inds])
         V_p = np.prod(lengths_p[valid_inds])
         V_c = np.prod(lengths_c[valid_inds])
@@ -519,8 +520,7 @@ def process_box_lazy_split(B_c, A_eq, b_eq,
                     is_small_enough *= int(lengths_c[k] <= v)
             else:
                 is_small_enough = (lengths_c <= threshold_s).all()
-        break
-
+        break # This is a workaround to shrink each box only once, it speeds up significantly
         
 
     if not is_empty:
