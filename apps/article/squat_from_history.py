@@ -49,4 +49,4 @@ paths = [
 
 # for path_i in paths:
 #     get_sample_torque_traj_from_sample_multi(path_i, False)
-get_sample_torque_traj_from_sample_multi("results\\multi_opti_preset2\\topology_0_2024-05-29_18-48-58", False)
+get_sample_torque_traj_from_sample_multi("results\\multi_opti_preset2222\\topology_8_2024-05-30_10-40-12", True)

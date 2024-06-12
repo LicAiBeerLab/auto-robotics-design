@@ -42,7 +42,7 @@ def get_graph_and_traj(graph_number: int) -> tuple[Graph, dict, ParametrizedBuil
                                   )
 
     workspace_trajectory = convert_x_y_to_6d_traj_xz(
-        *get_workspace_trajectory([-0.1, -0.29], 0.07, 0.2, 10, 20))
+        *get_workspace_trajectory([-0.15, -0.35], 0.2, 0.3, 10, 10))
 
     ground_symmetric_step1 = convert_x_y_to_6d_traj_xz(*create_simple_step_trajectory(
         starting_point=[-0.085, -0.28], step_height=0.06, step_width=0.17, n_points=50))
