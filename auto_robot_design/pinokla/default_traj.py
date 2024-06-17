@@ -88,3 +88,21 @@ def get_horizontal_trajectory(starting_point, width, x_shift, n_points = 50):
     y_trajectory = np.linspace(starting_point, starting_point, n_points)
     x_trajectory = np.linspace(x_shift - width/2, x_shift + width/2, n_points)
     return (x_trajectory, y_trajectory)
+
+def get_steped_round_trajectory(starting_point = [0, -1], r_step = 0.02, n_steps = 2, angle_steps = 100):
+    x_trajectory = np.array([starting_point[0]])
+    y_trajectory = np.array([starting_point[1]])
+    angles = np.linspace(0, 2*np.pi, angle_steps, endpoint=False)
+    for i in range(n_steps):
+        radius = r_step + i * r_step
+        x_shift = np.cos(angles) * radius + starting_point[0]
+        z_shift = np.sin(angles) * radius + starting_point[1]
+        x_trajectory = np.concatenate((x_trajectory, x_shift))
+        y_trajectory = np.concatenate((y_trajectory, z_shift))
+
+    return (x_trajectory, y_trajectory)
+
+
+if __name__=="__main__":
+    ans = get_steped_round_trajectory([0,0.3], r_step = 0.02, n_steps = 3, angle_steps=100)
+    pass

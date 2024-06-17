@@ -47,7 +47,7 @@ def get_optimizing_joints(graph, constrain_dict):
 
 
 class CalculateCriteriaProblemByWeigths(ElementwiseProblem):
-    def __init__(self, graph, builder, jp2limits, rewards_and_trajectories: RewardManager ,  soft_constrain=None, **kwargs):
+    def __init__(self, graph, builder, jp2limits, rewards_and_trajectories: RewardManager, soft_constrain=None, **kwargs):
         if "Actuator" in kwargs:
             self.motor = kwargs["Actuator"]
         else:
