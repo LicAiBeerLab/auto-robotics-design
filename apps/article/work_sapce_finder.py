@@ -34,11 +34,15 @@ def chunk_list(lst, chunk_size):
         yield lst[i:i + chunk_size]
 
 def save_result_append(filename, new_data):
+    filename_str = str(filename)
+    if not filename_str.endswith(".npz"):
+        raise Exception("Must end with .npz")
+
     if os.path.exists(filename):
         # Load existing data
         existing_data = np.load(filename)
         # Append new data
-        combined_data = {key: np.stack(
+        combined_data = {key: np.row_stack(
             (existing_data[key], new_data[key])) for key in new_data.keys()}
     else:
         combined_data = new_data
@@ -109,7 +113,7 @@ def test_chunk(problem: CalculateMultiCriteriaProblem, x_vecs: np.ndarray, works
 if __name__ == '__main__':
     start_time = time.time()
     TOPOLGY_NAME = 0
-    FILE_NAME = "WORKSPACE_TOP" + str(TOPOLGY_NAME)
+    FILE_NAME = "WORKSPACE_TOP" + str(TOPOLGY_NAME) + ".npz"
     graph, optimizing_joints, constrain_dict, builder, step_trajs, squat_trajs, workspace_trajectory = traj_graph_setup.get_graph_and_traj(
         TOPOLGY_NAME)
     reward_manager, crag, soft_constrain = create_reward_manager.get_manager_preset_2_stair_climber(
@@ -129,12 +133,13 @@ if __name__ == '__main__':
     vecs = get_n_dim_linspace(upper_bounds, lower_bounds)
     chunk_vec = list(chunk_list(vecs, 100))
     for num, i_vec in enumerate(chunk_vec):
-        try:
-            test_chunk(problem, i_vec, workspace_trajectory, FILE_NAME)
-        except:
-            print("FAILD")
-        print(f"Tested chunk {num} / {len(chunk_vec)}")
-        ellip = ( time.time() - start_time) / 60
-        print(f"Remaining minute {ellip}")
- 
+        if num > 790:
+            try:
+                test_chunk(problem, i_vec, workspace_trajectory, FILE_NAME)
+            except:
+                print("FAILD")
+            print(f"Tested chunk {num} / {len(chunk_vec)}")
+            ellip = ( time.time() - start_time) / 60
+            print(f"Remaining minute {ellip}")
+    
  
