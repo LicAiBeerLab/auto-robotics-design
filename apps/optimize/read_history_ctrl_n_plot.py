@@ -1,8 +1,6 @@
-from math import tau
+
 import os
-from pickle import FALSE
 import re
-from turtle import pos
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -34,36 +32,22 @@ plt.rcParams.update(
 
 IS_VIS = False
 SAVE = False
-SHOW = True
+SHOW = False
 
 PATH = r"results/topology_0_2024-05-29_18-48-58"
 FOLDER_NAME_PLOTS = "plots"
+FOLDER_FRAME_PLOTS = "frames"
 
 path_plots = os.path.join(PATH, FOLDER_NAME_PLOTS)
+path_frame = os.path.join(PATH, FOLDER_FRAME_PLOTS)
+os.makedirs(path_plots, exist_ok=True)
+os.makedirs(path_frame, exist_ok=True)
 
 with open(os.path.join(PATH, "coeffs_OpPD_step.pkl"), "rb") as f:
     coeffs = dill.load(f)
 
 optimizer, problem, res = get_optimizer_and_problem(PATH)
 
-id2coeffs = {}
-for x_var, Kp, Kd, input_for_task, fun in coeffs:
-    design_index = int(np.argwhere(np.all(res.X == x_var, axis=1))[0].squeeze())
-    id2coeffs[design_index] = (x_var, Kp, Kd, input_for_task, fun)
-    
-id_design2simout = {}
-
-
-for id_design, coeffs in id2coeffs.items():
-    problem.mutate_JP_by_xopt(res.X[id_design])
-    robo, __ = jps_graph2pinocchio_robot(problem.graph, problem.builder)
-    test = TrajectoryMovements(*coeffs[3])
-    time_arr, des_traj_6d, __ = test.prepare_trajectory(robo)
-    test.Kp = coeffs[1]
-    test.Kd = coeffs[2]
-
-    id_design2simout[id_design] = test.simulate(robo, IS_VIS, coeffs[4])
-    
 
 def get_reward_name_by_idF(reward_manager: RewardManager):
     
@@ -75,6 +59,32 @@ def get_reward_name_by_idF(reward_manager: RewardManager):
     return reward_names
 
 reward_names = get_reward_name_by_idF(problem.rewards_and_trajectories)
+
+id2coeffs = {}
+for x_var, Kp, Kd, input_for_task, fun in coeffs:
+    design_index = int(np.argwhere(np.all(res.X == x_var, axis=1))[0].squeeze())
+    id2coeffs[design_index] = (x_var, Kp, Kd, input_for_task, fun)
+    
+id_design2simout = {}
+
+
+
+for id_design, coeffs in id2coeffs.items():
+    problem.mutate_JP_by_xopt(res.X[id_design])
+    robo, __ = jps_graph2pinocchio_robot(problem.graph, problem.builder)
+    test = TrajectoryMovements(*coeffs[3])
+    time_arr, des_traj_6d, __ = test.prepare_trajectory(robo)
+    test.Kp = coeffs[1]
+    test.Kd = coeffs[2]
+    
+    folder_name = f"ID_{id_design}_"
+    for i, r_name in enumerate(reward_names):
+        folder_name += f"{re.sub('[^A-Z]', '', r_name)}_{int(res.F[id_design, i]*100)}_"
+    path2design_frames = os.path.join(path_frame, folder_name)
+    os.makedirs(path2design_frames,exist_ok=True)
+    id_design2simout[id_design] = test.simulate(robo, IS_VIS, coeffs[4], path2design_frames)
+    print("done")
+
 
 power_arrs = []
 pos_ee_arrs = []
@@ -89,19 +99,29 @@ for id_design, simout in id_design2simout.items():
     for i, r_name in enumerate(reward_names):
         label += f"{re.sub('[^A-Z]', '', r_name)}: {res.F[id_design, i]:.2f}; "
     labels.append(label)
-    
-
-if SAVE:
-    mean_powers, sum_power, abs_powers =  eval.compare_power_quality(time_arr, power_arrs, True, path_plots, names=labels)
-    mean_errors = eval.compare_movments_in_xz_plane(time_arr, pos_ee_arrs, des_traj_6d[:,:3], True, path_plots, names=labels)
-    max_torques, mean_torques = eval.compare_torque_evaluation(time_arr, tau_arrs, True, path_plots, names=labels)
-if SHOW:
-    mean_powers, sum_power, abs_powers =  eval.compare_power_quality(time_arr, power_arrs, True, names=labels)
-    mean_errors = eval.compare_movments_in_xz_plane(time_arr, pos_ee_arrs, des_traj_6d[:,:3], True, names=labels)
-    max_torques, mean_torques = eval.compare_torque_evaluation(time_arr, tau_arrs, True, names=labels)
 
 
-cmap = plt.get_cmap("rainbow")
+mean_powers, sum_power, abs_powers =  eval.compare_power_quality(time_arr, power_arrs, True, path_plots, names=labels)
+mean_errors = eval.compare_movments_in_xz_plane(time_arr, pos_ee_arrs, des_traj_6d[:,:3], True, path_plots, names=labels)
+max_torques, mean_torques = eval.compare_torque_evaluation(time_arr, tau_arrs, True, path_plots, names=labels)
+# if SAVE:
+#     mean_powers, sum_power, abs_powers =  eval.compare_power_quality(time_arr, power_arrs, True, path_plots, names=labels)
+#     mean_errors = eval.compare_movments_in_xz_plane(time_arr, pos_ee_arrs, des_traj_6d[:,:3], True, path_plots, names=labels)
+#     max_torques, mean_torques = eval.compare_torque_evaluation(time_arr, tau_arrs, True, path_plots, names=labels)
+# if SHOW:
+#     mean_powers, sum_power, abs_powers =  eval.compare_power_quality(time_arr, power_arrs, True, names=labels)
+#     mean_errors = eval.compare_movments_in_xz_plane(time_arr, pos_ee_arrs, des_traj_6d[:,:3], True, names=labels)
+#     max_torques, mean_torques = eval.compare_torque_evaluation(time_arr, tau_arrs, True, names=labels)
+
+
+for id_design, mean_pw, sm_pw, abs_pw, m_tau, mean_tau in zip(labels, mean_powers, sum_power, abs_powers, max_torques, mean_torques):
+    print()
+    print("---------------------------------")
+    print(id_design)
+    print(f"Mean Pw: {mean_pw}, Sum Pw: {mean_pw}, Abs Pw: {mean_pw}")
+    print(f"Max tau: {np.linalg.norm(m_tau)}, Mean Tau: {np.linalg.norm(mean_tau)}")
+
+cmap = plt.get_cmap("viridis")
 
 approx_ideal = res.F.min(axis=0)
 approx_nadir = res.F.max(axis=0)
@@ -142,9 +162,10 @@ for color_value, color_name in zip(color_values, color_names):
     plt.colorbar(cmap=cmap, label=color_name)
     plt.title("Objective Space")
     plt.xlabel(reward_names[0])
-    plt.xlabel(reward_names[1])
+    plt.ylabel(reward_names[1])
     plt.legend()
     if SHOW:
         plt.show()
     if SAVE:
         plt.savefig(os.path.join(path_plots, f"design_in_objective_space_{color_name}.svg"))
+

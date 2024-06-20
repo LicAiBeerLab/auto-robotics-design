@@ -32,9 +32,9 @@ plt.rcParams.update(
 MAGIC_TRAJECTORY_INDEX = 1
 
 SAVE = True
-SHOW = False
+SHOW = True
 
-PATH = r"results/topology_0_2024-05-29_18-48-58"
+PATH = r"results/topology_8_2024-05-30_10-40-12"
 FOLDER_NAME_PLOTS = "plots"
 
 NUM_DESIGNS = 5
@@ -46,6 +46,17 @@ os.makedirs(path_plots, exist_ok=True)
 
 optimizer, problem, res = get_optimizer_and_problem(PATH)
 
+def get_reward_name_by_idF(reward_manager: RewardManager):
+    
+    reward_names = []
+    for agg in reward_manager.agg_list:
+        traj_id = agg[0][0]
+        r_name = reward_manager.rewards[traj_id][0][0].__class__.__name__
+        reward_names.append(r_name)
+    return reward_names
+
+
+rewards_names = get_reward_name_by_idF(problem.rewards_and_trajectories)
 
 # Set of weights for ASF decomposition
 SET_WEIGHTS = np.zeros((NUM_DESIGNS, res.F.shape[1]))
@@ -87,6 +98,8 @@ for i, idx in enumerate(design_idx):
         horizontalalignment="right",
     )
 plt.title("Objective Space")
+plt.xlabel(rewards_names[0])
+plt.ylabel(rewards_names[1])
 plt.legend()
 
 if SAVE:
@@ -120,17 +133,7 @@ if SAVE:
 if SHOW:
     plt.show()
 
-def get_reward_name_by_idF(reward_manager: RewardManager):
-    
-    reward_names = []
-    for agg in reward_manager.agg_list:
-        traj_id = agg[0][0]
-        r_name = reward_manager.rewards[traj_id][0][0].__class__.__name__
-        reward_names.append(r_name)
-    return reward_names
 
-
-rewards_names = get_reward_name_by_idF(problem.rewards_and_trajectories)
 plt.figure(figsize=(NUM_DESIGNS*6, 8))
 for design_id in design_idx:
     plt.subplot(1, len(design_idx), design_idx.tolist().index(design_id) + 1)
@@ -146,8 +149,10 @@ if SAVE:
 if SHOW:
     plt.show()
 
+print("start_optimization")
 optimal_coeffs_traj = []
 for i, x_opt in enumerate(arr_X_test):
+    print(f"Iteration: {i}")
     problem.mutate_JP_by_xopt(x_opt)
     robo, __ = jps_graph2pinocchio_robot(problem.graph, problem.builder)
     input_for_task = (opt_task_traj[:, [0, 2]], 0.4, 0.001, NAME_EE)

@@ -1,18 +1,12 @@
 import matplotlib.pyplot as plt
 
 
-import numpy as np
-
-import matplotlib.pyplot as plt
-
-
-
 from auto_robot_design.optimization.analyze import get_optimizer_and_problem, get_pareto_sample_linspace, get_pareto_sample_histogram
 
 optimizer, problem, res = get_optimizer_and_problem(
-    "results\\multi_opti_preset2\\topology_0_2024-05-29_18-48-58")
-sample_x, sample_F = get_pareto_sample_linspace(res, 10)
-sample_x2, sample_F2 = get_pareto_sample_histogram(res, 10)
+    r"results/topology_0_2024-05-29_18-48-58")
+sample_x, sample_F = get_pareto_sample_linspace(res, 5)
+sample_x2, sample_F2 = get_pareto_sample_histogram(res, 5)
 
 
 

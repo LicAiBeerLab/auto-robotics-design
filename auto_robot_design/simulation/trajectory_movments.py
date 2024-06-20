@@ -223,6 +223,10 @@ class TrajectoryMovements:
             des_traj_by_t[:, 0], des_traj_by_t[:, 1]
         )
 
+        d_y =  np.diff(des_traj_by_t[:, 1]) / self.time_step
+        d_y = np.hstack([d_y, 0])
+        des_dtraj_2d[:,1] = d_y
+        
         des_d_traj_6d = convert_x_y_to_6d_traj_xz(
             des_dtraj_2d[:, 0], des_dtraj_2d[:, 1]
         )
