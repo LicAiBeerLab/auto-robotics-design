@@ -12,7 +12,7 @@ def get_indices_by_point(mask: np.ndarray, reach_array: np.ndarray):
     target_indices = np.where(reachability_sums == mask_true_sum)
     return target_indices[0]
 
-data = np.load("WORKSPACE_TOP0_test.npz")
+data = np.load("test_workspace_BF_RES_0.npz")
 reach_arrays = data["reach_array"]
 q_arrays = data["q_array"]
 
