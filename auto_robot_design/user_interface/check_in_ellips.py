@@ -26,15 +26,20 @@ class Ellipse:
 
 
 
-def check_points_in_ellips(points: np.ndarray, ellipse: Ellipse):
+def check_points_in_ellips(points: np.ndarray, ellipse: Ellipse, tolerance = 0.2):
     # https://en.wikipedia.org/wiki/Ellipse
+    a = ellipse.axis[0] * (1 + tolerance)
+    b = ellipse.axis[1] * (1 + tolerance)
+    ang = ellipse.angle
+    x0 = ellipse.p_center[0]
+    y0 = ellipse.p_center[1]
     
-    A = ellipse.axis[0]**2 * np.sin(ellipse.angle)**2 + ellipse.axis[1]**2 * np.cos(ellipse.angle)**2
-    B = 2*(ellipse.axis[1]**2 - ellipse.axis[0]**2)*np.sin(ellipse.angle)*np.cos(ellipse.angle)
-    C = ellipse.axis[0]**2 * np.cos(ellipse.angle)**2 + ellipse.axis[1]**2 * np.sin(ellipse.angle)**2
-    D = -2 * A * ellipse.p_center[0] - B * ellipse.p_center[1]
-    E = -B * ellipse.p_center[0] - 2*C*ellipse.p_center[1]
-    F = A*ellipse.p_center[0]**2 + B*ellipse.p_center[0]*ellipse.p_center[1] + C*ellipse.p_center[1]**2 - ellipse.axis[0]**2*ellipse.axis[1]**2
+    A = a**2 * np.sin(ang)**2 + b**2 * np.cos(ang)**2
+    B = 2*(b**2 - a**2)*np.sin(ang)*np.cos(ang)
+    C = a**2 * np.cos(ang)**2 + b**2 * np.sin(ang)**2
+    D = -2 * A * x0 - B * y0
+    E = -B * x0 - 2*C*y0
+    F = A*x0**2 + B*x0*y0 + C*y0**2 - a**2*b**2
     
     ellps_impct_func = lambda point: A*point[0]**2 + C*point[1]**2 + B*np.prod(point) + D*point[0] + E*point[1] + F
     
@@ -49,14 +54,14 @@ def check_points_in_ellips(points: np.ndarray, ellipse: Ellipse):
 
 if __name__=="__main__":
 # def plot_ellipse(ellipse):
-    ellipse = Ellipse(np.array([-4,2]), np.deg2rad(45), np.array([4, 1]))
+    ellipse = Ellipse(np.array([-4,2]), np.deg2rad(45), np.array([1, 2]))
     point_ellipse = ellipse.get_points()
     
     points_x = np.linspace(-5, 5, 50)
     points_y = np.linspace(-5, 5, 50)
     xv, yv = np.meshgrid(points_x, points_y)
     points = np.vstack([xv.flatten(), yv.flatten()])
-    mask = check_points_in_ellips(points, ellipse)
+    mask = check_points_in_ellips(points, ellipse, 0.2)
     rev_mask = np.array(1-mask, dtype="bool")
     plt.figure(figsize=(10,10))
     plt.plot(point_ellipse[0,:], point_ellipse[1,:], "g", linewidth=3)
