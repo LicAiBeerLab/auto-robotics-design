@@ -277,11 +277,8 @@ def get_sample_torque_traj_from_sample_multi(path, is_vis = False):
 
     path_to_save_result = Path(path) / "squat_compare"
     optimizer, problem, res = get_optimizer_and_problem(path)
-    
     sample_X, sample_F = get_pareto_sample_histogram(res, 10)
     graphs, urdf_j_des_l_des = get_urdf_from_problem(sample_X, problem)
-    draw_joint_point(graphs[0])
-    plt.show()
     sqh_p = SquatHopParameters(hop_flight_hight=0.10,
                                squatting_up_hight=0.0,
                                squatting_down_hight=-0.04,
