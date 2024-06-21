@@ -23,7 +23,8 @@ from auto_robot_design.description.builder import ParametrizedBuilder, DetailedU
 
 
 class KinematicDataset:
-    def __init__(self, graph, builder, jp2limits) -> None:
+    def __init__(self, graph, builder, jp2limits, error_key) -> None:
+        self.error_key = error_key
         self.graph = graph
         self.builder = builder
         self.jp2limits = jp2limits
@@ -53,22 +54,52 @@ class KinematicDataset:
             id = list_nodes.index(jp)
             list_nodes[id].r = np.array([xz[0], 0, xz[1]])
     
-    def sample_and_rank(self, sample_size, ranking_step, max_ranking_steps = 10,grid_step:int = 100):
+    def sample_and_rank(self, sample_size, ranking_step=0.01, max_ranking_steps = 10, grid_step:int = 100):
         rnd_gen = np.random.default_rng()
         generated_nums= rnd_gen.choice(int(grid_step+1), size=(sample_size, len(self.initial_xopt)))
         sampled_values = self.initial_xopt + self.lower_bounds + generated_nums*(self.upper_bounds - self.lower_bounds)*0.01 
-        for x_opt in sampled_values:
+        class_vector = np.zeros(sample_size) 
+        for i, x_opt in enumerate(sampled_values):
             self.mutate_JP_by_xopt(x_opt)
             fixed_robot, free_robot = jps_graph2pinocchio_robot(self.graph, self.builder)
-            trajectory = get_steped_round_trajectory([0,-0.3], 0.01, n=10, angle_steps=100)
+            trajectory = convert_x_y_to_6d_traj_xz(*get_steped_round_trajectory([0,-0.3], r_step = ranking_step, n_steps=max_ranking_steps, angle_steps=100))
             dict_trajectory_criteria = {}
             # criteria calculated for each point on the trajectory
-            dict_point_criteria = {}
+            dict_point_criteria = {"Manip_Jacobian": ManipJacobian(MovmentSurface.XZ)}
             crag = CriteriaAggregator(dict_point_criteria, dict_trajectory_criteria)
             point_criteria_vector, trajectory_criteria, res_dict_fixed = crag.get_criteria_data(
                     fixed_robot, free_robot, trajectory)
-            pass
-        return res_dict_fixed
+            
+            errors = res_dict_fixed[self.error_key]
+            jacobians = point_criteria_vector["Manip_Jacobian"]
+            error_threshold = 1e-6
+            isotropic_threshold = 45
+            ind = np.argmax(errors>error_threshold)
+            if errors[ind]>error_threshold:
+                jacobians = jacobians[:ind]
+                errors = errors[:ind]
+
+            isotropic_values = np.zeros(len(jacobians))
+            for num, jacob in enumerate(jacobians):
+                U, S, Vh = np.linalg.svd(jacob)
+                max_eig_val = np.max(S)
+                min_eig_val = np.min(S)
+                isotropic = max_eig_val / min_eig_val
+                isotropic_values[num] = isotropic
+
+            ind = np.argmax(isotropic_values>isotropic_threshold)
+            if isotropic_values[ind]<=isotropic_threshold:
+                ind = len(isotropic_values)
+            
+            if ind ==0:
+                class_vector[i] = 0
+            else:
+                class_vector[i] = (ind-1)//100
+
+            
+
+
+        return class_vector
 
 
 
@@ -91,4 +122,4 @@ if __name__ == "__main__":
                                 offset_ground=MIT_CHEETAH_PARAMS_DICT["offset_ground_rl"]
     )
     optimizing_joints = get_optimizing_joints(graph, constrain_dict)
-    KinematicDataset(graph,  builder, optimizing_joints).sample_and_rank(sample_size = 3, ranking_step=2)
+    print(KinematicDataset(graph,  builder, optimizing_joints, error_key="error").sample_and_rank(sample_size = 3))

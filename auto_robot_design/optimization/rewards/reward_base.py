@@ -23,7 +23,7 @@ class Reward():
         return True
 
 class DummyReward(Reward):
-    """Mean position error for the trajectory"""
+    """A reward that can be used to pad reward table"""
 
     def calculate(self, point_criteria: DataDict, trajectory_criteria: DataDict, trajectory_results: DataDict, **kwargs) -> Tuple[float, list[float]]:
         
