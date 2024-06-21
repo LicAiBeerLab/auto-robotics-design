@@ -19,11 +19,12 @@ from auto_robot_design.optimization.rewards.pure_jacobian_rewards import EndPoin
 from auto_robot_design.optimization.rewards.inertia_rewards import MassReward
 from auto_robot_design.description.actuators import TMotor_AK10_9, TMotor_AK60_6, TMotor_AK70_10, TMotor_AK80_64, TMotor_AK80_9
 from auto_robot_design.description.builder import ParametrizedBuilder, DetailedURDFCreatorFixedEE, jps_graph2pinocchio_robot, MIT_CHEETAH_PARAMS_DICT
-
-
+#from auto_robot_design.optimization.sampler.sampler import KinematicDataset
+from joblib import Parallel, delayed
+from functools import partial
 class RewardCalculator():
-    def __init__(self, graph, builder, crag, jp2limits, dataset, trajectory, reward) -> None:
-        self.dataset = dataset
+    def __init__(self, graph, builder, crag, jp2limits) -> None:
+        self.crag = crag
         self.graph = graph
         self.builder = builder
         self.jp2limits = jp2limits
@@ -53,16 +54,18 @@ class RewardCalculator():
             id = list_nodes.index(jp)
             list_nodes[id].r = np.array([xz[0], 0, xz[1]])
 
-    def get_score(self, x_opt):
+    def get_score(self, x_opt, reward, trajectory):
         self.mutate_JP_by_xopt(x_opt)
         fixed_robot, free_robot = jps_graph2pinocchio_robot(self.graph, self.builder)
-        point_criteria_vector, trajectory_criteria, res_dict_fixed = self.crag.get_criteria_data(fixed_robot, free_robot, self.trajectory)
-        reward_value = self.reward.calculate(point_criteria_vector, trajectory_criteria, res_dict_fixed)
+        point_criteria_vector, trajectory_criteria, res_dict_fixed = self.crag.get_criteria_data(fixed_robot, free_robot, trajectory)
+        reward_value, _ = reward.calculate(point_criteria_vector, trajectory_criteria, res_dict_fixed)
         return reward_value
 
-    def calculate_rewards(self):
-        result = map(self.get_score, self.dataset)
-        return result
+    def calculate_rewards(self, dataset, reward, trajectory):
+        #result = map(self.get_score, self.dataset)
+        partial_get_score = partial(self.get_score, reward = reward, trajectory = trajectory)
+        result = Parallel(n_jobs=-1)(delayed(partial_get_score)(row) for row in dataset)
+        return np.array(list(result))
     
 
 if __name__ == "__main__":
@@ -85,25 +88,20 @@ if __name__ == "__main__":
     )
     optimizing_joints = get_optimizing_joints(graph, constrain_dict)
 
-    dict_trajectory_criteria = {
-        "MASS": NeutralPoseMass(),
-        "POS_ERR": TranslationErrorMSE()  # MSE of deviation from the trajectory
-    }
+    dict_trajectory_criteria = {}
     # criteria calculated for each point on the trajectory
     dict_point_criteria = {
-        # Impact mitigation factor along the axis
-        "IMF": ImfCompute(ImfProjections.Z),
-        "MANIP": ManipCompute(MovmentSurface.XZ),
-        "Effective_Inertia": EffectiveInertiaCompute(),
-        "Actuated_Mass": ActuatedMass(),
         "Manip_Jacobian": ManipJacobian(MovmentSurface.XZ)
     }
     # special object that calculates the criteria for a robot and a trajectory
     crag = CriteriaAggregator(dict_point_criteria, dict_trajectory_criteria)
-    trajectory = convert_x_y_to_6d_traj_xz(*(np.array([0]), np.array([-0,3])))
+    trajectory = convert_x_y_to_6d_traj_xz(*(np.array([0]), np.array([-0.3])))
     reward = MinForceReward(manipulability_key="Manip_Jacobian", error_key='error')
 
-    rewards = RewardCalculator(graph, builder, crag, optimizing_joints, dataset,trajectory, reward).calculate_rewards()
+    #dataset, classes = KinematicDataset(graph,  builder, optimizing_joints, error_key="error").sample_and_rank(sample_size = 1000, max_ranking_steps=0)
+    dataset = np.load('test_workspace_BF_RES_0.npz')['x_vec']
+    rewards = RewardCalculator(graph, builder, crag, optimizing_joints).calculate_rewards(dataset, reward, trajectory)
+    print(dataset[np.argmax(rewards)])
 
 
 

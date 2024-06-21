@@ -96,10 +96,7 @@ class KinematicDataset:
             else:
                 class_vector[i] = (ind-1)//100
 
-            
-
-
-        return class_vector
+        return sampled_values, class_vector
 
 
 
