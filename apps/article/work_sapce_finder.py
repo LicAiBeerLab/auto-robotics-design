@@ -133,13 +133,12 @@ if __name__ == '__main__':
     vecs = get_n_dim_linspace(upper_bounds, lower_bounds)
     chunk_vec = list(chunk_list(vecs, 100))
     for num, i_vec in enumerate(chunk_vec):
-        if num > 790:
-            try:
-                test_chunk(problem, i_vec, workspace_trajectory, FILE_NAME)
-            except:
-                print("FAILD")
-            print(f"Tested chunk {num} / {len(chunk_vec)}")
-            ellip = ( time.time() - start_time) / 60
-            print(f"Remaining minute {ellip}")
+        try:
+            test_chunk(problem, i_vec, workspace_trajectory, FILE_NAME)
+        except:
+            print("FAILD")
+        print(f"Tested chunk {num} / {len(chunk_vec)}")
+        ellip = ( time.time() - start_time) / 60
+        print(f"Remaining minute {ellip}")
     
  

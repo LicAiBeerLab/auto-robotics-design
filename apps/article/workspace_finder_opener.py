@@ -29,6 +29,24 @@ from apps.article import traj_graph_setup
 from pymoo.algorithms.moo.age2 import AGEMOEA2
 import os
 
+def get_indices_by_point(mask: np.ndarray, reach_array: np.ndarray):
+    mask_true_sum = np.sum(mask)
+    reachability_sums = reach_array @ mask
+    target_indices = np.where(reachability_sums == mask_true_sum)
+    return target_indices[0]
 
-cock = np.load("WORKSPACE_TOP0.npz")
-pass
+data = np.load("WORKSPACE_TOP0_test.npz")
+reach_arrays = data["reach_array"]
+q_arrays = data["q_array"]
+
+
+mask = np.ones(100, dtype=np.bool_)
+mask[55] = False
+mask[0] = False
+mask[10] = False
+start = time.time()
+target_indices = get_indices_by_point(mask, reach_arrays)
+curent_time = time.time()
+ellap = curent_time - start
+print(ellap)
+print(len(target_indices))
