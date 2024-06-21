@@ -195,7 +195,7 @@ class ForceEllipsoidReward(Reward):
 class MinForceReward(Reward):
     """mean value of 1/max_eigen_value """
 
-    def __init__(self, manipulability_key: str, trajectory_key: str, error_key: str) -> None:
+    def __init__(self, manipulability_key: str,  error_key: str) -> None:
         """Set the dictionary keys for the data
 
         Args:
@@ -204,7 +204,6 @@ class MinForceReward(Reward):
         """
         super().__init__()
         self.manip_key = manipulability_key
-        self.trajectory_key = trajectory_key
         self.error_key = error_key
 
     def calculate(self, point_criteria: DataDict, trajectory_criteria: DataDict, trajectory_results: DataDict, **kwargs) -> Tuple[float, list[float]]:
@@ -212,7 +211,6 @@ class MinForceReward(Reward):
 
         Args:
             point_criteria (DataDict): all data of the characteristics assigned to each point
-            trajectory_criteria (DataDict): all data of the trajectory characteristics 
             trajectory_results (DataDict): data of trajectory and trajectory following
 
         Returns:
@@ -228,7 +226,7 @@ class MinForceReward(Reward):
         n_steps = len(errors)
         reward_vector = [0]*n_steps
         for i in range(n_steps):
-            step_result = np.min(
+            step_result = 1/np.max(
                 abs(np.linalg.eigvals(manipulability_matrices[i])))
             reward_vector[i] = step_result
 
