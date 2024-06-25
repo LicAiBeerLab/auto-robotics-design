@@ -17,7 +17,6 @@ reach_arrays = data["reach_array"]
 q_arrays = data["q_array"]
 
 
-mask = np.ones(100, dtype=np.bool_)
 mask[55] = False
 mask[0] = False
 mask[10] = False
