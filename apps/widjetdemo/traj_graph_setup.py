@@ -44,44 +44,21 @@ def get_graph_and_traj(graph_number: int) -> tuple[Graph, dict, ParametrizedBuil
     workspace_trajectory = convert_x_y_to_6d_traj_xz(
         *get_workspace_trajectory([-0.1, -0.29], 0.07, 0.2, 10, 20))
 
-    ground_symmetric_step1 = convert_x_y_to_6d_traj_xz(*create_simple_step_trajectory(
-        starting_point=[-0.085, -0.28], step_height=0.06, step_width=0.17, n_points=50))
-
-    ground_symmetric_step2 = convert_x_y_to_6d_traj_xz(*create_simple_step_trajectory(
-        starting_point=[-0.085 + 0.025, -0.28], step_height=0.05, step_width=-2*(-0.085 + 0.025), n_points=50))
-
-    ground_symmetric_step3 = convert_x_y_to_6d_traj_xz(*create_simple_step_trajectory(
-        starting_point=[-0.085 + 2 * 0.025, -0.28], step_height=0.04, step_width=-2*(-0.085 + 2 * 0.025), n_points=50))
-
-    horizontal_trj_1 = convert_x_y_to_6d_traj_xz(
-        *get_vertical_trajectory(-0.28, 0.04, 0.085, 50))
-    horizontal_trj_2 = convert_x_y_to_6d_traj_xz(
-        *get_vertical_trajectory(-0.28, 0.05, 0.085 - 0.025, 50))
-    horizontal_trj_3 = convert_x_y_to_6d_traj_xz(
-        *get_vertical_trajectory(-0.28, 0.06, 0.085 - 2*0.025, 50))
-
-    squat_trajs = [horizontal_trj_1, horizontal_trj_2, horizontal_trj_3]
-    step_trajs = [ground_symmetric_step1,
-                  ground_symmetric_step2, ground_symmetric_step3]
-
     optimizing_joints = get_optimizing_joints(graph, constrain_dict)
 
-    return graph, optimizing_joints, constrain_dict,  builder, step_trajs, squat_trajs, workspace_trajectory
+    return graph, optimizing_joints, constrain_dict,  builder, workspace_trajectory
 
 
 if __name__ == "__main__":
-    graph, optimizing_joints, constrain_dict, builder, step_trajs, squat_trajs, workspace_trajectory = get_graph_and_traj(
+    graph, optimizing_joints, constrain_dict, builder, workspace_trajectory = get_graph_and_traj(
         0)
 
     plt.figure()
-    draw_joint_point(graph)
-    for trajectory in step_trajs:
-        plt.plot(trajectory[:, 0], trajectory[:, 2])
-    for trajectory in squat_trajs:
-        plt.plot(trajectory[:, 0], trajectory[:, 2])
 
     plt.scatter(workspace_trajectory[:, 0],
                 workspace_trajectory[:, 2], marker="1")
+
+    draw_joint_point(graph)
     plt.figure()
     draw_joint_point(graph)
     visualize_constrains(graph, constrain_dict)
