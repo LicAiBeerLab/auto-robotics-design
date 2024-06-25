@@ -20,16 +20,21 @@ from auto_robot_design.optimization.rewards.pure_jacobian_rewards import EndPoin
 from auto_robot_design.optimization.rewards.inertia_rewards import MassReward
 from auto_robot_design.description.actuators import TMotor_AK10_9, TMotor_AK60_6, TMotor_AK70_10, TMotor_AK80_64, TMotor_AK80_9
 from auto_robot_design.description.builder import ParametrizedBuilder, DetailedURDFCreatorFixedEE, jps_graph2pinocchio_robot, MIT_CHEETAH_PARAMS_DICT
-
+from joblib import Parallel, delayed
+from functools import partial
+import multiprocessing
 
 class KinematicDataset:
-    def __init__(self, graph, builder, jp2limits, error_key) -> None:
+    def __init__(self, graph, builder, jp2limits, error_key,error_threshold, isotropic_threshold) -> None:
         self.error_key = error_key
         self.graph = graph
         self.builder = builder
         self.jp2limits = jp2limits
         self.opt_joints = list(self.jp2limits.keys())
+        self.error_threshold = error_threshold
+        self.isotropic_threshold = isotropic_threshold
         self.initial_xopt, self.upper_bounds, self.lower_bounds = self.convert_joints2x_opt()
+        self.counter = 0
 
     def convert_joints2x_opt(self):
         x_opt = np.zeros(len(self.opt_joints) * 2)
@@ -54,48 +59,86 @@ class KinematicDataset:
             id = list_nodes.index(jp)
             list_nodes[id].r = np.array([xz[0], 0, xz[1]])
     
+    def rank_one_design(self, x_opt,  trajectory_step, n_steps, angle_steps):
+        self.mutate_JP_by_xopt(x_opt)
+        fixed_robot, free_robot = jps_graph2pinocchio_robot(self.graph, self.builder)
+        trajectory = convert_x_y_to_6d_traj_xz(*get_steped_round_trajectory([0,-0.3], r_step = trajectory_step, n_steps=n_steps, angle_steps=angle_steps))
+        dict_point_criteria = {"Manip_Jacobian": ManipJacobian(MovmentSurface.XZ)}
+        dict_trajectory_criteria = {}
+        crag = CriteriaAggregator(dict_point_criteria, dict_trajectory_criteria)
+        point_criteria_vector, trajectory_criteria, res_dict_fixed = crag.get_criteria_data(fixed_robot, free_robot, trajectory)
+        errors = res_dict_fixed[self.error_key]
+        jacobians = point_criteria_vector["Manip_Jacobian"]
+        error_threshold = self.error_threshold 
+        isotropic_threshold = self.isotropic_threshold
+        ind = np.argmax(errors>error_threshold)
+        if errors[ind]>error_threshold:
+            jacobians = jacobians[:ind]
+            errors = errors[:ind]
+        
+        isotropic_values = np.zeros(len(jacobians))
+        for num, jacob in enumerate(jacobians):
+            U, S, Vh = np.linalg.svd(jacob)
+            max_eig_val = np.max(S)
+            min_eig_val = np.min(S)
+            isotropic = max_eig_val / min_eig_val
+            isotropic_values[num] = isotropic
+
+        ind = np.argmax(isotropic_values>isotropic_threshold)
+        if isotropic_values[ind]<=isotropic_threshold:
+            ind = len(isotropic_values)
+        
+        if ind==0: return 0
+        else: return (ind-1)//angle_steps
+
     def sample_and_rank(self, sample_size, ranking_step=0.01, max_ranking_steps = 10, grid_step:int = 100):
         rnd_gen = np.random.default_rng()
         generated_nums= rnd_gen.choice(int(grid_step+1), size=(sample_size, len(self.initial_xopt)))
-        sampled_values = self.initial_xopt + self.lower_bounds + generated_nums*(self.upper_bounds - self.lower_bounds)*0.01 
-        class_vector = np.zeros(sample_size) 
-        for i, x_opt in enumerate(sampled_values):
-            self.mutate_JP_by_xopt(x_opt)
-            fixed_robot, free_robot = jps_graph2pinocchio_robot(self.graph, self.builder)
-            trajectory = convert_x_y_to_6d_traj_xz(*get_steped_round_trajectory([0,-0.3], r_step = ranking_step, n_steps=max_ranking_steps, angle_steps=100))
-            dict_trajectory_criteria = {}
-            # criteria calculated for each point on the trajectory
-            dict_point_criteria = {"Manip_Jacobian": ManipJacobian(MovmentSurface.XZ)}
-            crag = CriteriaAggregator(dict_point_criteria, dict_trajectory_criteria)
-            point_criteria_vector, trajectory_criteria, res_dict_fixed = crag.get_criteria_data(
-                    fixed_robot, free_robot, trajectory)
+        sampled_values = self.initial_xopt + self.lower_bounds + generated_nums*(self.upper_bounds - self.lower_bounds)/grid_step
+        #class_vector = np.zeros(sample_size)
+        rank_one = partial(self.rank_one_design,  trajectory_step = ranking_step, n_steps = max_ranking_steps, angle_steps=100)
+        class_vector = Parallel(n_jobs=-2)(delayed(rank_one)(row) for row in sampled_values)
+
+        # for i, x_opt in enumerate(sampled_values):
+        #     if i%100 == 0:
+        #         print(f"Sample {i} from {sample_size}")
+        #     self.mutate_JP_by_xopt(x_opt)
+        #     fixed_robot, free_robot = jps_graph2pinocchio_robot(self.graph, self.builder)
+        #     trajectory = convert_x_y_to_6d_traj_xz(*get_steped_round_trajectory([0,-0.3], r_step = ranking_step, n_steps=max_ranking_steps, angle_steps=100))
+        #     dict_trajectory_criteria = {}
+        #     # criteria calculated for each point on the trajectory
+        #     dict_point_criteria = {"Manip_Jacobian": ManipJacobian(MovmentSurface.XZ)}
+        #     crag = CriteriaAggregator(dict_point_criteria, dict_trajectory_criteria)
+        #     point_criteria_vector, trajectory_criteria, res_dict_fixed = crag.get_criteria_data(
+        #             fixed_robot, free_robot, trajectory)
             
-            errors = res_dict_fixed[self.error_key]
-            jacobians = point_criteria_vector["Manip_Jacobian"]
-            error_threshold = 1e-6
-            isotropic_threshold = 45
-            ind = np.argmax(errors>error_threshold)
-            if errors[ind]>error_threshold:
-                jacobians = jacobians[:ind]
-                errors = errors[:ind]
+        #     errors = res_dict_fixed[self.error_key]
+        #     jacobians = point_criteria_vector["Manip_Jacobian"]
+        #     error_threshold = 1e-6
+        #     isotropic_threshold = 45
+        #     ind = np.argmax(errors>error_threshold)
+        #     if errors[ind]>error_threshold:
+        #         jacobians = jacobians[:ind]
+        #         errors = errors[:ind]
 
-            isotropic_values = np.zeros(len(jacobians))
-            for num, jacob in enumerate(jacobians):
-                U, S, Vh = np.linalg.svd(jacob)
-                max_eig_val = np.max(S)
-                min_eig_val = np.min(S)
-                isotropic = max_eig_val / min_eig_val
-                isotropic_values[num] = isotropic
+        #     isotropic_values = np.zeros(len(jacobians))
+        #     for num, jacob in enumerate(jacobians):
+        #         U, S, Vh = np.linalg.svd(jacob)
+        #         max_eig_val = np.max(S)
+        #         min_eig_val = np.min(S)
+        #         isotropic = max_eig_val / min_eig_val
+        #         isotropic_values[num] = isotropic
 
-            ind = np.argmax(isotropic_values>isotropic_threshold)
-            if isotropic_values[ind]<=isotropic_threshold:
-                ind = len(isotropic_values)
+        #     ind = np.argmax(isotropic_values>isotropic_threshold)
+        #     if isotropic_values[ind]<=isotropic_threshold:
+        #         ind = len(isotropic_values)
             
-            if ind ==0:
-                class_vector[i] = 0
-            else:
-                class_vector[i] = (ind-1)//100
+        #     if ind ==0:
+        #         class_vector[i] = 0
+        #     else:
+        #         class_vector[i] = (ind-1)//100
 
+        #parameters = np.array([sample_size, ranking_step, max_ranking_steps])
         return sampled_values, class_vector
 
 
