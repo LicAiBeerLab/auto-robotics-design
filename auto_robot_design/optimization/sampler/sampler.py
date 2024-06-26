@@ -13,7 +13,7 @@ from auto_robot_design.optimization.optimizer import PymooOptimizer
 from auto_robot_design.pinokla.calc_criterion import ActuatedMass, EffectiveInertiaCompute, ImfCompute, ManipCompute, MovmentSurface, NeutralPoseMass, TranslationErrorMSE, ManipJacobian
 from auto_robot_design.pinokla.criterion_agregator import CriteriaAggregator
 from auto_robot_design.pinokla.criterion_math import ImfProjections
-from auto_robot_design.pinokla.default_traj import get_steped_round_trajectory, convert_x_y_to_6d_traj_xz, get_simple_spline, get_vertical_trajectory, create_simple_step_trajectory,get_workspace_trajectory,get_horizontal_trajectory
+from auto_robot_design.pinokla.default_traj import get_steped_round_step_adjustable_trajectory, get_steped_round_trajectory, convert_x_y_to_6d_traj_xz, get_simple_spline, get_vertical_trajectory, create_simple_step_trajectory,get_workspace_trajectory,get_horizontal_trajectory
 from auto_robot_design.optimization.rewards.reward_base import PositioningReward, PositioningConstrain, PositioningErrorCalculator, RewardManager
 from auto_robot_design.optimization.rewards.jacobian_and_inertia_rewards import HeavyLiftingReward, AccelerationCapability, MeanHeavyLiftingReward, MinAccelerationCapability
 from auto_robot_design.optimization.rewards.pure_jacobian_rewards import EndPointZRRReward, VelocityReward, ForceEllipsoidReward, ZRRReward, MinForceReward,MinManipulabilityReward
@@ -59,10 +59,10 @@ class KinematicDataset:
             id = list_nodes.index(jp)
             list_nodes[id].r = np.array([xz[0], 0, xz[1]])
     
-    def rank_one_design(self, x_opt,  trajectory_step, n_steps, angle_steps):
+    def rank_one_design(self, x_opt,  trajectory_step, n_steps, base_angle_steps, step_factor):
         self.mutate_JP_by_xopt(x_opt)
         fixed_robot, free_robot = jps_graph2pinocchio_robot(self.graph, self.builder)
-        trajectory = convert_x_y_to_6d_traj_xz(*get_steped_round_trajectory([0,-0.3], r_step = trajectory_step, n_steps=n_steps, angle_steps=angle_steps))
+        trajectory = convert_x_y_to_6d_traj_xz(*get_steped_round_step_adjustable_trajectory([0,-0.3], r_step = trajectory_step, n_steps=n_steps, base_angle_steps=base_angle_steps, step_factor=step_factor))
         dict_point_criteria = {"Manip_Jacobian": ManipJacobian(MovmentSurface.XZ)}
         dict_trajectory_criteria = {}
         crag = CriteriaAggregator(dict_point_criteria, dict_trajectory_criteria)
@@ -86,17 +86,20 @@ class KinematicDataset:
 
         ind = np.argmax(isotropic_values>isotropic_threshold)
         if isotropic_values[ind]<=isotropic_threshold:
-            ind = len(isotropic_values)
+            ind = len(isotropic_values)-1
         
-        if ind==0: return 0
-        else: return (ind-1)//angle_steps
 
-    def sample_and_rank(self, sample_size, ranking_step=0.01, max_ranking_steps = 10, grid_step:int = 100):
+        for i in range(n_steps):
+            if ind - (base_angle_steps + i*step_factor)<0:
+                return i
+        return n_steps
+
+    def sample_and_rank(self, sample_size, ranking_step=0.01, max_ranking_steps = 10, grid_step:int = 10):
         rnd_gen = np.random.default_rng()
         generated_nums= rnd_gen.choice(int(grid_step+1), size=(sample_size, len(self.initial_xopt)))
         sampled_values = self.initial_xopt + self.lower_bounds + generated_nums*(self.upper_bounds - self.lower_bounds)/grid_step
         #class_vector = np.zeros(sample_size)
-        rank_one = partial(self.rank_one_design,  trajectory_step = ranking_step, n_steps = max_ranking_steps, angle_steps=100)
+        rank_one = partial(self.rank_one_design,  trajectory_step = ranking_step, n_steps = max_ranking_steps, base_angle_steps=10, step_factor=10)
         class_vector = Parallel(n_jobs=-2)(delayed(rank_one)(row) for row in sampled_values)
 
         # for i, x_opt in enumerate(sampled_values):
