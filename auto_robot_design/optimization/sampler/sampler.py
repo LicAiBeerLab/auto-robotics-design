@@ -13,10 +13,10 @@ from auto_robot_design.optimization.optimizer import PymooOptimizer
 from auto_robot_design.pinokla.calc_criterion import ActuatedMass, EffectiveInertiaCompute, ImfCompute, ManipCompute, MovmentSurface, NeutralPoseMass, TranslationErrorMSE, ManipJacobian
 from auto_robot_design.pinokla.criterion_agregator import CriteriaAggregator
 from auto_robot_design.pinokla.criterion_math import ImfProjections
-from auto_robot_design.pinokla.default_traj import get_steped_round_step_adjustable_trajectory, get_steped_round_trajectory, convert_x_y_to_6d_traj_xz, get_simple_spline, get_vertical_trajectory, create_simple_step_trajectory,get_workspace_trajectory,get_horizontal_trajectory
+from auto_robot_design.pinokla.default_traj import get_steped_round_step_adjustable_trajectory, get_steped_round_trajectory, convert_x_y_to_6d_traj_xz, get_simple_spline, get_vertical_trajectory, create_simple_step_trajectory, get_workspace_trajectory, get_horizontal_trajectory
 from auto_robot_design.optimization.rewards.reward_base import PositioningReward, PositioningConstrain, PositioningErrorCalculator, RewardManager
 from auto_robot_design.optimization.rewards.jacobian_and_inertia_rewards import HeavyLiftingReward, AccelerationCapability, MeanHeavyLiftingReward, MinAccelerationCapability
-from auto_robot_design.optimization.rewards.pure_jacobian_rewards import EndPointZRRReward, VelocityReward, ForceEllipsoidReward, ZRRReward, MinForceReward,MinManipulabilityReward
+from auto_robot_design.optimization.rewards.pure_jacobian_rewards import EndPointZRRReward, VelocityReward, ForceEllipsoidReward, ZRRReward, MinForceReward, MinManipulabilityReward
 from auto_robot_design.optimization.rewards.inertia_rewards import MassReward
 from auto_robot_design.description.actuators import TMotor_AK10_9, TMotor_AK60_6, TMotor_AK70_10, TMotor_AK80_64, TMotor_AK80_9
 from auto_robot_design.description.builder import ParametrizedBuilder, DetailedURDFCreatorFixedEE, jps_graph2pinocchio_robot, MIT_CHEETAH_PARAMS_DICT
@@ -24,8 +24,9 @@ from joblib import Parallel, delayed
 from functools import partial
 import multiprocessing
 
+
 class KinematicDataset:
-    def __init__(self, graph, builder, jp2limits, error_key,error_threshold, isotropic_threshold) -> None:
+    def __init__(self, graph, builder, jp2limits, error_key, error_threshold, isotropic_threshold) -> None:
         self.error_key = error_key
         self.graph = graph
         self.builder = builder
@@ -58,24 +59,29 @@ class KinematicDataset:
             list_nodes = list(self.graph.nodes())
             id = list_nodes.index(jp)
             list_nodes[id].r = np.array([xz[0], 0, xz[1]])
-    
+
     def rank_one_design(self, x_opt,  trajectory_step, n_steps, base_angle_steps, step_factor):
         self.mutate_JP_by_xopt(x_opt)
-        fixed_robot, free_robot = jps_graph2pinocchio_robot(self.graph, self.builder)
-        trajectory = convert_x_y_to_6d_traj_xz(*get_steped_round_step_adjustable_trajectory([0,-0.3], r_step = trajectory_step, n_steps=n_steps, base_angle_steps=base_angle_steps, step_factor=step_factor))
-        dict_point_criteria = {"Manip_Jacobian": ManipJacobian(MovmentSurface.XZ)}
+        fixed_robot, free_robot = jps_graph2pinocchio_robot(
+            self.graph, self.builder)
+        trajectory = convert_x_y_to_6d_traj_xz(*get_steped_round_step_adjustable_trajectory(
+            [0, -0.3], r_step=trajectory_step, n_steps=n_steps, base_angle_steps=base_angle_steps, step_factor=step_factor))
+        dict_point_criteria = {
+            "Manip_Jacobian": ManipJacobian(MovmentSurface.XZ)}
         dict_trajectory_criteria = {}
-        crag = CriteriaAggregator(dict_point_criteria, dict_trajectory_criteria)
-        point_criteria_vector, trajectory_criteria, res_dict_fixed = crag.get_criteria_data(fixed_robot, free_robot, trajectory)
+        crag = CriteriaAggregator(
+            dict_point_criteria, dict_trajectory_criteria)
+        point_criteria_vector, trajectory_criteria, res_dict_fixed = crag.get_criteria_data(
+            fixed_robot, free_robot, trajectory)
         errors = res_dict_fixed[self.error_key]
         jacobians = point_criteria_vector["Manip_Jacobian"]
-        error_threshold = self.error_threshold 
+        error_threshold = self.error_threshold
         isotropic_threshold = self.isotropic_threshold
-        ind = np.argmax(errors>error_threshold)
-        if errors[ind]>error_threshold:
+        ind = np.argmax(errors > error_threshold)
+        if errors[ind] > error_threshold:
             jacobians = jacobians[:ind]
             errors = errors[:ind]
-        
+
         isotropic_values = np.zeros(len(jacobians))
         for num, jacob in enumerate(jacobians):
             U, S, Vh = np.linalg.svd(jacob)
@@ -84,23 +90,25 @@ class KinematicDataset:
             isotropic = max_eig_val / min_eig_val
             isotropic_values[num] = isotropic
 
-        ind = np.argmax(isotropic_values>isotropic_threshold)
-        if isotropic_values[ind]<=isotropic_threshold:
+        ind = np.argmax(isotropic_values > isotropic_threshold)
+        if isotropic_values[ind] <= isotropic_threshold:
             ind = len(isotropic_values)-1
-        
 
         for i in range(n_steps):
-            if ind - (base_angle_steps + i*step_factor)<0:
+            if ind - (base_angle_steps + i*step_factor) < 0:
                 return i
         return n_steps
 
-    def sample_and_rank(self, sample_size, ranking_step=0.01, max_ranking_steps = 10, grid_step:int = 10):
+    def sample_and_rank(self, sample_size, ranking_step=0.01, max_ranking_steps=10, grid_step: int = 10):
         rnd_gen = np.random.default_rng()
-        generated_nums= rnd_gen.choice(int(grid_step+1), size=(sample_size, len(self.initial_xopt)))
-        sampled_values = self.initial_xopt + self.lower_bounds + generated_nums*(self.upper_bounds - self.lower_bounds)/grid_step
-        #class_vector = np.zeros(sample_size)
-        rank_one = partial(self.rank_one_design,  trajectory_step = ranking_step, n_steps = max_ranking_steps, base_angle_steps=10, step_factor=10)
-        class_vector = Parallel(n_jobs=-2)(delayed(rank_one)(row) for row in sampled_values)
+        generated_nums = rnd_gen.choice(
+            int(grid_step+1), size=(sample_size, len(self.initial_xopt)))
+        sampled_values = self.lower_bounds + generated_nums * \
+            (self.upper_bounds - self.lower_bounds)/grid_step
+        rank_one = partial(self.rank_one_design,  trajectory_step=ranking_step,
+                           n_steps=max_ranking_steps, base_angle_steps=10, step_factor=10)
+        class_vector = Parallel(n_jobs=-2)(delayed(rank_one)(row)
+                                           for row in sampled_values)
 
         # for i, x_opt in enumerate(sampled_values):
         #     if i%100 == 0:
@@ -114,7 +122,7 @@ class KinematicDataset:
         #     crag = CriteriaAggregator(dict_point_criteria, dict_trajectory_criteria)
         #     point_criteria_vector, trajectory_criteria, res_dict_fixed = crag.get_criteria_data(
         #             fixed_robot, free_robot, trajectory)
-            
+
         #     errors = res_dict_fixed[self.error_key]
         #     jacobians = point_criteria_vector["Manip_Jacobian"]
         #     error_threshold = 1e-6
@@ -135,15 +143,14 @@ class KinematicDataset:
         #     ind = np.argmax(isotropic_values>isotropic_threshold)
         #     if isotropic_values[ind]<=isotropic_threshold:
         #         ind = len(isotropic_values)
-            
+
         #     if ind ==0:
         #         class_vector[i] = 0
         #     else:
         #         class_vector[i] = (ind-1)//100
 
-        #parameters = np.array([sample_size, ranking_step, max_ranking_steps])
+        # parameters = np.array([sample_size, ranking_step, max_ranking_steps])
         return sampled_values, class_vector
-
 
 
 if __name__ == "__main__":
@@ -156,13 +163,16 @@ if __name__ == "__main__":
     density = MIT_CHEETAH_PARAMS_DICT["density"]
     body_density = MIT_CHEETAH_PARAMS_DICT["body_density"]
 
-
     builder = ParametrizedBuilder(DetailedURDFCreatorFixedEE,
-                                density={"default": density, "G":body_density},
-                                thickness={"default": thickness, "EE":0.033},
-                                actuator={"default": actuator},
-                                size_ground=np.array(MIT_CHEETAH_PARAMS_DICT["size_ground"]),
-                                offset_ground=MIT_CHEETAH_PARAMS_DICT["offset_ground_rl"]
-    )
+                                  density={"default": density,
+                                           "G": body_density},
+                                  thickness={
+                                      "default": thickness, "EE": 0.033},
+                                  actuator={"default": actuator},
+                                  size_ground=np.array(
+                                      MIT_CHEETAH_PARAMS_DICT["size_ground"]),
+                                  offset_ground=MIT_CHEETAH_PARAMS_DICT["offset_ground_rl"]
+                                  )
     optimizing_joints = get_optimizing_joints(graph, constrain_dict)
-    print(KinematicDataset(graph,  builder, optimizing_joints, error_key="error").sample_and_rank(sample_size = 3))
+    print(KinematicDataset(graph,  builder, optimizing_joints,
+          error_key="error").sample_and_rank(sample_size=3))
