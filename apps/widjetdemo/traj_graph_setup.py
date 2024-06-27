@@ -44,6 +44,11 @@ def get_graph_and_traj(graph_number: int) -> tuple[Graph, dict, ParametrizedBuil
     workspace_trajectory = convert_x_y_to_6d_traj_xz(
         *get_workspace_trajectory([-0.15, -0.35], 0.2, 0.15*2, 10, 10))
 
+    if graph_number == 8:
+        constrain_dict["4LT2_j2"]["optim"] = False
+        constrain_dict["4LT2_j0"]["optim"] = False
+        constrain_dict["Main_knee"]["optim"] = False
+
     optimizing_joints = get_optimizing_joints(graph, constrain_dict)
 
     return graph, optimizing_joints, constrain_dict,  builder, workspace_trajectory
@@ -51,7 +56,7 @@ def get_graph_and_traj(graph_number: int) -> tuple[Graph, dict, ParametrizedBuil
 
 if __name__ == "__main__":
     graph, optimizing_joints, constrain_dict, builder, workspace_trajectory = get_graph_and_traj(
-        0)
+        8)
 
     plt.figure()
 
@@ -61,10 +66,9 @@ if __name__ == "__main__":
     draw_joint_point(graph)
     plt.figure()
     draw_joint_point(graph)
-
+    visualize_constrains(graph, constrain_dict) 
     
     plt.figure()
     plt.scatter(workspace_trajectory[:, 0],
             workspace_trajectory[:, 2], marker="1")
-    plt.figure()
-    visualize_constrains(graph, constrain_dict) 
+   

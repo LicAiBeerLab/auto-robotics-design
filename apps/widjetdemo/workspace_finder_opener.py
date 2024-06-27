@@ -18,9 +18,9 @@ q_arrays = data["q_array"]
 
 
 mask = np.ones(100, dtype=np.bool_)
-mask[55] = False
-mask[0] = False
-mask[10] = False
+# mask[55] = False
+# mask[0] = False
+# mask[10] = False
 
 
 # def plot_ellipse(ellipse):
@@ -30,20 +30,21 @@ ellipse = Ellipse(np.array([0, -0.25]), np.deg2rad(30), np.array([0.05, 0.1]))
 point_ellipse = ellipse.get_points()
 
 
-points = np.vstack([points_x.flatten(), points_y.flatten()])
-mask = check_points_in_ellips(points, ellipse)
-rev_mask = np.array(1-mask, dtype="bool")
+# points = np.vstack([points_x.flatten(), points_y.flatten()])
+# mask = check_points_in_ellips(points, ellipse)
+# rev_mask = np.array(1-mask, dtype="bool")
 
  
 target_indices = get_indices_by_point(mask, reach_arrays)
  
- 
+wks = data["poses"][0]
 print(len(target_indices))
 
 
-
-plt.figure(figsize=(10,10))
-plt.plot(point_ellipse[0,:], point_ellipse[1,:], "g", linewidth=3)
-plt.scatter(points[:,rev_mask][0],points[:,rev_mask][1])
-plt.scatter(points[:,mask][0],points[:,mask][1])
+plt.scatter(wks[:,0],wks[:,2])
 plt.show()
+# plt.figure(figsize=(10,10))
+# plt.plot(point_ellipse[0,:], point_ellipse[1,:], "g", linewidth=3)
+# plt.scatter(points[:,rev_mask][0],points[:,rev_mask][1])
+# plt.scatter(points[:,mask][0],points[:,mask][1])
+

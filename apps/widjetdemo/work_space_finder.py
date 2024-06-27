@@ -76,13 +76,19 @@ def test_chunk(problem: CalculateMultiCriteriaProblem, x_vecs: np.ndarray, works
 
 if __name__ == '__main__':
     start_time = time.time()
-    TOPOLGY_NAME = 0
+    
+    TOPOLGY_NAME = 8
+    CHUNK_START = 0
     FILE_NAME = "WORKSPACE_TOP" + str(TOPOLGY_NAME) + ".npz"
+
     # Needs only for create problem mutate graph by x
     graph, optimizing_joints, constrain_dict, builder, workspace_trajectory = traj_graph_setup.get_graph_and_traj(
         TOPOLGY_NAME)
     reward_manager, crag, soft_constrain = create_reward_manager.get_manager_mock(
         workspace_trajectory)
+    
+
+ 
 
     actuator = MIT_CHEETAH_PARAMS_DICT["actuator"]
     # Problem needs only for mutate graph by x
@@ -98,10 +104,11 @@ if __name__ == '__main__':
     vecs = get_n_dim_linspace(upper_bounds, lower_bounds)
     chunk_vec = list(chunk_list(vecs, 100))
     for num, i_vec in enumerate(chunk_vec):
-        try:
-            test_chunk(problem, i_vec, workspace_trajectory, FILE_NAME)
-        except:
-            print("FAILD")
-        print(f"Tested chunk {num} / {len(chunk_vec)}")
-        ellip = (time.time() - start_time) / 60
-        print(f"Remaining minute {ellip}")
+        if num >= CHUNK_START:
+            try:
+                test_chunk(problem, i_vec, workspace_trajectory, FILE_NAME)
+            except:
+                print("FAILD")
+            print(f"Tested chunk {num} / {len(chunk_vec)}")
+            ellip = (time.time() - start_time) / 60
+            print(f"Remaining minute {ellip}")
