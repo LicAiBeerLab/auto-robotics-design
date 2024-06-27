@@ -62,7 +62,7 @@ class KinematicDataset:
     def rank_one_design(self, x_opt,  trajectory_step, n_steps, base_angle_steps, step_factor):
         self.mutate_JP_by_xopt(x_opt)
         fixed_robot, free_robot = jps_graph2pinocchio_robot(self.graph, self.builder)
-        trajectory = convert_x_y_to_6d_traj_xz(*get_steped_round_step_adjustable_trajectory([0,-0.3], r_step = trajectory_step, n_steps=n_steps, base_angle_steps=base_angle_steps, step_factor=step_factor))
+        trajectory = convert_x_y_to_6d_traj_xz(*get_steped_round_step_adjustable_trajectory([0,-0.25], r_step = trajectory_step, n_steps=n_steps, base_angle_steps=base_angle_steps, step_factor=step_factor))
         dict_point_criteria = {"Manip_Jacobian": ManipJacobian(MovmentSurface.XZ)}
         dict_trajectory_criteria = {}
         crag = CriteriaAggregator(dict_point_criteria, dict_trajectory_criteria)
