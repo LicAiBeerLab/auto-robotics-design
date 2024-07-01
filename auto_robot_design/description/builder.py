@@ -1018,7 +1018,7 @@ def jps_graph2pinocchio_robot(
     kinematic_graph.define_main_branch()
     kinematic_graph.define_span_tree()
     
-    thickness_aux_branch = 0.025
+    # thickness_aux_branch = 0.025
     i = 1
     k = 1
     name_link_in_aux_branch = []
@@ -1032,7 +1032,7 @@ def jps_graph2pinocchio_robot(
             name_link_in_aux_branch.append(link.name)
             k = (k + 1) % 5
 
-    builder.thickness = {link: thickness_aux_branch for link in name_link_in_aux_branch}
+    # builder.thickness = {link: thickness_aux_branch for link in name_link_in_aux_branch}
     kinematic_graph.define_link_frames()
 
     robot, ative_joints, constraints = builder.create_kinematic_graph(kinematic_graph)
