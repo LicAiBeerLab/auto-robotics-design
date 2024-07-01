@@ -96,7 +96,7 @@ rb_viz = RobotVisualizer(fixed_robot)
 rb_viz.add_ellips_to_viz(np.array([0,0,-0.25]), np.deg2rad(-30), 0.05, 0.1)
 
 poses, q_array, constraint_errors = folow_traj_by_proximal_inv_k(fixed_robot.model, fixed_robot.data, fixed_robot.constraint_models, fixed_robot.constraint_data, "EE", traj_3d)
-rb_viz.play_animation(q_array)
+#rb_viz.play_animation(q_array)
 
 
 plt.figure(figsize=(10,10))
