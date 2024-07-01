@@ -984,6 +984,20 @@ def jps_graph2urdf_by_bulder(
 
     return robot.urdf(), act_description, constraints_descriptions
 
+BLUE_COLOR = np.array([[39, 105, 205, 0.3],
+                    [40, 109, 204, 0.3],
+                    [95, 128, 213, 0.3],
+                    [132, 149, 222, 0.3],
+                    [164, 170, 231, 0.3],
+                    [193, 193, 240, 0.3]], dtype=np.float64)
+BLUE_COLOR[:,:3] = BLUE_COLOR[:,:3] / 255
+
+GREEN_COLOR = np.array([[17, 90, 57, 0.8],
+                        [4, 129, 75, 0.8],
+                        [0, 169, 92, 0.8],
+                        [0, 211, 107, 0.8],
+                        [0, 255, 119, 0.8]], dtype=np.float64)
+GREEN_COLOR[:,:3] = GREEN_COLOR[:,:3] / 255
 
 def jps_graph2pinocchio_robot(
     graph: nx.Graph,
@@ -1003,7 +1017,22 @@ def jps_graph2pinocchio_robot(
     kinematic_graph = JointPoint2KinematicGraph(graph)
     kinematic_graph.define_main_branch()
     kinematic_graph.define_span_tree()
+    
+    thickness_aux_branch = 0.025
+    i = 1
+    k = 1
+    name_link_in_aux_branch = []
+    for link in kinematic_graph.nodes():
+        if link in kinematic_graph.main_branch.nodes():
+            # print("yes")
+            link.geometry.color = BLUE_COLOR[i,:].tolist()
+            i = (i + 1) % 6
+        else:
+            link.geometry.color = GREEN_COLOR[k,:].tolist()
+            name_link_in_aux_branch.append(link.name)
+            k = (k + 1) % 5
 
+    builder.thickness = {link: thickness_aux_branch for link in name_link_in_aux_branch}
     kinematic_graph.define_link_frames()
 
     robot, ative_joints, constraints = builder.create_kinematic_graph(kinematic_graph)
