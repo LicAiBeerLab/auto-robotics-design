@@ -26,6 +26,13 @@ class RobotVisualizer():
                                      self.robot.visual_model,
                                      self.robot.visual_model)
         self.viz.viewer = meshcat.Visualizer()
+        self.viz.initViewer(open=True)
+        # self.viz.initViewer()
+        self.viz.viewer["/Background"].set_property("visible", False)
+        self.viz.viewer["/Grid"].set_property("visible", False)
+        self.viz.viewer["/Axes"].set_property("visible", False)
+        self.viz.viewer["/Cameras/default/rotated/<object>"].set_property("position", [0,0,0.5])
+        self.viz.clean()
         self.viz.loadViewerModel()
         self.viz.viewer.open()
         self.viz.displayVisuals(True)

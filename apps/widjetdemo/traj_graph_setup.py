@@ -25,7 +25,7 @@ def get_graph_and_traj(graph_number: int) -> tuple[Graph, dict, ParametrizedBuil
     all_graphs = generator.get_standard_set(-0.105, shift=-0.10)
     graph, constrain_dict = all_graphs[graph_number]
 
-    thickness = MIT_CHEETAH_PARAMS_DICT["thickness"]
+    thickness = MIT_CHEETAH_PARAMS_DICT["thickness"]/2
     actuator = MIT_CHEETAH_PARAMS_DICT["actuator"]
     density = MIT_CHEETAH_PARAMS_DICT["density"]
     body_density = MIT_CHEETAH_PARAMS_DICT["body_density"]
@@ -34,7 +34,7 @@ def get_graph_and_traj(graph_number: int) -> tuple[Graph, dict, ParametrizedBuil
                                   density={"default": density,
                                            "G": body_density},
                                   thickness={
-                                      "default": thickness, "EE": 0.033},
+                                      "default": thickness, "EE": 0.033/2},
                                   actuator={"default": actuator},
                                   size_ground=np.array(
                                       MIT_CHEETAH_PARAMS_DICT["size_ground"]),
