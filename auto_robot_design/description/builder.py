@@ -1024,11 +1024,14 @@ def jps_graph2pinocchio_robot(
     name_link_in_aux_branch = []
     for link in kinematic_graph.nodes():
         if link in kinematic_graph.main_branch.nodes():
-            # print("yes")
-            link.geometry.color = BLUE_COLOR[i,:].tolist()
+            if link.name == "EE":
+                link.geometry.color = [1, 0, 0, 1]
+            else:
+                link.geometry.color = BLUE_COLOR[i,:].tolist()
             i = (i + 1) % 6
         else:
             link.geometry.color = GREEN_COLOR[k,:].tolist()
+
             name_link_in_aux_branch.append(link.name)
             k = (k + 1) % 5
 

@@ -17,10 +17,11 @@ import pinocchio as pin
 import meshcat.geometry as mg
 from scipy.spatial.transform import Rotation as R
 
+
 class RobotVisualizer():
     def __init__(self, robot: Robot, motion_surface=MovmentSurface.XZ) -> None:
         self.robot = robot  # Robot(*make_Robot_copy(robot))
-
+        self.__num_ell = 0
     def play_animation(self, q_vec: np.ndarray):
         self.viz = MeshcatVisualizer(self.robot.model,
                                      self.robot.visual_model,
@@ -31,25 +32,36 @@ class RobotVisualizer():
         self.viz.viewer["/Background"].set_property("visible", False)
         self.viz.viewer["/Grid"].set_property("visible", False)
         self.viz.viewer["/Axes"].set_property("visible", False)
-        self.viz.viewer["/Cameras/default/rotated/<object>"].set_property("position", [0,0,0.5])
+        self.viz.viewer["/Cameras/default/rotated/<object>"].set_property("position", [
+                                                                          0, 0, 0.5])
         self.viz.clean()
         self.viz.loadViewerModel()
         self.viz.viewer.open()
         self.viz.displayVisuals(True)
 
         for q_i in q_vec:
-            time.sleep(0.03)
+            time.sleep(0.0015)
             self.viz.display(q_i)
 
-    
-    def add_ellips_to_viz(self, pos_xyz: np.ndarray, angle, r1, r2):
+    def add_ellips_to_viz(self, pos_xyz: np.ndarray, angle, r1, r2, is_red=None):
+        
         ell_clear = hppfcl.Ellipsoid(r1, 0.001, r2)
+        if is_red:
+            ell_clear = hppfcl.Ellipsoid(r1, 0.01, r2)
         pos = pin.SE3.Identity()
         pos.translation = pos_xyz
         pos.rotation = R.from_euler('y', angle).as_matrix()
         ell_obj = pin.GeometryObject(
-            "ell", 0, pos, ell_clear)
-        ell_obj.meshColor[3] = 0.3
-        ell_obj.meshColor[0] = 0.1
-        ell_obj.meshColor[0] = 0.1
+            "ell" + str(self.__num_ell), 0, pos, ell_clear)
+
+        ell_obj.meshColor[0] = 0.0
+        ell_obj.meshColor[1] = 1.0
+        ell_obj.meshColor[2] = 0.6
+        ell_obj.meshColor[3] = 0.2
+        if is_red:
+            ell_obj.meshColor[0] = 1.0
+            ell_obj.meshColor[1] = 0.0
+            ell_obj.meshColor[2] = 1.0
+            ell_obj.meshColor[3] = 0.9
         self.robot.visual_model.addGeometryObject(ell_obj)
+        self.__num_ell += 1

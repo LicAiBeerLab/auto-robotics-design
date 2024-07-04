@@ -55,10 +55,13 @@ class RewardCalculator():
             list_nodes[id].r = np.array([xz[0], 0, xz[1]])
 
     def get_score(self, x_opt, reward, trajectory):
-        self.mutate_JP_by_xopt(x_opt)
-        fixed_robot, free_robot = jps_graph2pinocchio_robot(self.graph, self.builder)
-        point_criteria_vector, trajectory_criteria, res_dict_fixed = self.crag.get_criteria_data(fixed_robot, free_robot, trajectory)
-        reward_value, _ = reward.calculate(point_criteria_vector, trajectory_criteria, res_dict_fixed)
+        try:
+            self.mutate_JP_by_xopt(x_opt)
+            fixed_robot, free_robot = jps_graph2pinocchio_robot(self.graph, self.builder)
+            point_criteria_vector, trajectory_criteria, res_dict_fixed = self.crag.get_criteria_data(fixed_robot, free_robot, trajectory)
+            reward_value, _ = reward.calculate(point_criteria_vector, trajectory_criteria, res_dict_fixed)
+        except:
+            reward_value = -10
         return reward_value
 
     def calculate_rewards(self, dataset, reward, trajectory):
