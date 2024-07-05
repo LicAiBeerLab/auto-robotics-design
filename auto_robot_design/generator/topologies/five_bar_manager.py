@@ -15,6 +15,8 @@ class MutationType(Enum):
     UNMOVABLE = 0  # Unmovable joint that is not used for optimization
     ABSOLUTE = 1  # The movement of the joint are in the absolute coordinate system and are relative to the initial position
     RELATIVE = 2  # The movement of the joint are relative to some other joint or joints and doesn't have an initial position
+    # The movement of the joint are relative to some other joint or joints and doesn't have an initial position. The movement is in percentage of the distance between the joints.
+    RELATIVE_PERCENTAGE = 3
 
 
 @dataclass
@@ -27,12 +29,20 @@ class GeneratorInfo:
     relative_to: Optional[Union[JointPoint, List[JointPoint]]] = None
 
 
-class GraphManager():
+@dataclass
+class ConnectionInfo:
+    """Description of a point for branch connection."""
+    connection_jp: JointPoint
+    jp_connection_to_main: List[JointPoint]
+    relative_mutation_range: List[Optional[Tuple]]
+
+
+class GraphManager2L():
     def __init__(self) -> None:
         self.graph = nx.Graph()
         self.generator_dict = {}
         self.current_main_branch = []
-        self.main_connections = []
+        self.main_connections: List[ConnectionInfo] = []
         self.mutation_ranges = {}
 
     def reset(self):
@@ -42,7 +52,7 @@ class GraphManager():
         self.graph = nx.Graph()
         self.mutation_ranges = {}
 
-    def build_main(self, length: float):
+    def build_main(self, length: float, fully_actuated: bool = False):
         """Builds the main branch and create nodes for the connections.
 
         Args:
@@ -58,7 +68,7 @@ class GraphManager():
         self.current_main_branch.append(ground_joint)
         self.generator_dict[ground_joint] = GeneratorInfo()
 
-        ground_connection = JointPoint(
+        ground_connection_jp = JointPoint(
             r=np.array([0, 0, 0.001]),
             w=np.array([0, 1, 0]),
             attach_ground=True,
@@ -66,23 +76,28 @@ class GraphManager():
             name="Ground_connection"
         )
 
-        self.generator_dict[ground_connection] = GeneratorInfo(MutationType.ABSOLUTE, np.array(
-            [0, 0, 0.001]), mutation_range=[(-0.15, 0.15), None, (-0.15, 0.15)])
-        self.main_connections.append((ground_connection, []))
+        self.generator_dict[ground_connection_jp] = GeneratorInfo(MutationType.ABSOLUTE, np.array(
+            [0, 0, 0.001]), mutation_range=[(-0.15, 0.), None, (-0.1, 0.1)])
+        ground_connection_description = ConnectionInfo(
+            ground_connection_jp, [], [(-0.1, 0.1), None, (-0.15, 0)])
+        self.main_connections.append(ground_connection_description)
 
         knee_joint_pos = np.array([0, 0, -length/2])
         knee_joint = JointPoint(
-            r=knee_joint_pos, w=np.array([0, 1, 0]), name="Main_knee")
+            r=knee_joint_pos, w=np.array([0, 1, 0]),active=fully_actuated, name="Main_knee")
         self.current_main_branch.append(knee_joint)
         self.generator_dict[knee_joint] = GeneratorInfo(
             MutationType.ABSOLUTE, knee_joint_pos, mutation_range=[None, None, (-0.1, 0.1)])
 
         first_connection = JointPoint(r=None, w=np.array([
                                       0, 1, 0]), name="Main_connection_1")
-        self.generator_dict[first_connection] = GeneratorInfo(MutationType.RELATIVE, None, mutation_range=[
-                                                              (-0.05, 0.05), None, (-0.15, 0.15)], relative_to=[ground_joint, knee_joint])
-        self.main_connections.append(
-            (first_connection, [ground_joint, knee_joint]))
+        # self.generator_dict[first_connection] = GeneratorInfo(MutationType.RELATIVE, None, mutation_range=[
+        #                                                       (-0.05, 0.05), None, (-0.15, 0.15)], relative_to=[ground_joint, knee_joint])
+        self.generator_dict[first_connection] = GeneratorInfo(MutationType.RELATIVE_PERCENTAGE, None, mutation_range=[
+                                                              (-0.2, 0.2), None, (-0.45, 0.45)], relative_to=[ground_joint, knee_joint])
+        first_connection_description = ConnectionInfo(
+            first_connection, [ground_joint, knee_joint], [(-0.1, 0.0), None, (-0.1, 0.1)])
+        self.main_connections.append(first_connection_description)
 
         ee = JointPoint(
             r=np.array([0, 0, -length]),
@@ -96,60 +111,177 @@ class GraphManager():
 
         second_connection = JointPoint(r=None, w=np.array([
                                        0, 1, 0]), name="Main_connection_2")
-        self.generator_dict[second_connection] = GeneratorInfo(MutationType.RELATIVE, None, mutation_range=[
-                                                               (-0.05, 0.05), None, (-0.15, 0.15)], relative_to=[knee_joint, ee])
-        self.main_connections.append((second_connection, [knee_joint, ee]))
+        # self.generator_dict[second_connection] = GeneratorInfo(MutationType.RELATIVE, None, mutation_range=[
+        #                                                        (-0.05, 0.05), None, (-0.15, 0.15)], relative_to=[knee_joint, ee])
+        self.generator_dict[second_connection] = GeneratorInfo(MutationType.RELATIVE_PERCENTAGE, None, mutation_range=[
+                                                               (-0.2, 0.2), None, (-0.45, 0.45)], relative_to=[knee_joint, ee])
+        second_connection_description = ConnectionInfo(
+            second_connection, [knee_joint, ee], [(-0.1, 0), None, (0, 0.1)])
+        self.main_connections.append(second_connection_description)
 
         add_branch(self.graph, self.current_main_branch)
 
-    def build_branch(self, connection_list: List[int]):
+    def build_2l_branch(self, connection_list: List[int]):
         """Generate a trivial branch that only have one node.
 
         Args:
             connection_list (List[int]): List of connection point indexes that we want to connect the branch to.
         """
-        first_joint = JointPoint(
+        branch_joint = JointPoint(
             r=None,
             w=np.array([0, 1, 0]),
             name="branch_1"
         )
-        self.generator_dict[first_joint] = GeneratorInfo(MutationType.RELATIVE, None,
-            mutation_range=[(-0.1, 0.1), None, (0, -0.15)],
-            relative_to=self.main_connections[connection_list[0]][0])
+        self.generator_dict[branch_joint] = GeneratorInfo(MutationType.RELATIVE, None,
+                                                          mutation_range=self.main_connections[
+                                                              connection_list[0]].relative_mutation_range,
+                                                          relative_to=self.main_connections[connection_list[0]].connection_jp)
 
         for connection in connection_list:
-            jp, connect_description = self.main_connections[connection]
-            if len(connect_description) == 0:
+            connection_description = self.main_connections[connection]
+            jp = connection_description.connection_jp
+            jp_connection_to_main = connection_description.jp_connection_to_main
+            if len(jp_connection_to_main) == 0:
                 # if the connection_description is empty, it means that the connection is directly to the ground
-                jp.active = True
-                self.graph.add_edge(jp, first_joint)
+                self.graph.add_edge(jp, branch_joint)
+
             else:
-                self.graph.add_edge(jp, first_joint)
-                for cd in connect_description:
+                self.graph.add_edge(jp, branch_joint)
+                for cd in jp_connection_to_main:
                     self.graph.add_edge(cd, jp)
 
-    def set_topology(self, branch_code=0, connection_list=[0, 2]):
-        self.reset()
-        self.build_main(0.3)
-        self.build_branch(connection_list)
+            if connection == min(connection_list):
+                jp.active = True
+
+    def build_4l_symmetric(self, connection_list: List[int]):
+        branch_jp_counter = 0
+        branch_joints = []
+        for connection in connection_list:
+            connection_description = self.main_connections[connection]
+            jp = connection_description.connection_jp
+            jp_connection_to_main = connection_description.jp_connection_to_main
+            branch_jp = JointPoint(
+                r=None,
+                w=np.array([0, 1, 0]),
+                name=f"branch_{branch_jp_counter}"
+            )
+            branch_joints.append(branch_jp)
+            branch_jp_counter += 1
+            self.generator_dict[branch_jp] = GeneratorInfo(MutationType.RELATIVE, None,
+                                                           mutation_range=self.main_connections[
+                                                               connection].relative_mutation_range,
+                                                           relative_to=self.main_connections[connection].connection_jp)
+            if len(jp_connection_to_main) == 0:
+                self.graph.add_edge(jp, branch_jp)
+                jp.active = True
+
+            elif len(jp_connection_to_main) == 2:
+                self.graph.add_edge(jp, branch_jp)
+                for cd in jp_connection_to_main:
+                    self.graph.add_edge(cd, jp)
+
+        self.graph.add_edge(branch_joints[0], branch_joints[1])
+        self.graph.add_edge(branch_joints[1], branch_joints[2])
+        self.graph.add_edge(branch_joints[2], branch_joints[0])
+    # def set_topology(self, branch_code=0, connection_list=[0, 2]):
+    #     self.reset()
+    #     self.build_main(0.3)
+    #     self.build_branch(connection_list)
+
+    def build_4l_asymmetric(self, connection_list: float):
+        """Connects the 4l asymmetric branch to the main branch
+
+        Args:
+            connection_list (float): list of connecting points indexes for branch connection to main
+        """
+        if connection_list[0]+connection_list[1] == 1:
+            branch_1_active = True
+        else:
+            branch_1_active = False
+
+        connection_description = self.main_connections[connection_list[0]]
+        jp = connection_description.connection_jp
+        jp_connection_to_main = connection_description.jp_connection_to_main
+        branch_jp_0 = JointPoint(
+            r=None,
+            w=np.array([0, 1, 0]),
+            name="branch_0"
+        )
+        self.generator_dict[branch_jp_0] = GeneratorInfo(MutationType.RELATIVE, None,
+                                                         mutation_range=connection_description.relative_mutation_range,
+                                                         relative_to=jp)
+        if len(jp_connection_to_main) == 0:
+            self.graph.add_edge(jp, branch_jp_0)
+            if not branch_1_active:
+                jp.active = True
+        else:
+            self.graph.add_edge(jp, branch_jp_0)
+            for cd in jp_connection_to_main:
+                self.graph.add_edge(cd, jp)
+
+        connection_description = self.main_connections[connection_list[1]]
+        jp = connection_description.connection_jp
+        jp_connection_to_main = connection_description.jp_connection_to_main
+
+        branch_jp_1 = JointPoint(
+            r=None,
+            w=np.array([0, 1, 0]),
+            name="branch_1"
+        )
+        if branch_1_active:
+            branch_jp_1.active = True
+        self.generator_dict[branch_jp_1] = GeneratorInfo(MutationType.RELATIVE, None,
+                                                         mutation_range=connection_description.relative_mutation_range,
+                                                         relative_to=jp)
+        if len(jp_connection_to_main) == 0:
+            self.graph.add_edge(jp, branch_jp_1)
+            if not branch_1_active:
+                jp.active = True
+        else:
+            self.graph.add_edge(jp, branch_jp_1)
+            for cd in jp_connection_to_main:
+                self.graph.add_edge(cd, jp)
+        self.graph.add_edge(branch_jp_0, branch_jp_1)
+        self.graph.add_edge(branch_jp_0, jp)
+        connection_description = self.main_connections[connection_list[2]]
+        jp = connection_description.connection_jp
+        jp_connection_to_main = connection_description.jp_connection_to_main
+        branch_jp_2 = JointPoint(
+            r=None,
+            w=np.array([0, 1, 0]),
+            name="branch_2"
+        )
+        self.generator_dict[branch_jp_2] = GeneratorInfo(MutationType.RELATIVE, None,
+                                                         mutation_range=connection_description.relative_mutation_range,
+                                                         relative_to=jp)
+        if len(jp_connection_to_main) == 0:
+            self.graph.add_edge(jp, branch_jp_2)
+            if not branch_1_active:
+                jp.active = True
+        else:
+            self.graph.add_edge(jp, branch_jp_2)
+            for cd in jp_connection_to_main:
+                self.graph.add_edge(cd, jp)
+        self.graph.add_edge(branch_jp_2, branch_jp_1)
 
     def set_mutation_ranges(self):
         """Traverse the generator_dict to get all mutable parameters and their ranges.
         """
-        keys =list(self.generator_dict)
+        keys = list(self.generator_dict)
         for key in keys:
             if key not in self.graph.nodes:
                 del self.generator_dict[key]
 
         for key, value in self.generator_dict.items():
-            if value.mutation_type == MutationType.RELATIVE:
+            if value.mutation_type == MutationType.RELATIVE or value.mutation_type == MutationType.RELATIVE_PERCENTAGE:
                 for i, r in enumerate(value.mutation_range):
                     if r is not None:
                         self.mutation_ranges[key.name+'_'+str(i)] = r
             elif value.mutation_type == MutationType.ABSOLUTE:
                 for i, r in enumerate(value.mutation_range):
                     if r is not None:
-                        self.mutation_ranges[key.name+'_'+str(i)] = (r[0]+value.initial_coordinate[i], r[1]+value.initial_coordinate[i])
+                        self.mutation_ranges[key.name+'_'+str(i)] = (
+                            r[0]+value.initial_coordinate[i], r[1]+value.initial_coordinate[i])
 
     def generate_random_from_mutation_range(self):
         """Sample random values from the mutation ranges.
@@ -162,7 +294,18 @@ class GraphManager():
             result.append(np.random.uniform(value[0], value[1]))
         return result
 
-    def get_graph(self, parameters:List[float]):
+    def generate_central_from_mutation_range(self):
+        """Sample random values from the mutation ranges.
+
+        Returns:
+            List[float]: a vector of parameters that are sampled from the mutation ranges.
+        """
+        result = []
+        for _, value in self.mutation_ranges.items():
+            result.append((value[0]+value[1])/2)
+        return result
+
+    def get_graph(self, parameters: List[float]):
         """Produce a graph of the set topology from the given parameters.
 
         Args:
@@ -182,6 +325,7 @@ class GraphManager():
         for jp, gi in self.generator_dict.items():
             if jp.r is None:
                 jp.r = np.zeros(3)
+
             if gi.mutation_type == MutationType.ABSOLUTE:
                 for i, r in enumerate(gi.mutation_range):
                     if r is not None:
@@ -189,6 +333,9 @@ class GraphManager():
                         parameter_counter += 1
 
             elif gi.mutation_type == MutationType.RELATIVE:
+                if isinstance(gi.relative_to, list) and len(gi.relative_to) == 2:
+                    jp.r = (gi.relative_to[0].r + gi.relative_to[1].r)/2
+
                 for i, r in enumerate(gi.mutation_range):
                     if r is not None:
                         if isinstance(gi.relative_to, JointPoint):
@@ -196,12 +343,45 @@ class GraphManager():
                                 parameters[parameter_counter]
                             parameter_counter += 1
                         else:
-                            if len(gi.relative_to)==2:
-                                link_direction = gi.relative_to[0].r - gi.relative_to[1].r
-                                if i ==0:
-                                    jp.r[i] = np.mean([jp.r[i] for jp in gi.relative_to]) + parameters[parameter_counter]*np.linalg.norm(np.array([-link_direction[2],link_direction[1],link_direction[0]]))
-                                elif i == 2:
-                                    jp.r[i] = np.mean([jp.r[i] for jp in gi.relative_to]) + parameters[parameter_counter]*np.linalg.norm(link_direction)
+                            if len(gi.relative_to) == 2:
+                                link_direction = gi.relative_to[0].r - \
+                                    gi.relative_to[1].r
+                                link_ortogonal = np.array(
+                                    [-link_direction[2], link_direction[1], link_direction[0]])
+                                link_length = np.linalg.norm(link_direction)
+                                if i == 0:
+                                    jp.r += parameters[parameter_counter] * \
+                                        link_ortogonal/link_length
+                                if i == 2:
+                                    jp.r += parameters[parameter_counter] * \
+                                        link_direction/link_length
+                            #     jp.r += parameters[parameter_counter]*link_direction/link_length
+                            #     jp.r += parameters[parameter_counter]*np.array([-link_direction[2],link_direction[1],link_direction[0]])/link_length
                             parameter_counter += 1
 
+            elif gi.mutation_type == MutationType.RELATIVE_PERCENTAGE:
+                if isinstance(gi.relative_to, list) and len(gi.relative_to) == 2:
+                    jp.r = (gi.relative_to[0].r + gi.relative_to[1].r)/2
+                for i, r in enumerate(gi.mutation_range):
+                    if r is not None:
+                        if isinstance(gi.relative_to, JointPoint):
+                            raise ValueError(
+                                'Relative percentage mutation type should have a list of joints as relative_to')
+                        else:
+                            if len(gi.relative_to) == 2:
+                                link_direction = gi.relative_to[0].r - \
+                                    gi.relative_to[1].r
+                                link_ortogonal = np.array(
+                                    [-link_direction[2], link_direction[1], link_direction[0]])
+                                link_length = np.linalg.norm(link_direction)
+                                if i == 0:
+                                    jp.r += parameters[parameter_counter] * \
+                                        link_ortogonal
+                                if i == 2:
+                                    jp.r += parameters[parameter_counter] * \
+                                        link_direction
+                                # jp.r = gi.relative_to[1].r + link_direction/2
+                                # jp.r += parameters[parameter_counter]*link_direction
+                                # jp.r += parameters[parameter_counter]*np.array([-link_direction[2],link_direction[1],link_direction[0]])
+                            parameter_counter += 1
         return self.graph

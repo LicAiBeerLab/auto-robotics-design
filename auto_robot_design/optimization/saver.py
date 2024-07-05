@@ -41,7 +41,10 @@ class ProblemSaver:
     def save_nonmutable(self):
         with open(os.path.join(self.path, "problem_data.pkl"), "wb") as f:
             dill.dump(self.problem, f)
-        draw_joint_point(self.problem.graph)
+        if hasattr(self.problem,"graph"):
+            draw_joint_point(self.problem.graph)
+        else:
+            draw_joint_point(self.problem.graph_manager.get_graph(self.problem.graph_manager.generate_central_from_mutation_range()))
         plt.savefig(os.path.join(self.path, "initial_mechanism.png"))
         plt.close()
 
