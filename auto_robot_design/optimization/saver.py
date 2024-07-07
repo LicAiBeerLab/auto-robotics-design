@@ -1,12 +1,12 @@
-import dill
-import time
 import os
+import time
 
+import dill
 from matplotlib import pyplot as plt
+from pymoo.core.callback import Callback
 from pymoo.core.problem import Problem
 
 from auto_robot_design.description.utils import draw_joint_point
-from pymoo.core.callback import Callback
 
 
 def load_checkpoint(path: str):
