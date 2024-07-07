@@ -84,7 +84,7 @@ class GraphManager2L():
 
         knee_joint_pos = np.array([0, 0, -length/2])
         knee_joint = JointPoint(
-            r=knee_joint_pos, w=np.array([0, 1, 0]),active=fully_actuated, name="Main_knee")
+            r=knee_joint_pos, w=np.array([0, 1, 0]), active=fully_actuated, name="Main_knee")
         self.current_main_branch.append(knee_joint)
         self.generator_dict[knee_joint] = GeneratorInfo(
             MutationType.ABSOLUTE, knee_joint_pos, mutation_range=[None, None, (-0.1, 0.1)])
@@ -380,8 +380,86 @@ class GraphManager2L():
                                 if i == 2:
                                     jp.r += parameters[parameter_counter] * \
                                         link_direction
-                                # jp.r = gi.relative_to[1].r + link_direction/2
-                                # jp.r += parameters[parameter_counter]*link_direction
-                                # jp.r += parameters[parameter_counter]*np.array([-link_direction[2],link_direction[1],link_direction[0]])
                             parameter_counter += 1
         return self.graph
+
+
+def get_preset_by_index(idx: int):
+    if idx == -1:
+        gm = GraphManager2L()
+        gm.reset()
+        gm.build_main(0.4, fully_actuated=True)
+        gm.set_mutation_ranges()
+        return gm
+
+    if idx == 0:
+        gm = GraphManager2L()
+        gm.reset()
+        gm.build_main(0.4)
+        gm.build_2l_branch([0, 2])
+        gm.set_mutation_ranges()
+        return gm
+
+    if idx == 1:
+        gm = GraphManager2L()
+        gm.reset()
+        gm.build_main(0.4)
+        gm.build_2l_branch([1, 2])
+        gm.set_mutation_ranges()
+        return gm
+
+    if idx == 2:
+        gm = GraphManager2L()
+        gm.reset()
+        gm.build_main(0.4)
+        gm.build_4l_symmetric([0, 1, 2])
+        gm.set_mutation_ranges()
+        return gm
+
+    if idx == 3:
+        gm = GraphManager2L()
+        gm.reset()
+        gm.build_main(0.4)
+        gm.build_4l_asymmetric([0, 1, 2])
+        gm.set_mutation_ranges()
+        return gm
+
+    if idx == 4:
+        gm = GraphManager2L()
+        gm.reset()
+        gm.build_main(0.4)
+        gm.build_4l_asymmetric([0, 2, 1])
+        gm.set_mutation_ranges()
+        return gm
+
+    if idx == 5:
+        gm = GraphManager2L()
+        gm.reset()
+        gm.build_main(0.4)
+        gm.build_4l_asymmetric([1, 0, 2])
+        gm.set_mutation_ranges()
+        return gm
+
+    if idx == 6:
+        gm = GraphManager2L()
+        gm.reset()
+        gm.build_main(0.4)
+        gm.build_4l_asymmetric([1, 2, 0])
+        gm.set_mutation_ranges()
+        return gm
+
+    if idx == 7:
+        gm = GraphManager2L()
+        gm.reset()
+        gm.build_main(0.4)
+        gm.build_4l_asymmetric([2, 0, 1])
+        gm.set_mutation_ranges()
+        return gm
+
+    if idx == 8:
+        gm = GraphManager2L()
+        gm.reset()
+        gm.build_main(0.4)
+        gm.build_4l_asymmetric([2, 1, 0])
+        gm.set_mutation_ranges()
+        return gm
