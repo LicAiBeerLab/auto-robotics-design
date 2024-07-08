@@ -7,31 +7,42 @@ from auto_robot_design.pinokla.calc_criterion import DataDict
 class Reward():
     """Interface for the optimization criteria"""
 
-    def __init__(self) -> None:
+    def __init__(self, name) -> None:
         self.point_precision = 1e-6
+        self.reward_name = name
 
     def calculate(self, point_criteria: DataDict, trajectory_criteria: DataDict, trajectory_results: DataDict, **kwargs) -> Tuple[float, list[float]]:
         """Calculate the value of the criterion from the data"""
 
         raise NotImplementedError("A reward must implement calculate method!")
 
-    def check_reachability(self, errors):
-        if np.max(errors) > self.point_precision:
+    def check_reachability(self, errors, checked = True, warning = False):
+        """The function that checks the reachability of the mech for all points at trajectory
+        
+            The idea is that the trajectory at the moment of the reward calculation is 
+            already checked for reachability by the workspace checker.
+        """
+        if np.max(errors) > self.point_precision and checked:
+            if warning:
+                print(f'Error exceeds threshold for reward {self.reward_name} at point {np.argmax(errors)} with value {np.max(errors)}')
             raise ValueError(
                 f"All points should be reachable to calculate a reward {max(errors)}")
+        
+        elif np.max(errors) > self.point_precision:
+            return False
 
         return True
 
 
 class DummyReward(Reward):
-    """Mean position error for the trajectory"""
+    """The reward that can be used for padding."""
 
     def calculate(self, point_criteria: DataDict, trajectory_criteria: DataDict, trajectory_results: DataDict, **kwargs) -> Tuple[float, list[float]]:
 
         return 0, []
 
 
-class PositioningReward():
+class PositioningReward(Reward):
     """Mean position error for the trajectory"""
 
     def __init__(self,  pos_error_key: str) -> None:
@@ -41,6 +52,7 @@ class PositioningReward():
             pos_error_key (str): key for mean position error
         """
         self.pos_error_key = pos_error_key
+        super().__init__(name='Trajectory error')
 
     def calculate(self, point_criteria: DataDict, trajectory_criteria: DataDict, trajectory_results: DataDict, **kwargs) -> Tuple[float, list[float]]:
         """Just get the value for the mean positioning error
@@ -53,7 +65,7 @@ class PositioningReward():
         Returns:
             float: value of the reward
         """
-        # get the manipulability for each point at the trajectory
+        
         mean_error = trajectory_criteria[self.pos_error_key]
         # the empty list is for the consistency with the other rewards
         return -mean_error, []
@@ -74,7 +86,8 @@ class PositioningErrorCalculatorOld():
 
 
 class PositioningErrorCalculator():
-
+    """Calculate the special error that that is used as self constrain during optimization
+    """
     def __init__(self, error_key, jacobian_key, calc_isotropic_thr=True):
         self.error_key = error_key
         self.jacobian_key = jacobian_key
@@ -108,10 +121,10 @@ class PositioningErrorCalculator():
         """Return max isotropic clipped by self.point_isotropic_clip
 
         Args:
-            trajectory_results (DataDict): _description_
+            trajectory_results (DataDict): data describing trajectory following
 
         Returns:
-            _type_: _description_
+            float: clipped max of the isotropic values
         """
         isotropic_values = self.calculate_isotropic_values(trajectory_results)
 
@@ -124,6 +137,14 @@ class PositioningErrorCalculator():
             return 0
 
     def calculate_pos_error(self, trajectory_results: DataDict):
+        """Returns max max value of the errors along trajectory if error at any point exceeds the threshold.
+
+        Args:
+            trajectory_results (DataDict): data describing trajectory following
+
+        Returns:
+            float: max error
+        """
         errors = trajectory_results[self.error_key]
         if np.max(errors) > self.point_threshold:
             # return np.mean(errors)
@@ -132,13 +153,13 @@ class PositioningErrorCalculator():
             return 0
 
     def calculate_isotropic_values(self, trajectory_results: DataDict) -> np.ndarray:
-        """Returns max(eigenvalues) divide min(eigenvalues) for each jacobian in trajectory_results. 
+        """Returns max(eigenvalues) divided by min(eigenvalues) for each jacobian in trajectory_results. 
 
         Args:
-            trajectory_results (DataDict): _description_
+            trajectory_results (DataDict): data describing trajectory following
 
         Returns:
-            np.ndarray: _description_
+            np.ndarray: max(eigenvalues)/min(eigenvalues)
         """
         jacobians = trajectory_results[self.jacobian_key]
         isotropic_values = np.zeros(len(jacobians))
@@ -152,18 +173,33 @@ class PositioningErrorCalculator():
 
 
 class PositioningConstrain():
-
+    """Represents the constrains that are used as a part of the reward function"""
     def __init__(self, error_calculator, points=None) -> None:
         self.points = points
         self.calculator = error_calculator
 
     def add_points_set(self, points_set):
+        """Adds another trajectory for constrain calculation.
+
+        Args:
+            points_set (np.array): trajectory description
+        """
         if self.points is None:
             self.points = [points_set]
         else:
             self.points.append(points_set)
 
     def calculate_constrain_error(self, criterion_aggregator, fixed_robot, free_robot):
+        """Calculate the constrain error using defined calculator
+
+        Args:
+            criterion_aggregator (_type_): _description_
+            fixed_robot (_type_): _description_
+            free_robot (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """
         total_error = 0
         results = []
         for point_set in self.points:

@@ -77,7 +77,7 @@ acceleration_capability = AccelerationCapability(manipulability_key='Manip_Jacob
 
 # set up special classes for reward calculations
 pos_error_reward = PositioningReward(pos_error_key='POS_ERR')
-error_calculator = PositioningErrorCalculator(error_key='error')
+error_calculator = PositioningErrorCalculator(error_key='error', jacobian_key='Manip_Jacobian')
 soft_constrain = PositioningConstrain(error_calculator=error_calculator, points = [constrain_dictstep])
 reward_manager = RewardManager(crag=crag)
 # reward_manager.add_trajectory(ground_symmetric_step, 0)

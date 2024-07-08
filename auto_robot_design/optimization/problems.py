@@ -10,7 +10,7 @@ from pymoo.core.problem import ElementwiseProblem
 
 from auto_robot_design.pinokla.criterion_agregator import CriteriaAggregator
 from auto_robot_design.optimization.rewards.reward_base import Reward, RewardManager
-from auto_robot_design.generator.topologies.five_bar_manager import GraphManager2L
+from auto_robot_design.generator.topologies.graph_manager_2l import GraphManager2L
 
 
 def get_optimizing_joints(graph, constrain_dict):
