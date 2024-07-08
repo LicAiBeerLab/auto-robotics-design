@@ -121,7 +121,7 @@ class GraphManager2L():
 
         add_branch(self.graph, self.current_main_branch)
 
-    def build_2l_branch(self, connection_list: List[int]):
+    def build_3n2p_branch(self, connection_list: List[int]):
         """Generate a trivial branch that only have one node.
 
         Args:
@@ -153,7 +153,7 @@ class GraphManager2L():
             if connection == min(connection_list):
                 jp.active = True
 
-    def build_4l_symmetric(self, connection_list: List[int]):
+    def build_6n4p_symmetric(self, connection_list: List[int]):
         branch_jp_counter = 0
         branch_joints = []
         for connection in connection_list:
@@ -188,11 +188,11 @@ class GraphManager2L():
     #     self.build_main(0.3)
     #     self.build_branch(connection_list)
 
-    def build_4l_asymmetric(self, connection_list: float):
+    def build_6n4p_asymmetric(self, connection_list: float):
         """Connects the 4l asymmetric branch to the main branch
 
         Args:
-            connection_list (float): list of connecting points indexes for branch connection to main
+            connection_list (float): list of connecting points indexes for branch connection to main. Linkage chain of the largest length between the first and the third indices
         """
         if connection_list[0]+connection_list[1] == 1:
             branch_1_active = True
@@ -212,8 +212,7 @@ class GraphManager2L():
                                                          relative_to=jp)
         if len(jp_connection_to_main) == 0:
             self.graph.add_edge(jp, branch_jp_0)
-            if not branch_1_active:
-                jp.active = True
+            jp.active = not branch_1_active
         else:
             self.graph.add_edge(jp, branch_jp_0)
             for cd in jp_connection_to_main:
@@ -228,15 +227,13 @@ class GraphManager2L():
             w=np.array([0, 1, 0]),
             name="branch_1"
         )
-        if branch_1_active:
-            branch_jp_1.active = True
+        branch_jp_1.active = branch_1_active
         self.generator_dict[branch_jp_1] = GeneratorInfo(MutationType.RELATIVE, None,
                                                          mutation_range=connection_description.relative_mutation_range,
                                                          relative_to=jp)
         if len(jp_connection_to_main) == 0:
             self.graph.add_edge(jp, branch_jp_1)
-            if not branch_1_active:
-                jp.active = True
+            jp.active = not branch_1_active  
         else:
             self.graph.add_edge(jp, branch_jp_1)
             for cd in jp_connection_to_main:
@@ -295,10 +292,10 @@ class GraphManager2L():
         return result
 
     def generate_central_from_mutation_range(self):
-        """Sample random values from the mutation ranges.
+        """Return values from center of the mutation ranges.
 
         Returns:
-            List[float]: a vector of parameters that are sampled from the mutation ranges.
+            List[float]: a vector of parameters that are centered on the mutation ranges.
         """
         result = []
         for _, value in self.mutation_ranges.items():
@@ -396,7 +393,7 @@ def get_preset_by_index(idx: int):
         gm = GraphManager2L()
         gm.reset()
         gm.build_main(0.4)
-        gm.build_2l_branch([0, 2])
+        gm.build_3n2p_branch([0, 2])
         gm.set_mutation_ranges()
         return gm
 
@@ -404,7 +401,7 @@ def get_preset_by_index(idx: int):
         gm = GraphManager2L()
         gm.reset()
         gm.build_main(0.4)
-        gm.build_2l_branch([1, 2])
+        gm.build_3n2p_branch([1, 2])
         gm.set_mutation_ranges()
         return gm
 
@@ -412,7 +409,7 @@ def get_preset_by_index(idx: int):
         gm = GraphManager2L()
         gm.reset()
         gm.build_main(0.4)
-        gm.build_4l_symmetric([0, 1, 2])
+        gm.build_6n4p_symmetric([0, 1, 2])
         gm.set_mutation_ranges()
         return gm
 
@@ -420,7 +417,7 @@ def get_preset_by_index(idx: int):
         gm = GraphManager2L()
         gm.reset()
         gm.build_main(0.4)
-        gm.build_4l_asymmetric([0, 1, 2])
+        gm.build_6n4p_asymmetric([0, 1, 2])
         gm.set_mutation_ranges()
         return gm
 
@@ -428,7 +425,7 @@ def get_preset_by_index(idx: int):
         gm = GraphManager2L()
         gm.reset()
         gm.build_main(0.4)
-        gm.build_4l_asymmetric([0, 2, 1])
+        gm.build_6n4p_asymmetric([0, 2, 1])
         gm.set_mutation_ranges()
         return gm
 
@@ -436,7 +433,7 @@ def get_preset_by_index(idx: int):
         gm = GraphManager2L()
         gm.reset()
         gm.build_main(0.4)
-        gm.build_4l_asymmetric([1, 0, 2])
+        gm.build_6n4p_asymmetric([1, 0, 2])
         gm.set_mutation_ranges()
         return gm
 
@@ -444,7 +441,7 @@ def get_preset_by_index(idx: int):
         gm = GraphManager2L()
         gm.reset()
         gm.build_main(0.4)
-        gm.build_4l_asymmetric([1, 2, 0])
+        gm.build_6n4p_asymmetric([1, 2, 0])
         gm.set_mutation_ranges()
         return gm
 
@@ -452,7 +449,7 @@ def get_preset_by_index(idx: int):
         gm = GraphManager2L()
         gm.reset()
         gm.build_main(0.4)
-        gm.build_4l_asymmetric([2, 0, 1])
+        gm.build_6n4p_asymmetric([2, 0, 1])
         gm.set_mutation_ranges()
         return gm
 
@@ -460,6 +457,6 @@ def get_preset_by_index(idx: int):
         gm = GraphManager2L()
         gm.reset()
         gm.build_main(0.4)
-        gm.build_4l_asymmetric([2, 1, 0])
+        gm.build_6n4p_asymmetric([2, 1, 0])
         gm.set_mutation_ranges()
         return gm
