@@ -41,7 +41,7 @@ class HeavyLiftingReward(Reward):
                  trajectory_key: str,
                  error_key: str,
                  max_effort_coef=0.7) -> None:
-        super().__init__()
+        super().__init__(name="Heavy Lifting Reward")
         self.max_effort_coefficient = max_effort_coef
         self.manip_key = manipulability_key
         self.trajectory_key = trajectory_key
@@ -214,7 +214,7 @@ class MinAccelerationCapability(Reward):
                  error_key: str,
                  actuated_mass_key: str,
                  max_effort_coef=0.7) -> None:
-        super().__init__()
+        super().__init__(name='Min Acceleration Capability')
         self.max_effort_coefficient = max_effort_coef
         self.manip_key = manipulability_key
         self.trajectory_key = trajectory_key

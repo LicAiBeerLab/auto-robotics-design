@@ -999,7 +999,7 @@ def jps_graph2pinocchio_robot(
     Returns:
         tuple: A tuple containing the robot model with fixed base and free base.
     """
-    
+
     kinematic_graph = JointPoint2KinematicGraph(graph)
     kinematic_graph.define_main_branch()
     kinematic_graph.define_span_tree()
@@ -1023,7 +1023,7 @@ def jps_graph2pinocchio_robot(
                                 loop_description=constraints_descriptions,
                                 actuator_context=kinematic_graph,
                                 fixed=False)
-    
+
     return fixed_robot, free_robot
 
 def create_dict_jp_limit(joints, limit):

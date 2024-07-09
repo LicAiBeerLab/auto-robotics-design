@@ -102,7 +102,7 @@ class MinManipulabilityReward(Reward):
     """Calculate the mean of minimum eigenvalue of manipulability matrix  """
 
     def __init__(self, manipulability_key: str, trajectory_key: str, error_key: str):
-        super().__init__()
+        super().__init__(name = 'Min manipulability')
         self.manip_key = manipulability_key
         self.trajectory_key = trajectory_key
         self.error_key = error_key
@@ -202,7 +202,7 @@ class MinForceReward(Reward):
             manipulability_key (str): key for the manipulability matrix
             error_key (str): key for the pose errors 
         """
-        super().__init__()
+        super().__init__(name = "Min Force Reward")
         self.manip_key = manipulability_key
         self.trajectory_key = trajectory_key
         self.error_key = error_key
