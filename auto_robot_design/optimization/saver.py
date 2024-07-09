@@ -1,12 +1,12 @@
-import dill
-import time
 import os
+import time
 
+import dill
 from matplotlib import pyplot as plt
+from pymoo.core.callback import Callback
 from pymoo.core.problem import Problem
 
 from auto_robot_design.description.utils import draw_joint_point
-from pymoo.core.callback import Callback
 
 
 def load_checkpoint(path: str):
@@ -31,9 +31,11 @@ class ProblemSaver:
         folders = ["results", self.folder_name]
         path = "./"
         for folder in folders:
-            path = os.path.join(path, folder)
-            if not os.path.exists(path):
-                os.mkdir(path)
+            folder = folder.split('\\')
+            for sub_folder in folder:
+                path = os.path.join(path, sub_folder)
+                if not os.path.exists(path):
+                    os.mkdir(path)
         path = os.path.abspath(path)
 
         return path
@@ -41,7 +43,11 @@ class ProblemSaver:
     def save_nonmutable(self):
         with open(os.path.join(self.path, "problem_data.pkl"), "wb") as f:
             dill.dump(self.problem, f)
-        draw_joint_point(self.problem.graph)
+        if hasattr(self.problem, "graph"):
+            draw_joint_point(self.problem.graph)
+        else:
+            draw_joint_point(self.problem.graph_manager.get_graph(
+                self.problem.graph_manager.generate_central_from_mutation_range()))
         plt.savefig(os.path.join(self.path, "initial_mechanism.png"))
         plt.close()
 
