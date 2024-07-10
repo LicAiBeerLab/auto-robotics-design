@@ -87,7 +87,7 @@ class GraphManager2L():
             r=knee_joint_pos, w=np.array([0, 1, 0]), active=fully_actuated, name="Main_knee")
         self.current_main_branch.append(knee_joint)
         self.generator_dict[knee_joint] = GeneratorInfo(
-            MutationType.ABSOLUTE, knee_joint_pos, mutation_range=[None, None, (-0.1, 0.1)])
+            MutationType.ABSOLUTE, knee_joint_pos.copy(), mutation_range=[None, None, (-0.1, 0.1)])
 
         first_connection = JointPoint(r=None, w=np.array([
                                       0, 1, 0]), name="Main_connection_1")
