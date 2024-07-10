@@ -183,7 +183,7 @@ class MultiCriteriaProblem(ElementwiseProblem):
     @classmethod
     def load(cls, path, **kwargs):
         with open(os.path.join(path, "problem_data.pkl"), "rb") as f:
-            new_prb_inst: CalculateMultiCriteriaProblem = dill.load(f)
+            new_prb_inst: MultiCriteriaProblem = dill.load(f)
         return new_prb_inst
 
 # class CalculateMultiCriteriaProblem(ElementwiseProblem):
