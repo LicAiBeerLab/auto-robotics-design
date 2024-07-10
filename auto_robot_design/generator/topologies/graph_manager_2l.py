@@ -183,10 +183,6 @@ class GraphManager2L():
         self.graph.add_edge(branch_joints[0], branch_joints[1])
         self.graph.add_edge(branch_joints[1], branch_joints[2])
         self.graph.add_edge(branch_joints[2], branch_joints[0])
-    # def set_topology(self, branch_code=0, connection_list=[0, 2]):
-    #     self.reset()
-    #     self.build_main(0.3)
-    #     self.build_branch(connection_list)
 
     def build_4l_asymmetric(self, connection_list: float):
         """Connects the 4l asymmetric branch to the main branch

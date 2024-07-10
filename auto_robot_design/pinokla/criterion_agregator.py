@@ -52,6 +52,10 @@ def calculate_quasi_static_simdata(free_robot: Robot,
     res_dict_fixed["error"] = constraint_errors
     res_dict_free["error"] = constraint_errors
 
+    res_dict_fixed['q'] = q_fixed
+    res_dict_free['q'] = free_space_q
+
+
     return res_dict_free, res_dict_fixed
 
 
