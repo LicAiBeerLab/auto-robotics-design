@@ -390,7 +390,8 @@ class GraphManager2L():
 
 def plot_2d_bounds(graph_manager):
     """
-    Plot 2D bounds for each joint points in the graph manager.
+    Plot 2D bounds for each joint points in the graph manager. Different colors are used for different types of mutations.
+    Absolute mutations are red, relative mutations are blue, and relative percentage mutations are green.
 
     Args:
         graph_manager (GraphManager): The graph manager object containing generator information.
