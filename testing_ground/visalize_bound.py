@@ -1,4 +1,5 @@
 import multiprocessing
+from arrow import get
 import numpy as np
 import matplotlib.pyplot as plt
 import os
@@ -17,111 +18,9 @@ from auto_robot_design.optimization.rewards.reward_base import PositioningConstr
 from auto_robot_design.optimization.rewards.jacobian_and_inertia_rewards import HeavyLiftingReward, MinAccelerationCapability
 from auto_robot_design.description.builder import ParametrizedBuilder, DetailedURDFCreatorFixedEE, jps_graph2pinocchio_robot, MIT_CHEETAH_PARAMS_DICT
 from auto_robot_design.generator.topologies.graph_manager_2l import GraphManager2L, plot_2d_bounds, MutationType
+from auto_robot_design.generator.topologies.bounds_preset import get_preset_by_index_with_bounds
 
-
-def set_preset_bounds(graph_manager, bounds):
-    nam2jp = {jp.name: jp for jp in graph_manager.generator_dict.keys()}
-    
-    for name, (init_coord, range) in bounds.items():
-        jp = nam2jp[name]
-        graph_manager.generator_dict[jp].mutation_range = range
-        graph_manager.generator_dict[jp].initial_coordinate = init_coord
-
-# 6n4p_symmetric
-
-"Ground_connection"
-"Main_knee"
-"Main_connection_1"
-"Main_connection_2"
-"branch_0"
-"branch_1"
-"branch_2"
-
-# 3n2p
-
-bounds_preset_3n2p_02 = {
-    "Ground_connection": ([0,0,0.001], [(-0.2, 0.0), None, (-0.03, 0.07)]),
-    "Main_knee": ([0,0,-0.2], [None, None, (-0.1, 0.1)]),
-    "Main_connection_2": (None, [(-0.2, 0.2), None, (-0.3, 0.6)]),
-    "branch_1": (None, [(-0.05, 0.1), None, (-0.3, -0.1)])
-}
-bounds_preset_3n2p_12 = {
-    "Main_knee": ([0,0,-0.2], [None, None, (-0.1, 0.1)]),
-    "Main_connection_1": (None, [(-0.2, 0.2), None, (-0.6, 0.4)]),
-    "Main_connection_2": (None, [(-0.2, 0.2), None, (0.3, 0.6)]),
-    "branch_1": (None, [(-0.05, 0.1), None, (-0.3, -0.1)])
-}
-
-bounds_preset_6n4p_s_012 = {
-    "Ground_connection": ([0,0,0.001], [(-0.2, 0.0), None, (-0.03, 0.1)]),
-    "Main_knee": ([0,0,-0.2], [None, None, (-0.1, 0.1)]),
-    "Main_connection_1": (None, [(-0.2, 0.2), None, (-0.6, 0.4)]),
-    "Main_connection_2": (None, [(-0.2, 0.2), None, (-0.3, 0.6)]),
-    "branch_0": (None, [(-0.1, 0.05), None, (-0.25, -0.01)]),
-    "branch_1": (None, [(-0.1, -0.02), None, (-0.1, 0.1)]),
-    "branch_2": (None, [(-0.1, -0.02), None, (0.05, 0.15)])
-}
-bounds_preset_6n4p_a_012 = {
-    "Ground_connection": ([0,0,0.001], [(-0.2, 0.0), None, (-0.03, 0.1)]),
-    "Main_knee": ([0,0,-0.2], [None, None, (-0.1, 0.1)]),
-    "Main_connection_1": (None, [(-0.2, 0.2), None, (-0.6, 0.4)]),
-    "Main_connection_2": (None, [(-0.2, 0.2), None, (-0.3, 0.6)]),
-    "branch_0": (None, [(-0.1, 0.05), None, (-0.15, -0.01)]),
-    "branch_1": (None, [(-0.1, -0.02), None, (-0.15, 0.0)]),
-    "branch_2": (None, [(-0.15, -0.02), None, (0.05, 0.15)])
-}
-bounds_preset_6n4p_a_120 = {
-    "Ground_connection": ([0,0,0.001], [(-0.2, 0.0), None, (-0.03, 0.1)]),
-    "Main_knee": ([0,0,-0.2], [None, None, (-0.1, 0.1)]),
-    "Main_connection_1": (None, [(-0.2, 0.2), None, (-0.6, 0.4)]),
-    "Main_connection_2": (None, [(-0.2, 0.2), None, (-0.3, 0.6)]),
-    "branch_2": (None, [(-0.1, 0.05), None, (-0.15, -0.01)]),
-    "branch_0": (None, [(-0.1, -0.02), None, (-0.15, 0.0)]),
-    "branch_1": (None, [(-0.15, -0.02), None, (0.05, 0.15)])
-}
-bounds_preset_6n4p_a_102 = {
-    "Ground_connection": ([0,0,0.001], [(-0.2, 0.0), None, (-0.03, 0.1)]),
-    "Main_knee": ([0,0,-0.2], [None, None, (-0.1, 0.1)]),
-    "Main_connection_1": (None, [(-0.2, 0.2), None, (-0.6, 0.4)]),
-    "Main_connection_2": (None, [(-0.2, 0.2), None, (-0.3, 0.6)]),
-    "branch_1": (None, [(-0.1, 0.05), None, (-0.25, -0.01)]),
-    "branch_0": (None, [(-0.1, -0.02), None, (-0.1, 0.1)]),
-    "branch_2": (None, [(-0.1, -0.02), None, (0.05, 0.15)])
-}
-bounds_preset_6n4p_a_210 = {
-    "Ground_connection": ([0,0,0.001], [(-0.2, 0.0), None, (-0.03, 0.1)]),
-    "Main_knee": ([0,0,-0.2], [None, None, (-0.1, 0.1)]),
-    "Main_connection_1": (None, [(-0.2, 0.2), None, (-0.6, 0.4)]),
-    "Main_connection_2": (None, [(-0.2, 0.2), None, (-0.3, 0.6)]),
-    "branch_2": (None, [(-0.1, 0.05), None, (-0.15, 0.05)]),
-    "branch_1": (None, [(-0.1, -0.02), None, (-0.1, 0.1)]),
-    "branch_0": (None, [(-0.15, -0.02), None, (0.08, 0.2)])
-}
-bounds_preset_6n4p_a_201 = {
-    "Ground_connection": ([0,0,0.001], [(-0.2, 0.0), None, (-0.03, 0.1)]),
-    "Main_knee": ([0,0,-0.2], [None, None, (-0.1, 0.1)]),
-    "Main_connection_1": (None, [(-0.2, 0.2), None, (-0.6, 0.4)]),
-    "Main_connection_2": (None, [(-0.2, 0.2), None, (-0.3, 0.6)]),
-    "branch_1": (None, [(-0.1, 0.05), None, (-0.15, 0.05)]),
-    "branch_2": (None, [(-0.1, -0.02), None, (-0.1, 0.1)]),
-    "branch_0": (None, [(-0.15, -0.02), None, (0.08, 0.2)])
-}
-
-# "Ground_connection"
-# "Main_knee"
-# "Main_connection_2"
-# "branch_1"
-
-
-gm = GraphManager2L()
-gm.reset()
-gm.build_main(0.4)
-gm.build_6n4p_asymmetric([2, 0, 1])
-# gm.build_6n4p_asymmetric([1, 2])
-# gm.build_3n2p_branch([0, 2])
-set_preset_bounds(gm, bounds_preset_6n4p_a_201)
-gm.set_mutation_ranges()
-# print(gm.mutation_ranges)
+gm = get_preset_by_index_with_bounds(8)
 center = gm.generate_central_from_mutation_range()
 # center[0] = -0.3
 # print(center)
