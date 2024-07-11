@@ -389,7 +389,15 @@ class GraphManager2L():
         return self.graph
 
 def plot_2d_bounds(graph_manager):
-    # plt.figure()
+    """
+    Plot 2D bounds for each joint points in the graph manager.
+
+    Args:
+        graph_manager (GraphManager): The graph manager object containing generator information.
+
+    Returns:
+        None
+    """
     for jp, gen_info in graph_manager.generator_dict.items():
         if gen_info.mutation_type == MutationType.UNMOVABLE:
             continue

@@ -1,4 +1,16 @@
 def set_preset_bounds(graph_manager, bounds):
+    """
+    Set preset bounds for the joint points in the graph manager.
+
+    Args:
+        graph_manager (GraphManager): The graph manager object.
+        bounds (dict): A dictionary containing the bounds for each generator info.
+            The keys are the names of the generators, and the values are tuples
+            representing the lower and upper bounds for each generator.
+
+    Returns:
+        None
+    """
     nam2jp = {jp.name: jp for jp in graph_manager.generator_dict.keys()}
     
     for name, (init_coord, range) in bounds.items():
