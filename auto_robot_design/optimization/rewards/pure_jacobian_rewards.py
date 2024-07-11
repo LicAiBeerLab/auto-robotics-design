@@ -16,7 +16,7 @@ class VelocityReward(Reward):
             trajectory_key (str): key for the trajectory points
             error_key (str): key for the pose errors 
         """
-        super().__init__()
+        super().__init__(name="Velocity Reward")
         self.manip_key = manipulability_key
         self.trajectory_key = trajectory_key
         self.error_key = error_key
@@ -67,7 +67,7 @@ class ManipulabilityReward(Reward):
     """Calculate determinant of the manipulability matrix"""
 
     def __init__(self, manipulability_key: str, trajectory_key: str, error_key: str):
-        super().__init__()
+        super().__init__(name="Manipulability Reward")
         self.manip_key = manipulability_key
         self.trajectory_key = trajectory_key
         self.error_key = error_key
@@ -91,7 +91,7 @@ class ManipulabilityReward(Reward):
             return 0, []
 
         # get the manipulability for each point at the trajectory
-        manipulability: list[np.array] = point_criteria[self.manip_key]
+        manipulability: list[np.array] = np.linalg.det(point_criteria[self.manip_key])
         result = np.mean(manipulability)
         reward_vector = list(manipulability)
 
@@ -148,7 +148,7 @@ class ForceEllipsoidReward(Reward):
             manipulability_key (str): key for the manipulability matrix
             error_key (str): key for the pose errors 
         """
-        super().__init__()
+        super().__init__(name="Force Ellipsoid Reward")
         self.manip_key = manipulability_key
         self.trajectory_key = trajectory_key
         self.error_key = error_key
@@ -228,7 +228,7 @@ class MinForceReward(Reward):
         n_steps = len(errors)
         reward_vector = [0]*n_steps
         for i in range(n_steps):
-            step_result = np.min(
+            step_result = 1/np.max(
                 abs(np.linalg.eigvals(manipulability_matrices[i])))
             reward_vector[i] = step_result
 
@@ -246,7 +246,7 @@ class EndPointZRRReward(Reward):
             trajectory_key (str): key for the trajectory points
             error_key (str): key for the pose errors 
         """
-        super().__init__()
+        super().__init__(name="End Point ZRR Reward")
         self.manip_key = manipulability_key
         self.trajectory_key = trajectory_key
         self.error_key = error_key
@@ -282,7 +282,7 @@ class EndPointZRRReward(Reward):
     
 
 class ZRRReward(Reward):
-    """Reduction ratio along the vertical (z) axis in the edge points of the trajectory (stance poses)"""
+    """Reduction ratio along the vertical (z) axis along the trajectory"""
 
     def __init__(self, manipulability_key: str, trajectory_key: str, error_key: str) -> None:
         """Set the dictionary keys for the data
@@ -292,7 +292,7 @@ class ZRRReward(Reward):
             trajectory_key (str): key for the trajectory points
             error_key (str): key for the pose errors 
         """
-        super().__init__()
+        super().__init__(name="ZRR Reward")
         self.manip_key = manipulability_key
         self.trajectory_key = trajectory_key
         self.error_key = error_key
@@ -327,7 +327,7 @@ class DexterityIndexReward(Reward):
     """Calculate the mean of minimum eigenvalue of manipulability matrix  """
 
     def __init__(self, manipulability_key: str, trajectory_key: str, error_key: str):
-        super().__init__()
+        super().__init__(name='Dexterity Index')
         self.manip_key = manipulability_key
         self.trajectory_key = trajectory_key
         self.error_key = error_key

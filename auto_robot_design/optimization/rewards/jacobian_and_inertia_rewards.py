@@ -89,11 +89,13 @@ class HeavyLiftingReward(Reward):
 
 
 class AccelerationCapability(Reward):
-    """Calculate the reward that combine effective inertia and force capability
+    """Calculate the reward that combine effective inertia and force capability. 
+
+        At a point it is an acceleration the EE would have in zero gravity if it has zero speed. 
     """
 
     def __init__(self, manipulability_key: str, trajectory_key: str, error_key: str, actuated_mass_key: str, max_effort_coef=0.7) -> None:
-        super().__init__()
+        super().__init__('Acceleration Capability')
         self.max_effort_coefficient = max_effort_coef
         self.manip_key = manipulability_key
         self.trajectory_key = trajectory_key
@@ -158,7 +160,7 @@ class MeanHeavyLiftingReward(Reward):
     """
 
     def __init__(self, manipulability_key, mass_key: str, trajectory_key: str, error_key: str, max_effort_coef=0.7) -> None:
-        super().__init__()
+        super().__init__('Mean Heavy Lifting Reward')
         self.max_effort_coefficient = max_effort_coef
         self.manip_key = manipulability_key
         self.trajectory_key = trajectory_key
