@@ -6,8 +6,16 @@ from typing import List, Optional, Tuple, Union
 import networkx as nx
 import numpy as np
 
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+import numpy.linalg as la
+from scipy.spatial.transform import Rotation as R
+import modern_robotics as mr
+
+
 from auto_robot_design.description.kinematics import JointPoint
 from auto_robot_design.description.builder import add_branch
+
 
 
 class MutationType(Enum):
@@ -77,9 +85,9 @@ class GraphManager2L():
         )
 
         self.generator_dict[ground_connection_jp] = GeneratorInfo(MutationType.ABSOLUTE, np.array(
-            [0, 0, 0.001]), mutation_range=[(-0.15, 0.), None, (-0.1, 0.1)])
+            [0, 0, 0.001]), mutation_range=[(-0.2, 0.), None, (-0.03, 0.07)])
         ground_connection_description = ConnectionInfo(
-            ground_connection_jp, [], [(-0.1, 0.1), None, (-0.15, 0)])
+            ground_connection_jp, [], [(-0.05, 0.1), None, (-0.3, -0.1)])
         self.main_connections.append(ground_connection_description)
 
         knee_joint_pos = np.array([0, 0, -length/2])
@@ -87,14 +95,14 @@ class GraphManager2L():
             r=knee_joint_pos, w=np.array([0, 1, 0]), active=fully_actuated, name="Main_knee")
         self.current_main_branch.append(knee_joint)
         self.generator_dict[knee_joint] = GeneratorInfo(
-            MutationType.ABSOLUTE, knee_joint_pos, mutation_range=[None, None, (-0.1, 0.1)])
+            MutationType.ABSOLUTE, knee_joint_pos.copy(), mutation_range=[None, None, (-0.1, 0.1)])
 
         first_connection = JointPoint(r=None, w=np.array([
                                       0, 1, 0]), name="Main_connection_1")
         # self.generator_dict[first_connection] = GeneratorInfo(MutationType.RELATIVE, None, mutation_range=[
         #                                                       (-0.05, 0.05), None, (-0.15, 0.15)], relative_to=[ground_joint, knee_joint])
         self.generator_dict[first_connection] = GeneratorInfo(MutationType.RELATIVE_PERCENTAGE, None, mutation_range=[
-                                                              (-0.2, 0.2), None, (-0.45, 0.45)], relative_to=[ground_joint, knee_joint])
+                                                              (-0.2, 0.2), None, (-0.6, 0.3)], relative_to=[ground_joint, knee_joint])
         first_connection_description = ConnectionInfo(
             first_connection, [ground_joint, knee_joint], [(-0.1, 0.0), None, (-0.1, 0.1)])
         self.main_connections.append(first_connection_description)
@@ -114,7 +122,7 @@ class GraphManager2L():
         # self.generator_dict[second_connection] = GeneratorInfo(MutationType.RELATIVE, None, mutation_range=[
         #                                                        (-0.05, 0.05), None, (-0.15, 0.15)], relative_to=[knee_joint, ee])
         self.generator_dict[second_connection] = GeneratorInfo(MutationType.RELATIVE_PERCENTAGE, None, mutation_range=[
-                                                               (-0.2, 0.2), None, (-0.45, 0.45)], relative_to=[knee_joint, ee])
+                                                               (-0.2, 0.2), None, (-0.6, 0.3)], relative_to=[knee_joint, ee])
         second_connection_description = ConnectionInfo(
             second_connection, [knee_joint, ee], [(-0.1, 0), None, (0, 0.1)])
         self.main_connections.append(second_connection_description)
@@ -380,6 +388,95 @@ class GraphManager2L():
                             parameter_counter += 1
         return self.graph
 
+def plot_2d_bounds(graph_manager):
+    # plt.figure()
+    for jp, gen_info in graph_manager.generator_dict.items():
+        if gen_info.mutation_type == MutationType.UNMOVABLE:
+            continue
+        ez = np.array([1,0,0])
+        x_bound = (-0.001, 0.001) if gen_info.mutation_range[0] is None else gen_info.mutation_range[0]
+        z_bound = (-0.001, 0.001) if gen_info.mutation_range[2] is None else gen_info.mutation_range[2]
+        bound = np.array([x_bound, z_bound])
+
+        if gen_info.mutation_type == MutationType.ABSOLUTE:
+            pos_initial = np.array([gen_info.initial_coordinate[0], gen_info.initial_coordinate[2]])
+            xz_rect_start = pos_initial + bound[:, 0]
+            wh_rect = bound[:, 1] - bound[:, 0]
+            angle = 0
+            rot_point = np.zeros(2)
+            color = "r"
+
+        elif gen_info.mutation_type == MutationType.RELATIVE:
+
+            if isinstance(gen_info.relative_to, JointPoint):
+                rel_jp_xz = np.array([gen_info.relative_to.r[0], gen_info.relative_to.r[2]])
+                xz_rect_start = rel_jp_xz+ bound[:, 0]
+                wh_rect = bound[:, 1] - bound[:, 0]
+                angle = 0
+                rot_point = np.zeros(2)
+            else:
+                if len(gen_info.relative_to) == 2:
+                    xz_rect_start = (gen_info.relative_to[0].r + gen_info.relative_to[1].r)/2
+                    link_direction = gen_info.relative_to[0].r - \
+                        gen_info.relative_to[1].r
+                    link_ortogonal = np.array(
+                        [-link_direction[2], link_direction[1], link_direction[0]])
+                    link_length = np.linalg.norm(link_direction)
+                    angle = np.arccos(np.inner(ez, link_ortogonal/link_length) / 
+                    la.norm(link_ortogonal/link_length) / 
+                    la.norm(ez))
+                    
+                    xz_rect_start[0] += (np.array([bound[0,0], 0, 0]) * \
+                        link_ortogonal/link_length)[0]
+                        
+                    xz_rect_start[1] += (np.array([0, 0, bound[1,0]]) * \
+                        link_direction/link_length)[2]
+
+                    wh_rect = bound[:, 1] - bound[:, 0]
+                    rot_point = (gen_info.relative_to[1].r + gen_info.relative_to[0].r)/2
+            color = "b"
+
+        elif gen_info.mutation_type == MutationType.RELATIVE_PERCENTAGE:
+
+            if len(gen_info.relative_to) == 2:
+                    xz_rect_start = (gen_info.relative_to[1].r + gen_info.relative_to[0].r)[[0,2]]/2
+                    
+                    link_direction = gen_info.relative_to[0].r - \
+                        gen_info.relative_to[1].r
+                    link_ortogonal = np.array(
+                        [-link_direction[2], link_direction[1], link_direction[0]])
+                    link_length = np.linalg.norm(link_direction)
+                    angle = np.arccos(np.inner(ez, link_ortogonal/link_length) / 
+                    la.norm(link_ortogonal/link_length) / 
+                    la.norm(ez))
+                    
+                    bound = bound * link_length
+                    
+                    if np.isclose(abs(angle), np.pi):
+                        angle = 0
+                    
+                    # rot = R.from_rotvec(axis * angle)
+                    
+                    # start_rect_pos = rot.as_matrix() @ np.array([bound[0,0], 0, bound[1,0]])
+                    
+                    xz_rect_start[0] += bound[0,0]#start_rect_pos[0]
+                    xz_rect_start[1] += bound[1,0]#start_rect_pos[2]
+
+                    wh_rect = np.abs(bound[:, 1] - bound[:, 0]) 
+                    rot_point = (gen_info.relative_to[1].r + gen_info.relative_to[0].r)[[0,2]]/2
+                    color = "g"
+
+        rect = patches.Rectangle(
+            (xz_rect_start[0], xz_rect_start[1]),
+            width=wh_rect[0],
+            height=wh_rect[1],
+            angle=-np.rad2deg(angle),
+            rotation_point= (rot_point[0],rot_point[1]),
+            linewidth=1,
+            edgecolor=color,
+            facecolor="none",
+        )
+        plt.gca().add_patch(rect)
 
 def get_preset_by_index(idx: int):
     if idx == -1:
