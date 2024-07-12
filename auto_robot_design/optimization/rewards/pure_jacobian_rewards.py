@@ -91,7 +91,7 @@ class ManipulabilityReward(Reward):
             return 0, []
 
         # get the manipulability for each point at the trajectory
-        manipulability: list[np.array] = np.linalg.det(point_criteria[self.manip_key])
+        manipulability: list[np.array] = point_criteria[self.manip_key]
         result = np.mean(manipulability)
         reward_vector = list(manipulability)
 
