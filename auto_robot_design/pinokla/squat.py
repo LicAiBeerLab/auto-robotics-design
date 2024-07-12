@@ -180,10 +180,14 @@ class SimulateSquatHop:
         Returns:
             _type_: _description_
         """
-        q0 = closedLoopProximalMount(self.fixed_base_robo.model,
-                                     self.fixed_base_robo.data,
-                                     self.fixed_base_robo.constraint_models,
-                                     self.fixed_base_robo.constraint_data)
+        if len(self.fixed_base_robo.constraint_models) == 0:
+        # Condition for check open kinematics
+            q0 = np.array([np.deg2rad(0), np.deg2rad(0)])
+        else:  
+            q0 = closedLoopProximalMount(self.fixed_base_robo.model,
+                                        self.fixed_base_robo.data,
+                                        self.fixed_base_robo.constraint_models,
+                                        self.fixed_base_robo.constraint_data)
         q0_plus_base_pos = self.add_base_pos(0, q0)
         return q0_plus_base_pos
 
