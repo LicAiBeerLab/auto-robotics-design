@@ -273,7 +273,7 @@ class RewardManager():
 
         return total_rewards
 
-    def calculate_total(self, fixed_robot, free_robot, motor):
+    def calculate_total(self, fixed_robot, free_robot, motor,viz=None):
         # trajectory_rewards = []
         partial_rewards = []
         weighted_partial_rewards = []
@@ -284,7 +284,7 @@ class RewardManager():
                     trajectory_id]
             else:
                 point_criteria_vector, trajectory_criteria, res_dict_fixed = self.crag.get_criteria_data(
-                    fixed_robot, free_robot, trajectory)
+                    fixed_robot, free_robot, trajectory, viz=viz)
 
             partial_reward = [trajectory_id]
             weighted_partial = [trajectory_id]

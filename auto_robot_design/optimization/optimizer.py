@@ -24,7 +24,7 @@ class PymooOptimizer:
 
             arrs_F = np.zeros((len(pop), self.problem.n_obj))
             for pop_id, p in enumerate(pop):
-                self.history["X"].append(p.X)
+                self.history["X"].append(np.round(p.X,5))
                 self.history["F"].append(p.F)
                 self.history["Fs"].append(p.get("Fs"))
                 arrs_F[pop_id] = p.F

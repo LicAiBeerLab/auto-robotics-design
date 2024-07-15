@@ -69,7 +69,7 @@ class CriteriaAggregator:
         self.dict_along_criteria = dict_along_criteria
         self.end_effector_name = "EE"
 
-    def get_criteria_data(self, fixed_robot, free_robot, traj_6d):
+    def get_criteria_data(self, fixed_robot, free_robot, traj_6d, viz=None):
         """Perform calculating
 
         Args:
@@ -85,11 +85,11 @@ class CriteriaAggregator:
 
         # perform calculations of the data required to calculate the fancy mech criteria
         res_dict_free, res_dict_fixed = calculate_quasi_static_simdata(
-            free_robot, fixed_robot, self.end_effector_name, traj_6d)
-        # calculate the criteria that can be assigned to each point at the trajectory 
+            free_robot, fixed_robot, self.end_effector_name, traj_6d,viz=viz)
+        # calculate the criteria that can be assigned to each point at the trajectory
         point_criteria_vector = moment_criteria_calc(self.dict_moment_criteria,
                                                   res_dict_free, res_dict_fixed)
-        # calculate criteria that characterize the performance along the whole trajectory  
+        # calculate criteria that characterize the performance along the whole trajectory
         trajectory_criteria = along_criteria_calc(self.dict_along_criteria,res_dict_free,
                                                 res_dict_fixed, fixed_robot, free_robot)
 
