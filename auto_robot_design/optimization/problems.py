@@ -173,7 +173,6 @@ class MultiCriteriaProblem(ElementwiseProblem):
             for i, point_set in enumerate(self.soft_constrain.points):
                 self.rewards_and_trajectories.check_constrain_trajectory(
                     point_set, results[i])
-            pass
 
         __, partial_rewards, vector_rewards = self.rewards_and_trajectories.calculate_total(
             fixed_robot, free_robot, self.motor)

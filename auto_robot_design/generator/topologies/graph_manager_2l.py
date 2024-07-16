@@ -17,7 +17,6 @@ from auto_robot_design.description.kinematics import JointPoint
 from auto_robot_design.description.builder import add_branch
 
 
-
 class MutationType(Enum):
     """Enumerate for mutation types."""
     UNMOVABLE = 0  # Unmovable joint that is not used for optimization
@@ -367,7 +366,7 @@ class GraphManager2L():
                     if r is not None:
                         if isinstance(gi.relative_to, JointPoint):
                             raise ValueError(
-                                'Relative percentage mutation type should have a list of joints as relative_to')
+                        'Relative percentage mutation type should have a list of joints as relative_to')
                         else:
                             if len(gi.relative_to) == 2:
                                 link_direction = gi.relative_to[0].r - \
