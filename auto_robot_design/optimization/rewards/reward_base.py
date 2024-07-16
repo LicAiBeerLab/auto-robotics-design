@@ -8,7 +8,7 @@ class Reward():
     """Interface for the optimization criteria"""
 
     def __init__(self, name) -> None:
-        self.point_precision = 1e-6
+        self.point_precision = 1e-3
         self.reward_name = name
 
     def calculate(self, point_criteria: DataDict, trajectory_criteria: DataDict, trajectory_results: DataDict, **kwargs) -> Tuple[float, list[float]]:
@@ -74,7 +74,7 @@ class PositioningReward(Reward):
 class PositioningErrorCalculatorOld():
     def __init__(self, error_key):
         self.error_key = error_key
-        self.point_threshold = 1e-6
+        self.point_threshold = 1e-3
 
     def calculate(self, trajectory_results: DataDict):
         errors = trajectory_results[self.error_key]
@@ -92,7 +92,7 @@ class PositioningErrorCalculator():
         self.error_key = error_key
         self.jacobian_key = jacobian_key
         self.calc_isotropic_thr = calc_isotropic_thr
-        self.point_threshold = 1e-6
+        self.point_threshold = 1e-3
         self.point_isotropic_threshold = 15
         self.point_isotropic_clip = 3*15
 

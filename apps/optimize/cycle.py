@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import pinocchio as pin
 
 from pymoo.decomposition.asf import ASF
 from auto_robot_design.description.utils import draw_joint_point
@@ -11,6 +12,8 @@ from auto_robot_design.description.builder import jps_graph2pinocchio_robot
 import tkinter as tk
 from tkinter import filedialog
 
+
+#pin.seed(3)
 def select_directory():
     # Create a root window
     root = tk.Tk()
@@ -58,9 +61,10 @@ print(idx, X[idx])
 
 import random 
 
-for i in range(8):
+for i in range(5):
     # np.random.seed = i
     # random.seed = i
+    pin.seed(i)
     x = X[idx]
     graph = gm.get_graph(x)
     fixed_robot, free_robot = jps_graph2pinocchio_robot(graph, builder=builder)

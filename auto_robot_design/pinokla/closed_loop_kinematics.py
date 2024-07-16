@@ -5,7 +5,7 @@ Ludovic DE MATTEIS & Virgile BATTO, April 2023
 Tools to compute the forwark and inverse kinematics of a robot with  closed loop 
 
 """
-
+import random
 from copy import deepcopy
 from numpy.linalg import solve, norm, pinv
 import pinocchio as pin
@@ -127,7 +127,7 @@ def closedLoopInverseKinematicsProximal(
             model.getJointId("universel"), target_pos,
             pin.ReferenceFrame.LOCAL)
         raise Exception("Not implemented")
-    
+
     final_constraint.name = "TrajCons"
     constraint_model.append(final_constraint)
 
