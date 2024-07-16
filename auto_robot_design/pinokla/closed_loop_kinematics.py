@@ -77,7 +77,7 @@ def closedLoopInverseKinematicsProximal(
     onlytranslation=False,
     
     max_it=300,
-    eps=5e-7,
+    eps=1e-4,
     rho=1e-10,
     mu=1e-3,
 ):
@@ -235,7 +235,7 @@ def closedLoopProximalMount(
     #actuation_model,
     q_prec=None,
     max_it=100,
-    eps=1e-12,
+    eps=1e-6,
     rho=1e-10,
     mu=1e-4,
 ):
