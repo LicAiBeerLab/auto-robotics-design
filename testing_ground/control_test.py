@@ -1,18 +1,18 @@
 
+import time
 from matplotlib import pyplot as plt
 from scipy.interpolate import CubicSpline
 from auto_robot_design.control.trajectory_planning import trajectory_planning
 from auto_robot_design.pinokla.default_traj import (
     convert_x_y_to_6d_traj_xz,
+    create_simple_step_trajectory,
     get_simple_spline,
 )
-from auto_robot_design.generator.restricted_generator.two_link_generator import (
-    TwoLinkGenerator,
-)
+from auto_robot_design.generator.topologies.bounds_preset import get_preset_by_index_with_bounds
 
 from auto_robot_design.description.builder import (
     ParametrizedBuilder,
-    URDFLinkCreator,
+    URDFLinkCreator, DetailedURDFCreatorFixedEE,
     jps_graph2pinocchio_robot,
 )
 
@@ -27,6 +27,7 @@ import os
 import sys
 from auto_robot_design.pinokla.closed_loop_kinematics import (
     closedLoopInverseKinematicsProximal,
+    openLoopInverseKinematicsProximal,
     closedLoopProximalMount,
 )
 
@@ -34,6 +35,7 @@ from auto_robot_design.control.model_based import (
     TorqueComputedControl,
     OperationSpacePDControl,
 )
+from auto_robot_design.simulation.trajectory_movments import TrajectoryMovements
 
 script_dir = os.path.dirname(__file__)
 mymodule_dir = os.path.join(script_dir, "../utils")
@@ -41,12 +43,13 @@ sys.path.append(mymodule_dir)
 
 
 # Load robot
-gen = TwoLinkGenerator()
 builder = ParametrizedBuilder(URDFLinkCreator)
-graphs_and_cons = gen.get_standard_set()
 np.set_printoptions(precision=3, linewidth=300, suppress=True, threshold=10000)
 
-graph_jp, constrain = graphs_and_cons[2]
+graph_manager = get_preset_by_index_with_bounds(-1)
+
+x_centre = graph_manager.generate_central_from_mutation_range()
+graph_jp = graph_manager.get_graph(x_centre)
 
 robo, __ = jps_graph2pinocchio_robot(graph_jp, builder)
 
@@ -63,14 +66,16 @@ q = np.zeros(robo.model.nq)
 
 # Trajectory by points
 
-x_point = np.array([-0.5, 0, 0.25]) * 0.5
-y_point = np.array([-0.4, -0.1, -0.4]) * 0.5
-y_point = y_point - 0.7
-traj_6d = convert_x_y_to_6d_traj_xz(x_point, y_point)
-
+# x_point = np.array([-0.5, 0, 0.25]) * 0.5
+# y_point = np.array([-0.4, -0.1, -0.4]) * 0.5
+# y_point = y_point - 0.7
+# traj_6d = convert_x_y_to_6d_traj_xz(x_point, y_point)
+traj_6d = convert_x_y_to_6d_traj_xz(*create_simple_step_trajectory(
+    starting_point=[-0.11, -0.37], step_height=0.07, step_width=0.22, n_points=10))
 
 # Trajectory by points in joint space
 q_des_points = []
+time_start = time.time()
 for num, i_pos in enumerate(traj_6d):
     q, min_feas, is_reach = closedLoopInverseKinematicsProximal(
         robo.model,
@@ -81,22 +86,46 @@ for num, i_pos in enumerate(traj_6d):
         ee_id_ee,
         onlytranslation=True,
         q_start=q,
+        eps = 1e-3,
+        mu = 1e-2
     )
+    ballID = "world/ball" + str(num)
+    material = meshcat.geometry.MeshPhongMaterial()
     if not is_reach:
         q = closedLoopProximalMount(
             robo.model, robo.data, robo.constraint_models, robo.constraint_data, q
         )
+        material.color = int(0xFF0000)
+    else:
+        material.color = int(0x00FF00)
+    material.opacity = 0.3
+    viz.viewer[ballID].set_object(meshcat.geometry.Sphere(0.001),material)
+    T = np.r_[np.c_[np.eye(3),i_pos[:3]],np.array([[0,0,0,1]])]
+    viz.viewer[ballID].set_transform(T)
     q_des_points.append(q.copy())
-
+    boxID = "world/box" + str(num)
+    box_material = meshcat.geometry.MeshPhongMaterial()
+    box_material.color = int(0xAFAF00)
+    viz.viewer[boxID].set_object(meshcat.geometry.Box([0.001, 0.001, 0.001]),box_material)
+    pin.framesForwardKinematics(robo.model, robo.data, q)
+    real_ee_pos = robo.data.oMf[ee_id_ee].translation
+    Tbox = np.r_[np.c_[np.eye(3),real_ee_pos[:3]],np.array([[0,0,0,1]])]
+    viz.viewer[boxID].set_transform(Tbox)
+print("Time for IK: ", time.time() - time_start)
 q = q_des_points[0]
 
+for i, q in enumerate(q_des_points):
+    viz.display(q)
+    time.sleep(0.5)
+
+q = q_des_points[0]
 viz.display(q)
 
-
+final_time = 0.8
 # Init dynamics
 pin.initConstraintDynamics(robo.model, robo.data, robo.constraint_models)
 DT = 1e-3
-N_it = 1000
+N_it = int(final_time / DT)
 tauq = np.zeros(robo.model.nv)
 id_mt1 = robo.actuation_model.idMotJoints[0]
 id_mt2 = robo.actuation_model.idqmot[1]
@@ -123,36 +152,32 @@ __, q_des_traj, dq_des_traj, ddq_des_traj = trajectory_planning(
     q_des_points.T[[id_mt1, id_mt2], :], 0, 0, 0, N_it * DT, DT, True
 )
 
+name_ee = "EE"
 # Trajectory generation in operational space
-x_point, y_point = get_simple_spline()
-cs = CubicSpline(x_point, y_point)
-x_traj = np.linspace(x_point.min(), x_point.max(), N_it)
-y_traj = cs(x_traj)
-s_time = np.linspace(0, N_it * DT, x_point.size)
-# cs_x = np.polyfit(s_time, x_point, 2)
-# cs_y = np.polyfit(s_time, y_point, 2)
-# x_traj = np.polyval(cs_x, np.linspace(0, 1, N_it))
-# y_traj = np.polyval(cs_y, np.linspace(0, 1, N_it))
+test = TrajectoryMovements(traj_6d[:,[0,2]], final_time, DT, name_ee)
 
-xz_ee_des_arr = np.c_[x_traj, y_traj]
-
+__, traj6d, traj_d6d = test.prepare_trajectory(robo)
+xz_ee_des_arr = traj6d[:, [0, 2]]
+x_point = traj_6d[:, 0]
+y_point = traj_6d[:, 2]
+d_xz_ee_des_arr = traj_d6d[:, [0, 2]]
 # Init control
 
 # Torque computed control in joint space
-K = 500 * np.eye(2)
-Kd = 50 * np.eye(2)
-ctrl = TorqueComputedControl(robo, K, Kd)
+# K = 500 * np.eye(2)
+# Kd = 50 * np.eye(2)
+# ctrl = TorqueComputedControl(robo, K, Kd)
 
 # Operation space PD control
-# Kimp = np.eye(6) * 2000
-# Kimp[3, 3] = 0
-# Kimp[4, 4] = 0
-# Kimp[5, 5] = 0
-# Kdimp = np.eye(6) * 200
-# Kdimp[3, 3] = 0
-# Kdimp[4, 4] = 0
-# Kdimp[5, 5] = 0
-# ctrl = OperationSpacePDControl(robo, Kimp, Kdimp, ee_id_ee)
+Kimp = np.eye(6) * 1000
+Kimp[3, 3] = 0
+Kimp[4, 4] = 0
+Kimp[5, 5] = 0
+Kdimp = np.eye(6) * 100
+Kdimp[3, 3] = 0
+Kdimp[4, 4] = 0
+Kdimp[5, 5] = 0
+ctrl = OperationSpacePDControl(robo, Kimp, Kdimp, ee_id_ee)
 
 nvmot = len(robo.actuation_model.idvmot)
 t_arr = np.zeros(N_it)
@@ -198,7 +223,7 @@ for i in range(N_it):
     x_body_des = np.zeros(6)
     x_body_des[0] = xz_ee_des_arr[i, 0]
     x_body_des[2] = xz_ee_des_arr[i, 1]
-
+    
     # Current velocity ee in operational space
     v_body = np.concatenate(
         (
@@ -211,9 +236,9 @@ for i in range(N_it):
         )
     )
     # Torque computed control in joint space
-    tauq = ctrl.compute(q, vq, qa_d, vqa_d, ddq_des_traj[i])
+    # tauq = ctrl.compute(q, vq, qa_d, vqa_d, ddq_des_traj[i])
     # Operation space PD control
-    # tauq = ctrl.compute(q, vq, x_body_des, np.zeros(6))
+    tauq = ctrl.compute(q, vq, traj6d[i],traj_d6d[i])#np.zeros(6))
 
     t_arr[i] = i * DT
     q_arr[i] = q
@@ -320,3 +345,4 @@ err = np.sum(
     ]
 )
 print(err)
+graph_jp

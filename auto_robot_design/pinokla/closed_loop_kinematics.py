@@ -7,6 +7,7 @@ Tools to compute the forwark and inverse kinematics of a robot with  closed loop
 """
 
 from copy import deepcopy
+from numpy.linalg import solve, norm, pinv
 import pinocchio as pin
 import numpy as np
 from auto_robot_design.pinokla.robot_utils import freezeJoints, freezeJointsWithoutVis
@@ -14,7 +15,57 @@ from pinocchio.visualize import GepettoVisualizer
 from pinocchio.visualize import MeshcatVisualizer
 import meshcat
 
-
+def openLoopInverseKinematicsProximal(
+    rmodel,
+    rdata,
+    rconstraint_model,
+    rconstraint_data,
+    target_pos,
+    ideff,
+    q_start = None,
+    onlytranslation=False,
+    max_it=300,
+    eps=1e-4,
+    rho=1e-12,
+    mu=1e-1,
+    vis = None 
+):  
+    model = pin.Model(rmodel)
+    data = model.createData()
+    
+    target_SE3 = pin.SE3.Identity()
+    target_SE3.translation = np.array(target_pos[0:3])
+    
+    if vis is not None:
+        ballID = "world/ball"
+        material = meshcat.geometry.MeshPhongMaterial()
+        material.color = int(0xFF0000)
+        vis.viewer[ballID].set_object(meshcat.geometry.Sphere(0.01),material)
+        T = np.r_[np.c_[np.eye(3),target_SE3.translation],np.array([[0,0,0,1]])]
+        vis.viewer[ballID].set_transform(T)
+    
+    success = False
+    if q_start is None:
+        q = pin.neutral(model)
+    else:
+        q = q_start
+    
+    err_arrs = []
+    for k in range(max_it):
+        pin.framesForwardKinematics(model, data, q)
+        pin.forwardKinematics(model, data, q)
+        err = data.oMf[ideff].translation-target_SE3.translation
+        if norm(err) < eps:
+            success = True
+            break
+        err_arrs.append(norm(err))
+        J = pin.computeFrameJacobian(model, data, q, ideff, pin.LOCAL_WORLD_ALIGNED)[:3,:]
+        v = - pinv(J) @ err
+        q = pin.integrate(model, q, v * mu)
+        if vis is not None:
+            vis.display(q)
+    return q, norm(err), success
+    
 def closedLoopInverseKinematicsProximal(
     rmodel,
     rdata,
@@ -56,6 +107,9 @@ def closedLoopInverseKinematicsProximal(
     TRAJ_CONS_DEVIDER = 1
     model = pin.Model(rmodel)
     constraint_model = [pin.RigidConstraintModel(x) for x in  rconstraint_model]
+    open_loop = False
+    if not constraint_model:
+        open_loop = True
     # add a contact constraint
     target_SE3 = pin.SE3.Identity()
     target_SE3.translation = np.array(target_pos[0:3])
@@ -89,6 +143,23 @@ def closedLoopInverseKinematicsProximal(
     for cm in constraint_model:
         constraint_dim += cm.size()
     is_reach = False
+    # Solve the inverse kinematics for open loop kinematics
+    # Only translation is considered
+    # ref: https://gepettoweb.laas.fr/doc/stack-of-tasks/pinocchio/master/doxygen-html/md_doc_b_examples_d_inverse_kinematics.html#autotoc_md44
+    if open_loop:
+        DT = 1e-1 # Optimization step
+        for k in range(max_it):
+            pin.framesForwardKinematics(model, data, q)
+            pin.forwardKinematics(model, data, q)
+            err = data.oMf[ideff].translation-target_SE3.translation
+            if norm(err) < eps:
+                is_reach = True
+                break
+            J = pin.computeFrameJacobian(model, data, q, ideff, pin.LOCAL_WORLD_ALIGNED)[:3,:]
+            v = - pinv(J) @ err
+            q = pin.integrate(model, q, v * DT)
+        return q, norm(err), is_reach
+
     y = np.ones((constraint_dim))
     data.M = np.eye(model.nv) * rho
     kkt_constraint = pin.ContactCholeskyDecomposition(model, constraint_model)
@@ -124,8 +195,6 @@ def closedLoopInverseKinematicsProximal(
             is_reach = True
             break
             
-
-        
         rhs = np.concatenate([-constraint_value - y * mu, np.zeros(model.nv)])
 
         dz = kkt_constraint.solve(rhs)
@@ -201,7 +270,9 @@ def closedLoopProximalMount(
     constraint_dim = 0
     for cm in constraint_model:
         constraint_dim += cm.size()
-
+    # If constraint_dim is 0, then the robot have open loop kinematics
+    if constraint_dim == 0:
+        return q
     y = np.ones((constraint_dim))
     data.M = np.eye(model.nv) * rho
     kkt_constraint = pin.ContactCholeskyDecomposition(model, constraint_model)
