@@ -63,7 +63,7 @@ crag = CriteriaAggregator(dict_point_criteria, dict_trajectory_criteria)
 # the result is the dict with key - joint_point, value - tuple of all possible coordinate moves
 constrain_dict["2L_ground"]["optim"] = True
 constrain_dict["2L_bot"]["optim"] = False
-constrain_dict["2L_knee"]["optim"] = True
+constrain_dict["2L_knee"]["optim"] = False
 
 optimizing_joints = get_optimizing_joints(graph, constrain_dict)
 
@@ -143,13 +143,13 @@ ax = fig.add_subplot(111, projection='3d')
 cmhot = plt.get_cmap("summer")
 ax.plot_trisurf(X.flatten(), Z.flatten(), res.flatten(), antialiased=True)
 # ax.plot_surface(X, Z, res,  linewidth=0.2, antialiased=True)
-sct = ax.scatter(X.flatten(), Z.flatten(), res.flatten(), s=np.abs(pos_error.flatten())*5e3, c=np.abs(pos_error.flatten())*10, cmap=cmhot)
+# sct = ax.scatter(X.flatten(), Z.flatten(), res.flatten(), s=np.abs(pos_error.flatten())*5e3, c=np.abs(pos_error.flatten())*10, cmap=cmhot)
 ax.set_zlim(res.min()-0.5, res.max()+0.5)
 ax.zaxis.set_major_locator(LinearLocator(10))
 # A StrMethodFormatter is used automatically
 ax.zaxis.set_major_formatter('{x:.02f}')
 # Add a color bar which maps values to colors.
-fig.colorbar(sct, shrink=0.5, aspect=5)
+# fig.colorbar(sct, shrink=0.5, aspect=5)
 ax.set_xlabel('X')
 ax.set_ylabel('Z')
 ax.set_zlabel('Reward')
