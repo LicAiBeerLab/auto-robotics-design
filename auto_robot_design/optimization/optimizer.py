@@ -2,6 +2,8 @@ import os
 import dill
 
 import numpy as np
+import pinocchio as pin
+pin.seed(1)
 
 class PymooOptimizer:
     def __init__(self, problem, algortihm, saver=None) -> None:

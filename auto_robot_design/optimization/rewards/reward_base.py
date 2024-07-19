@@ -34,6 +34,8 @@ class Reward():
         return True
 
 
+
+
 class DummyReward(Reward):
     """The reward that can be used for padding."""
 
@@ -107,6 +109,7 @@ class PositioningErrorCalculator():
             _type_: _description_
         """
         pos_err = self.calculate_pos_error(trajectory_results_pos)
+        self.check_continuity(trajectory_results_pos)
         ret = pos_err
         if self.calc_isotropic_thr:
             isotropic_value = self.calculate_eig_error(
@@ -135,6 +138,15 @@ class PositioningErrorCalculator():
             return clipped_max
         else:
             return 0
+        
+    def check_continuity(self, trajectory_results_pos):
+        value = np.max(np.sum(np.abs(np.diff(trajectory_results_pos['q'], axis=0)),axis=1))
+        l = len(trajectory_results_pos['q'][0])
+        if value > 1:
+            with open('cont_check.txt', 'a') as f:
+                f.write(f'Continuity is violated with value: {value}, {l}\n')
+
+
 
     def calculate_pos_error(self, trajectory_results: DataDict):
         """Returns max max value of the errors along trajectory if error at any point exceeds the threshold.

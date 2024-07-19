@@ -89,7 +89,7 @@ class GraphManager2L():
             ground_connection_jp, [], [(-0.05, 0.1), None, (-0.3, -0.1)])
         self.main_connections.append(ground_connection_description)
 
-        knee_joint_pos = np.array([0, 0, -length/2])
+        knee_joint_pos = np.array([0.03, 0, -length/2])
         knee_joint = JointPoint(
             r=knee_joint_pos, w=np.array([0, 1, 0]), active=fully_actuated, name="Main_knee")
         self.current_main_branch.append(knee_joint)

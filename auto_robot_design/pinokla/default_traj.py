@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import CubicSpline
+from typing import Tuple
 
 
 def convert_x_y_to_6d_traj(x: np.ndarray, y: np.ndarray):
@@ -88,3 +89,16 @@ def get_horizontal_trajectory(starting_point, width, x_shift, n_points = 50):
     y_trajectory = np.linspace(starting_point, starting_point, n_points)
     x_trajectory = np.linspace(x_shift - width/2, x_shift + width/2, n_points)
     return (x_trajectory, y_trajectory)
+
+def enhance_trajectory(trajectory:Tuple[np.array], initial_point = np.array([0, -0.4]), number_points = 50):
+    first_point = np.array([trajectory[0][0],trajectory[1][0]])
+    vector = first_point-initial_point
+    #length = np.linalg.norm(vector)
+    multipliers = np.linspace(0,1,number_points,endpoint=False)
+    new_x = np.array([initial_point[0]+vector[0]*m for m in multipliers])
+    new_y = np.array([initial_point[1]+vector[1]*m for m in multipliers])
+    result_x = np.concatenate((new_x, trajectory[0]))
+    result_y = np.concatenate((new_y, trajectory[1]))
+
+    return (result_x, result_y)
+

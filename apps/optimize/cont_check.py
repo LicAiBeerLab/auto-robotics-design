@@ -1,4 +1,4 @@
-# %%
+
 import multiprocessing
 import numpy as np
 import matplotlib.pyplot as plt
@@ -13,20 +13,19 @@ from auto_robot_design.optimization.problems import MultiCriteriaProblem
 from auto_robot_design.optimization.optimizer import PymooOptimizer
 from auto_robot_design.pinokla.calc_criterion import ActuatedMass, EffectiveInertiaCompute, MovmentSurface, NeutralPoseMass, ManipJacobian
 from auto_robot_design.pinokla.criterion_agregator import CriteriaAggregator
-from auto_robot_design.pinokla.default_traj import convert_x_y_to_6d_traj_xz, get_vertical_trajectory, create_simple_step_trajectory, get_workspace_trajectory
+from auto_robot_design.pinokla.default_traj import enhance_trajectory, convert_x_y_to_6d_traj_xz, get_vertical_trajectory, create_simple_step_trajectory, get_workspace_trajectory
 from auto_robot_design.optimization.rewards.reward_base import PositioningConstrain, PositioningErrorCalculator, RewardManager
 from auto_robot_design.optimization.rewards.jacobian_and_inertia_rewards import HeavyLiftingReward, MinAccelerationCapability
 from auto_robot_design.description.builder import ParametrizedBuilder, DetailedURDFCreatorFixedEE, jps_graph2pinocchio_robot, MIT_CHEETAH_PARAMS_DICT
-from auto_robot_design.generator.topologies.graph_manager_2l import GraphManager2L,get_preset_by_index
+from auto_robot_design.generator.topologies.graph_manager_2l import GraphManager2L, get_preset_by_index
 from auto_robot_design.generator.topologies.bounds_preset import get_preset_by_index_with_bounds
+import pinocchio as pin
 
 
-# %%
 thickness = MIT_CHEETAH_PARAMS_DICT["thickness"]
 actuator = MIT_CHEETAH_PARAMS_DICT["actuator"]
 density = MIT_CHEETAH_PARAMS_DICT["density"]
 body_density = MIT_CHEETAH_PARAMS_DICT["body_density"]
-
 
 builder = ParametrizedBuilder(DetailedURDFCreatorFixedEE,
                               density={"default": density, "G": body_density},
@@ -37,31 +36,23 @@ builder = ParametrizedBuilder(DetailedURDFCreatorFixedEE,
                               offset_ground=MIT_CHEETAH_PARAMS_DICT["offset_ground_rl"]
                               )
 
-# %%
-# 1) trajectories
+ground_symmetric_step1 = convert_x_y_to_6d_traj_xz(*enhance_trajectory(create_simple_step_trajectory(
+    starting_point=[-0.11, -0.32], step_height=0.07, step_width=0.22, n_points=50)))
 
-workspace_trajectory = convert_x_y_to_6d_traj_xz(
-    *get_workspace_trajectory([-0.12, -0.33], 0.09, 0.24, 30, 60))
+ground_symmetric_step2 = convert_x_y_to_6d_traj_xz(*enhance_trajectory(create_simple_step_trajectory(
+    starting_point=[-0.11 + 0.025, -0.32], step_height=0.06, step_width=-2*(-0.11 + 0.025), n_points=50)))
 
-
-ground_symmetric_step1 = convert_x_y_to_6d_traj_xz(*create_simple_step_trajectory(
-    starting_point=[-0.11, -0.32], step_height=0.07, step_width=0.22, n_points=50))
-
-ground_symmetric_step2 = convert_x_y_to_6d_traj_xz(*create_simple_step_trajectory(
-    starting_point=[-0.11 + 0.025, -0.32], step_height=0.06, step_width=-2*(-0.11 + 0.025), n_points=50))
-
-ground_symmetric_step3 = convert_x_y_to_6d_traj_xz(*create_simple_step_trajectory(
-    starting_point=[-0.11 + 2 * 0.025, -0.32], step_height=0.05, step_width=-2*(-0.11 + 2 * 0.025), n_points=50))
-
+ground_symmetric_step3 = convert_x_y_to_6d_traj_xz(*enhance_trajectory(create_simple_step_trajectory(
+    starting_point=[-0.11 + 2 * 0.025, -0.32], step_height=0.05, step_width=-2*(-0.11 + 2 * 0.025), n_points=50)))
 
 central_vertical = convert_x_y_to_6d_traj_xz(
-    *get_vertical_trajectory(-0.32, 0.075, 0, 50))
+    *enhance_trajectory(get_vertical_trajectory(-0.32, 0.075, 0, 50)))
 
 left_vertical = convert_x_y_to_6d_traj_xz(
-    *get_vertical_trajectory(-0.32, 0.065, -0.09, 50))
+    *enhance_trajectory(get_vertical_trajectory(-0.32, 0.065, -0.09, 50)))
 
 right_vertical = convert_x_y_to_6d_traj_xz(
-    *get_vertical_trajectory(-0.32, 0.065, 0.09, 50))
+    *enhance_trajectory(get_vertical_trajectory(-0.32, 0.065, 0.09, 50)))
 # 2) characteristics to be calculated
 # criteria that either calculated without any reference to points, or calculated through the aggregation of values from all points on trajectory
 dict_trajectory_criteria = {
@@ -88,12 +79,12 @@ error_calculator = PositioningErrorCalculator(
     error_key='error', jacobian_key="Manip_Jacobian")
 # soft_constrain = PositioningConstrain(
 #     error_calculator=error_calculator, points=[workspace_trajectory])
-soft_constrain = PositioningConstrain(error_calculator=error_calculator, points = [ground_symmetric_step1,
-                                                                                   ground_symmetric_step2,
-                                                                                   ground_symmetric_step3,
-                                                                                   central_vertical,
-                                                                                   left_vertical,
-                                                                                   right_vertical])
+soft_constrain = PositioningConstrain(error_calculator=error_calculator, points=[ground_symmetric_step1,
+                                                                                 ground_symmetric_step2,
+                                                                                 ground_symmetric_step3,
+                                                                                 central_vertical,
+                                                                                 left_vertical,
+                                                                                 right_vertical])
 
 # manager should be filled with trajectories and rewards using the manager API
 reward_manager = RewardManager(crag=crag)
@@ -116,42 +107,53 @@ reward_manager.add_reward(heavy_lifting, 5, 1)
 reward_manager.add_trajectory_aggregator([0, 1, 2], 'mean')
 reward_manager.add_trajectory_aggregator([3, 4, 5], 'mean')
 
-# %%
-for _, trajectory in reward_manager.trajectories.items():
-    plt.plot(trajectory[:, 0], trajectory[:, 2])
 
-#plt.plot(workspace_trajectory[:, 0], workspace_trajectory[:, 2])
-plt.show()
-
-# %%
-topology_index = 2
-gm = get_preset_by_index_with_bounds(topology_index)
-# activate multiprocessing
 if __name__ == '__main__':
+    pin.seed(1)
+    topology_index = 7
+    gm = get_preset_by_index_with_bounds(topology_index)
+    # activate multiprocessing
     N_PROCESS = 8
     pool = multiprocessing.Pool(N_PROCESS)
     runner = StarmapParallelization(pool.starmap)
 
-    population_size = 128
+    population_size = 64
     n_generations = 200
 
     # create the problem for the current optimization
     problem = MultiCriteriaProblem(gm, builder, reward_manager,
-                                soft_constrain, elementwise_runner=runner, Actuator=actuator)
+                                   soft_constrain, elementwise_runner=runner, Actuator=actuator)
 
-    saver = ProblemSaver(problem, f"first_setup\\topology_{topology_index}", True)
+    saver = ProblemSaver(
+        problem, f"first_setup\\topology_{topology_index}", True)
     saver.save_nonmutable()
     algorithm = AGEMOEA2(pop_size=population_size, save_history=True)
     optimizer = PymooOptimizer(problem, algorithm, saver)
 
     res = optimizer.run(
         True, **{
-            "seed": 2,
+            "seed": 1,
             "termination": ("n_gen", n_generations),
             "verbose": True
         })
 
-    # %%
+    sf = problem.soft_constrain
+    counter = 0
+    for i, x in enumerate(res.X):
+        x = np.round(x, 4)
+        graph = gm.get_graph(x)
+        fixed_robot, free_robot = jps_graph2pinocchio_robot(
+            graph, builder=builder)
+        # point_criteria_vector, trajectory_criteria, res_dict_fixed = crag.get_criteria_data(fixed_robot, free_robot, trajectory)
 
+        constrain_error, results = sf.calculate_constrain_error(
+            crag, fixed_robot, free_robot)
 
-
+        if constrain_error > 0:
+            print(constrain_error)
+            counter += 1
+        else:
+            __, partial_rewards, vector_rewards = problem.rewards_and_trajectories.calculate_total(
+                fixed_robot, free_robot, problem.motor)
+            print(res.F[i], vector_rewards)
+    print(counter)

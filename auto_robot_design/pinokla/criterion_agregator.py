@@ -93,6 +93,9 @@ class CriteriaAggregator:
         trajectory_criteria = along_criteria_calc(self.dict_along_criteria,res_dict_free,
                                                 res_dict_fixed, fixed_robot, free_robot)
 
+        for d in [point_criteria_vector,  res_dict_fixed]:
+            for k,v in d.items():
+                d[k] = v[50::]
         return point_criteria_vector, trajectory_criteria, res_dict_fixed
 
 
