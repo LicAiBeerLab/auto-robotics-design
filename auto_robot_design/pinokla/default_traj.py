@@ -94,6 +94,7 @@ def enhance_trajectory(trajectory:Tuple[np.array], initial_point = np.array([0, 
     first_point = np.array([trajectory[0][0],trajectory[1][0]])
     vector = first_point-initial_point
     #length = np.linalg.norm(vector)
+    #multipliers = np.linspace(0,1,number_points,endpoint=False)[1:]
     multipliers = np.linspace(0,1,number_points,endpoint=False)
     new_x = np.array([initial_point[0]+vector[0]*m for m in multipliers])
     new_y = np.array([initial_point[1]+vector[1]*m for m in multipliers])

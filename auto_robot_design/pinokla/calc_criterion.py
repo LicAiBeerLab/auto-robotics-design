@@ -144,6 +144,7 @@ def folow_traj_by_proximal_inv_k(
         np.array: deviations from the desired position
 
     """
+    counter = 0
     if q_start:
         q = q_start
     else:
@@ -172,6 +173,7 @@ def folow_traj_by_proximal_inv_k(
         if viz:
             viz.display(q)
             time.sleep(0.1)
+            counter+=1
 
         pin.framesForwardKinematics(model, data, q)
         poses[num] = data.oMf[ee_frame_id].translation

@@ -194,7 +194,7 @@ def closedLoopInverseKinematicsProximal(
         if primal_feas < eps and dual_feas < eps:
             is_reach = True
             break
-            
+
         rhs = np.concatenate([-constraint_value - y * mu, np.zeros(model.nv)])
 
         dz = kkt_constraint.solve(rhs)
@@ -206,7 +206,7 @@ def closedLoopInverseKinematicsProximal(
         y -= alpha * (-dy + y)
     
     pin.framesForwardKinematics(model, data, q)
- 
+
     # pos_e = np.linalg.norm(data.oMf[id_frame].translation -
     #                     np.array(target_pos[0:3]))
     min_feas = primal_feas
