@@ -18,8 +18,10 @@ from auto_robot_design.generator.topologies.bounds_preset import (
 from auto_robot_design.description.builder import (
     ParametrizedBuilder,
     URDFLinkCreator,
+    URDFLinkCreater3DConstraints,
     DetailedURDFCreatorFixedEE,
     jps_graph2pinocchio_robot,
+    jps_graph2pinocchio_robot_3d_constraints
 )
 
 import pinocchio as pin
@@ -49,15 +51,15 @@ sys.path.append(mymodule_dir)
 
 
 # Load robot
-builder = ParametrizedBuilder(URDFLinkCreator)
+builder = ParametrizedBuilder(URDFLinkCreater3DConstraints)
 np.set_printoptions(precision=3, linewidth=300, suppress=True, threshold=10000)
 
-graph_manager = get_preset_by_index_with_bounds(8)
+graph_manager = get_preset_by_index_with_bounds(0)
 
 x_centre = graph_manager.generate_central_from_mutation_range()
 graph_jp = graph_manager.get_graph(x_centre)
 
-robo, __ = jps_graph2pinocchio_robot(graph_jp, builder)
+robo, __ = jps_graph2pinocchio_robot_3d_constraints(graph_jp, builder)
 
 
 # Visualizer
@@ -78,7 +80,7 @@ q = np.zeros(robo.model.nq)
 # traj_6d = convert_x_y_to_6d_traj_xz(x_point, y_point)
 traj_6d = convert_x_y_to_6d_traj_xz(
     *create_simple_step_trajectory(
-        starting_point=[-0.11, -0.37], step_height=0.07, step_width=0.22, n_points=20
+        starting_point=[-0.11, -0.2], step_height=0.07, step_width=0.22, n_points=20
     )
 )
 
@@ -125,12 +127,12 @@ for num, i_pos in enumerate(traj_6d):
 print("Time for IK: ", time.time() - time_start)
 q = q_des_points[0]
 
-for i, q in enumerate(q_des_points):
-    viz.display(q)
-    time.sleep(0.5)
+# for i, q in enumerate(q_des_points):
+#     viz.display(q)
+#     time.sleep(0.5)
 
 # q = q_des_points[0]
-q = q_des_points[-5]
+q = q_des_points[-10]
 viz.display(q)
 
 # final_time = 0.8
@@ -138,12 +140,12 @@ name_ee = "EE"
 model = robo.model
 data = robo.data
 
-Kp = 0.5
+Kp = 0.1
 Kd = np.sqrt(Kp) * 2
 DT = 1e-5
 id_ee = model.getFrameId(name_ee)
 
-P_ini = traj_6d[-6]
+P_ini = traj_6d[-12]
 pin.framesForwardKinematics(model, data, q)
 
 pos = np.concatenate([data.oMf[id_ee].translation, pin.log(data.oMf[id_ee]).angular])
@@ -159,6 +161,8 @@ while norm(pos - P_ini) > 1e-6 and it < 10000:
     # va = (P_ini - pos) / DT 
     va[4] = 0
     print(va)
+    if np.isclose(np.sum(va), 0):
+        print("zero")
     vq, Jf36_closed = inverseConstraintPlaneKinematicsSpeed(
         model,
         data,
@@ -185,7 +189,7 @@ while norm(pos - P_ini) > 1e-6 and it < 10000:
     if err > 1e-1:
         break  # check the start position
 
-
+# viz.viewer.close()
 # # Init dynamics
 # pin.initConstraintDynamics(robo.model, robo.data, robo.constraint_models)
 # DT = 1e-3

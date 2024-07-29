@@ -347,12 +347,12 @@ def inverseConstraintPlaneKinematicsSpeed(model,data,constraint_model,constraint
     constraint_frame_name = []
     constraint_frame_id = []
     arrs_c1Mc2 = []
-    LJ=[np.array(())]*len(constraint_model)
+    LJ=[np.array(()) for __ in range(len(constraint_model))]
     for (cm,cd,i) in zip(constraint_model,constraint_data,range(len(LJ))):
         LJ[i]=pin.getConstraintJacobian(model,data,cm,cd)
         constraint_frame_name.append(cm.name.split("-"))
         constraint_frame_id.append([model.getFrameId(n) for n in constraint_frame_name[-1]])
-        arrs_c1Mc2.append(cd.c1Mc2.translation)
+        arrs_c1Mc2.append(cd.c1Mc2)
 
     #init of constant
     Lidmot=actuation_model.idvmot
@@ -397,15 +397,25 @@ def inverseConstraintPlaneKinematicsSpeed(model,data,constraint_model,constraint
 
     #computation of the closed-loop jacobian
     # Jf_closed = pin.computeFrameJacobian(model,data,q0,ideff,pin.LOCAL)@dq_dmot
-    Jf_closed = (pin.computeFrameJacobian(model,data,q0,ideff,pin.LOCAL_WORLD_ALIGNED)@dq_dmot)[[0,2],:]
+    Jf_closed = (pin.computeFrameJacobian(model,data,q0,ideff,pin.LOCAL)@dq_dmot)[[0,2],:]
+    Jee = pin.computeFrameJacobian(model,data,q0,ideff,pin.LOCAL_WORLD_ALIGNED)[[0,2],:]
+    
+    
+    
+    Jc1 = (pin.computeFrameJacobian(model,data,q0,constraint_frame_id[0][0],pin.LOCAL_WORLD_ALIGNED))[[0,2],:]
+    # Jc2 = (pin.computeFrameJacobian(model,data,q0,constraint_frame_id[1][0],pin.LOCAL_WORLD_ALIGNED))[[0,2],:]
+    # Jc1_closed = (pin.computeFrameJacobian(model,data,q0,constraint_frame_id[0][0],pin.LOCAL_WORLD_ALIGNED))[[0,2],:]
+    # Jc2_closed = (pin.computeFrameJacobian(model,data,q0,constraint_frame_id[1][0],pin.LOCAL_WORLD_ALIGNED))[[0,2],:]
     # Jf_closed = (pin.computeFrameJacobian(model,data,q0,ideff,pin.LOCAL)@dq_dmot)[[0,2],:]
     # Jf_closed = (pin.computeFrameJacobian(model,data,q0,ideff,pin.LOCAL_WORLD_ALIGNED)@dq_dmot)[[0,2],:]
     
     # pin.forwardKinematics(model,data, q0)
     # data.oMi[model.getFrameId(ideff)]
 
-    #computation of the kinematics
     vqmot=np.linalg.pinv(Jf_closed)@veff[[0,2]]
+    Pee = np.round(np.eye(model.nv) - np.linalg.pinv(Jee) @ Jee, 6)
+    # if not np.all(np.isclose(Pee, 0)):
+    #computation of the kinematics
     vqfree=-pinvJfree@Jmot@vqmot
     vqmotfree=np.concatenate((vqmot,vqfree))  # qmotfree=[qmot qfree]
 
@@ -414,10 +424,19 @@ def inverseConstraintPlaneKinematicsSpeed(model,data,constraint_model,constraint
     vq[Lidmot]=vqmotfree[:nv_mot]
     vq[Lidfree]=vqmotfree[nv_mot:]
 
+    vq += np.linalg.pinv(Jc1 @ Pee) @ (- pin.log6(arrs_c1Mc2[0]).np[[0,2]]/1e-5 - Jc1 @ vq)
+    # vq += np.linalg.pinv(Jc1 @ Pee) @ (- pin.log6(arrs_c1Mc2[0].inverse()).np[[0,2]]/1e-5 - Jc1 @ vq)
+    
+    Pc2 = np.round(Pee - np.linalg.pinv(Jc1 @ Pee) @ Jc1 @ Pee, 6)
+    
+    vq += np.linalg.pinv(Jc2 @ Pc2) @ (- pin.log6(arrs_c1Mc2[1]).np[[0,2]]/1e-5 - Jc2 @ vq)
+    
+    
     joint_off_ids = list(map(lambda x: model.getJointId(x), filter(lambda x: not x.find("Main_connection"), model.names)))
     
     # vq[joint_off_ids] = np.zeros_like(joint_off_ids)
     
+    # print(f"c1c2 1 {np.linalg.norm(arrs_c1Mc2[0].translation):.4f}; 2 {np.linalg.norm(arrs_c1Mc2[1].translation):.4f}")
     return(vq,Jf_closed)
 
 ##########TEST ZONE ##########################
