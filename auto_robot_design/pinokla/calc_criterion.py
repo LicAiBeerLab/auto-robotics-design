@@ -12,7 +12,7 @@ from auto_robot_design.pinokla.closed_loop_jacobian import (
     closedLoopInverseKinematicsProximal, dq_dqmot,
     inverseConstraintKinematicsSpeed)
 from auto_robot_design.pinokla.closed_loop_kinematics import (
-    ForwardK, closedLoopProximalMount)
+    ForwardK, closedLoopProximalMount,closed_loop_ik_grad,closed_loop_ik_pseudo_inverse)
 from auto_robot_design.pinokla.criterion_math import (calc_manipulability,
     ImfProjections, calc_actuated_mass, calc_effective_inertia,
     calc_force_ell_projection_along_trj, calc_IMF, calculate_mass,
@@ -223,6 +223,75 @@ def folow_traj_by_proximal_inv_k_2(
 
     for num, i_pos in enumerate(traj_6d):
         q, min_feas, is_reach = closedLoopInverseKinematicsProximal(
+            model,
+            data,
+            constraint_models,
+            constraint_data,
+            i_pos,
+            ee_frame_id,
+            onlytranslation=True,
+            q_start=q,
+        )
+        if not is_reach:
+            q = closedLoopProximalMount(
+                model, data, constraint_models, constraint_data, q
+            )
+        if viz:
+            viz.display(q)
+            time.sleep(0.1)
+
+        pin.framesForwardKinematics(model, data, q)
+        poses[num] = data.oMf[ee_frame_id].translation
+        q_array[num] = q
+        constraint_errors[num] = min_feas
+        reach_array[num] = is_reach
+
+    return poses, q_array, constraint_errors, reach_array
+
+
+
+def closed_loop_ik_grad_follow(
+    model,
+    data,
+    constraint_models,
+    constraint_data,
+    end_effector_frame: str,
+    traj_6d: np.ndarray,
+    viz=None,
+    q_start: np.ndarray = None,
+):
+    """Solve the inverse kinematic problem
+
+    Args:
+        model (_type_): _description_
+        data (_type_): _description_
+        constraint_models (_type_): _description_
+        constraint_data (_type_): _description_
+        end_effector_frame (str): _description_
+        traj_6d (np.ndarray): _description_
+        viz (_type_, optional): _description_. Defaults to None.
+        q_start (np.ndarray, optional): _description_. Defaults to None.
+
+    Returns:
+        np.array: end-effector positions in final state
+        np.array: joint coordinates in final state
+        np.array: deviations from the desired position
+
+    """
+    if q_start:
+        q = q_start
+    else:
+        q = pin.neutral(model)
+
+    ee_frame_id = model.getFrameId(end_effector_frame)
+    poses = np.zeros((len(traj_6d), 3))
+    reach_array = np.zeros(len(traj_6d))
+    q_array = np.zeros((len(traj_6d), len(q)))
+    constraint_errors = np.zeros((len(traj_6d), 1))
+
+    for num, i_pos in enumerate(traj_6d):
+        #q, min_feas, is_reach = closed_loop_ik_grad(
+        q, min_feas, is_reach = closed_loop_ik_pseudo_inverse(
             model,
             data,
             constraint_models,

@@ -7,7 +7,7 @@ from auto_robot_design.pinokla.loader_tools import (
     Robot,
 )
 from auto_robot_design.pinokla.calc_criterion import (
-    folow_traj_by_proximal_inv_k, )
+    folow_traj_by_proximal_inv_k, closed_loop_ik_grad_follow)
 import numpy as np
 
 
@@ -30,10 +30,12 @@ def calculate_quasi_static_simdata(free_robot: Robot,
         tuple[DataDict, DataDict]: free data, closed data
     """
     # get the actual ee poses, corresponding joint (generalized coordinates) positions and errors for unreachable trajectory points 
-    poses, q_fixed, constraint_errors = folow_traj_by_proximal_inv_k(
+    # poses, q_fixed, constraint_errors = folow_traj_by_proximal_inv_k(
+    #     fixed_robot.model, fixed_robot.data, fixed_robot.constraint_models,
+    #     fixed_robot.constraint_data, ee_frame_name, traj_6d, viz)
+    poses, q_fixed, constraint_errors = closed_loop_ik_grad_follow(
         fixed_robot.model, fixed_robot.data, fixed_robot.constraint_models,
         fixed_robot.constraint_data, ee_frame_name, traj_6d, viz)
-
     # add standard body position to all points in the q space
     normal_pose = np.array([0, 0, 0, 0, 0, 0, 1], dtype=np.float64)
     free_body_q = np.repeat(normal_pose[np.newaxis, :], len(q_fixed), axis=0)

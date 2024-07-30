@@ -66,6 +66,203 @@ def openLoopInverseKinematicsProximal(
             vis.display(q)
     return q, norm(err), success
     
+def closed_loop_ik_grad(rmodel, rdata,rconstraint_model,rconstraint_data, target_pos, ideff,q_start=None, onlytranslation=False,eps=1e-5,step=1e-1,max_it=1000000):
+
+    model = pin.Model(rmodel)
+    constraint_model = [pin.RigidConstraintModel(x) for x in  rconstraint_model]
+    open_loop = False
+    target_SE3 = pin.SE3.Identity()
+    target_SE3.translation = np.array(target_pos[0:3])
+    frame_constraint = model.frames[ideff]
+    parent_joint = frame_constraint.parentJoint
+    placement = frame_constraint.placement
+    if onlytranslation:
+        final_constraint = pin.RigidConstraintModel(pin.ContactType.CONTACT_3D,
+                                                    model, parent_joint,
+                                                    placement, 0, target_SE3,
+                                                    pin.ReferenceFrame.LOCAL)
+    else:
+        final_constraint = pin.RigidConstraintModel(
+            pin.ContactType.CONTACT_6D, model, parent_joint, placement,
+            model.getJointId("universel"), target_pos,
+            pin.ReferenceFrame.LOCAL)
+        raise Exception("Not implemented")
+
+    final_constraint.name = "TrajCons"
+    constraint_model.append(final_constraint)
+
+    data = model.createData()
+    constraint_data = [cm.createData() for cm in constraint_model]
+
+    if q_start is None:
+        q_start = pin.neutral(model)
+        q = q_start
+    else:
+        q = q_start
+    pin.framesForwardKinematics(model, data, q)
+    constraint_dim = 0
+    for cm in constraint_model:
+        constraint_dim += cm.size()
+    is_reach = False
+    kkt_constraint = pin.ContactCholeskyDecomposition(model, constraint_model)
+    primal_feas_array = np.zeros(max_it)
+    real_feas_array = np.zeros(max_it)
+    dim = len(q)
+    q_array = np.zeros((max_it, dim))
+    constr_array = []
+    for k in range(max_it):
+        pin.computeJointJacobians(model, data, q)
+        kkt_constraint.compute(model, data, constraint_model, constraint_data)
+        constraint_value = np.concatenate([
+            (pin.log(cd.c1Mc2).np[:cm.size()])
+            for (cd, cm) in zip(constraint_data, constraint_model)
+        ])
+
+        LJ = []
+        for cm, cd in zip(constraint_model, constraint_data):
+            Jc = pin.getConstraintJacobian(model, data, cm, cd)
+            LJ.append(Jc)
+        J = np.concatenate(LJ)
+        constr_array.append(constraint_value)
+        primal_feas = np.linalg.norm(constraint_value, np.inf)
+        real_constrain_feas = np.linalg.norm(constraint_value[:-3])
+        real_feas_array[k] = real_constrain_feas
+        primal_feas_array[k] = primal_feas
+        q_array[k] = q
+
+        if primal_feas < eps:
+            is_reach = True
+            break
+
+        grad = 2*J.T.dot(constraint_value)/dim
+        target = constraint_value.dot(constraint_value)/dim
+        #grad = np.sign(sum(constraint_value)) * np.sum(J,axis=0)
+        
+        
+
+        # grad = J.T.dot(np.sign(constraint_value))/dim
+        # target = np.sum(np.abs(constraint_value))/dim
+        step = 1e-4/np.linalg.norm(grad,np.inf)
+        q = pin.integrate(model, q, step * grad)
+        pin.framesForwardKinematics(model, data, q)
+        total_delta_q = q-q_start
+        if np.linalg.norm(total_delta_q, np.inf)>0.2:
+            break
+
+    pin.framesForwardKinematics(model, data, q)
+    min_feas = primal_feas
+    min_real_feas = real_constrain_feas
+    if not is_reach:
+        for_sort = np.column_stack((primal_feas_array[0:k+1], real_feas_array[0:k+1] ,q_array[0:k+1,:]))
+        key_sort = lambda x: x[0]
+        for_sort = sorted(for_sort, key=key_sort)
+        finish_q = for_sort[0][2:]
+        q = finish_q
+        min_feas = for_sort[0][0]
+        min_real_feas = for_sort[0][1]
+        pin.framesForwardKinematics(model, data, q)
+
+
+    return q, min_feas, is_reach
+
+def closed_loop_ik_pseudo_inverse(rmodel, rdata,rconstraint_model,rconstraint_data, target_pos, ideff,q_start=None, onlytranslation=False,eps=1e-5,max_it=300):
+
+    model = pin.Model(rmodel)
+    constraint_model = [pin.RigidConstraintModel(x) for x in  rconstraint_model]
+    open_loop = False
+    target_SE3 = pin.SE3.Identity()
+    target_SE3.translation = np.array(target_pos[0:3])
+    frame_constraint = model.frames[ideff]
+    parent_joint = frame_constraint.parentJoint
+    placement = frame_constraint.placement
+    if onlytranslation:
+        final_constraint = pin.RigidConstraintModel(pin.ContactType.CONTACT_3D,
+                                                    model, parent_joint,
+                                                    placement, 0, target_SE3,
+                                                    pin.ReferenceFrame.LOCAL)
+    else:
+        final_constraint = pin.RigidConstraintModel(
+            pin.ContactType.CONTACT_6D, model, parent_joint, placement,
+            model.getJointId("universel"), target_pos,
+            pin.ReferenceFrame.LOCAL)
+        raise Exception("Not implemented")
+
+    final_constraint.name = "TrajCons"
+    constraint_model.append(final_constraint)
+
+    data = model.createData()
+    constraint_data = [cm.createData() for cm in constraint_model]
+
+    if q_start is None:
+        q_start = pin.neutral(model)
+        q = q_start
+    else:
+        q = q_start
+    pin.framesForwardKinematics(model, data, q)
+    constraint_dim = 0
+    for cm in constraint_model:
+        constraint_dim += cm.size()
+    is_reach = False
+    kkt_constraint = pin.ContactCholeskyDecomposition(model, constraint_model)
+    primal_feas_array = np.zeros(max_it)
+    real_feas_array = np.zeros(max_it)
+    dim = len(q)
+    q_array = np.zeros((max_it, dim))
+    constr_array = []
+    for k in range(max_it):
+        pin.computeJointJacobians(model, data, q)
+        kkt_constraint.compute(model, data, constraint_model, constraint_data)
+        constraint_value = np.concatenate([
+            (pin.log(cd.c1Mc2).np[:cm.size()])
+            for (cd, cm) in zip(constraint_data, constraint_model)
+        ])
+
+        LJ = []
+        for cm, cd in zip(constraint_model, constraint_data):
+            Jc = pin.getConstraintJacobian(model, data, cm, cd)
+            LJ.append(Jc)
+        J = np.concatenate(LJ)
+        constr_array.append(constraint_value)
+        primal_feas = np.linalg.norm(constraint_value, np.inf)
+        real_constrain_feas = np.linalg.norm(constraint_value[:-3])
+        real_feas_array[k] = real_constrain_feas
+        primal_feas_array[k] = primal_feas
+        q_array[k] = q
+
+        if primal_feas < eps:
+            is_reach = True
+            break
+
+        # grad = 2*J.T.dot(constraint_value)/dim
+        # target = constraint_value.dot(constraint_value)/dim
+        #grad = np.sign(sum(constraint_value)) * np.sum(J,axis=0)
+        
+        dq = np.linalg.pinv(J).dot(constraint_value)
+
+        # grad = J.T.dot(np.sign(constraint_value))/dim
+        # target = np.sum(np.abs(constraint_value))/dim
+        #step = 1e-4/np.linalg.norm(grad,np.inf)
+        q = pin.integrate(model, q, 0.5 * dq)
+        #pin.framesForwardKinematics(model, data, q)
+        total_delta_q = q-q_start
+        if np.linalg.norm(total_delta_q, np.inf)>0.5:
+            break
+
+    pin.framesForwardKinematics(model, data, q)
+    min_feas = primal_feas
+    min_real_feas = real_constrain_feas
+    if not is_reach:
+        for_sort = np.column_stack((primal_feas_array[0:k+1], real_feas_array[0:k+1] ,q_array[0:k+1,:]))
+        key_sort = lambda x: x[0]
+        for_sort = sorted(for_sort, key=key_sort)
+        finish_q = for_sort[0][2:]
+        q = finish_q
+        min_feas = for_sort[0][0]
+        min_real_feas = for_sort[0][1]
+        pin.framesForwardKinematics(model, data, q)
+
+
+    return q, min_feas, is_reach
 def closedLoopInverseKinematicsProximal(
     rmodel,
     rdata,
@@ -136,7 +333,8 @@ def closedLoopInverseKinematicsProximal(
 
     # proximal solver (black magic)
     if q_start is None:
-        q = pin.neutral(model)
+        q_start = pin.neutral(model)
+        q = q_start
     else:
         q = q_start
     constraint_dim = 0
@@ -166,6 +364,8 @@ def closedLoopInverseKinematicsProximal(
     primal_feas_array = np.zeros(max_it)
     real_feas_array = np.zeros(max_it)
     q_array = np.zeros((max_it, len(q)))
+    J_array = []
+    dq_array = []
     for k in range(max_it):
         pin.computeJointJacobians(model, data, q)
         kkt_constraint.compute(model, data, constraint_model, constraint_data,
@@ -181,6 +381,7 @@ def closedLoopInverseKinematicsProximal(
             Jc = pin.getConstraintJacobian(model, data, cm, cd)
             LJ.append(Jc)
         J = np.concatenate(LJ)
+        J_array.append(J)
         traj_cons_value = constraint_value[-3:]
         # if np.linalg.norm(traj_cons_value) < 0.01:
         #     traj_cons_value = np.zeros(3)
@@ -202,33 +403,37 @@ def closedLoopInverseKinematicsProximal(
         dy = dz[:constraint_dim]
         #dy = dz[model.nv:]
         dq = dz[constraint_dim:]
-        #dq = dz[:model.nv]
+        dq_array.append(dq)
 
         alpha_q = 0.1
         alpha = 1
         q = pin.integrate(model, q, -alpha_q * dq)
+        total_delta_q = q-q_start
+        if np.linalg.norm(total_delta_q, np.inf)>0.2:
+            break
         y -= alpha * (-dy + y)
     
-    pin.framesForwardKinematics(model, data, q)
+    #pin.framesForwardKinematics(model, data, q)
 
     # pos_e = np.linalg.norm(data.oMf[id_frame].translation -
     #                     np.array(target_pos[0:3]))
     min_feas = primal_feas
     min_real_feas = real_constrain_feas
     if not is_reach:
-        for_sort = np.column_stack((primal_feas_array, real_feas_array ,q_array))
+        for_sort = np.column_stack((primal_feas_array[0:k+1], real_feas_array[0:k+1] ,q_array[0:k+1,:]))
         key_sort = lambda x: x[0]
         for_sort = sorted(for_sort, key=key_sort)
         finish_q = for_sort[0][2:]
         q = finish_q
         min_feas = for_sort[0][0]
         min_real_feas = for_sort[0][1]
-        pin.framesForwardKinematics(model, data, q)
+        #pin.framesForwardKinematics(model, data, q)
     #print(min_real_feas," ", is_reach)
-     
+
 
 
     return q, min_feas, is_reach
+
 
 
 def closedLoopProximalMount(
