@@ -166,6 +166,7 @@ def folow_traj_by_proximal_inv_k(
             onlytranslation=True,
             q_start=q,
         )
+        counter+=1
         if not is_reach:
             q = closedLoopProximalMount(
                 model, data, constraint_models, constraint_data, q
@@ -173,7 +174,6 @@ def folow_traj_by_proximal_inv_k(
         if viz:
             viz.display(q)
             time.sleep(0.1)
-            counter+=1
 
         pin.framesForwardKinematics(model, data, q)
         poses[num] = data.oMf[ee_frame_id].translation

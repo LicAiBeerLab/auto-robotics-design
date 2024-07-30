@@ -110,20 +110,21 @@ reward_manager.add_trajectory_aggregator([3, 4, 5], 'mean')
 
 if __name__ == '__main__':
     pin.seed(1)
-    topology_index = 7
+    topology_index = 0
     gm = get_preset_by_index_with_bounds(topology_index)
     # activate multiprocessing
-    N_PROCESS = 8
-    pool = multiprocessing.Pool(N_PROCESS)
-    runner = StarmapParallelization(pool.starmap)
+    # N_PROCESS = 8
+    # pool = multiprocessing.Pool(N_PROCESS)
+    # runner = StarmapParallelization(pool.starmap)
 
     population_size = 64
-    n_generations = 200
+    n_generations = 100
 
     # create the problem for the current optimization
+    # problem = MultiCriteriaProblem(gm, builder, reward_manager,
+    #                                soft_constrain, elementwise_runner=runner, Actuator=actuator)
     problem = MultiCriteriaProblem(gm, builder, reward_manager,
-                                   soft_constrain, elementwise_runner=runner, Actuator=actuator)
-
+                                   soft_constrain, Actuator=actuator)
     saver = ProblemSaver(
         problem, f"first_setup\\topology_{topology_index}", True)
     saver.save_nonmutable()

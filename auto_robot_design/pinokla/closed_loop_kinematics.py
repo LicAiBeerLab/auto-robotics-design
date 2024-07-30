@@ -77,7 +77,7 @@ def closedLoopInverseKinematicsProximal(
     onlytranslation=False,
     
     max_it=300,
-    eps=1e-4,
+    eps=1e-5,
     rho=1e-10,
     mu=1e-3,
 ):
@@ -190,19 +190,23 @@ def closedLoopInverseKinematicsProximal(
         real_feas_array[k] = real_constrain_feas
         primal_feas_array[k] = primal_feas
         q_array[k] = q
-        dual_feas = np.linalg.norm(J.T.dot(constraint_value + y), np.inf)
-        if primal_feas < eps and dual_feas < eps:
+        #dual_feas = np.linalg.norm(J.T.dot(constraint_value + y), np.inf)
+        if primal_feas < eps:
             is_reach = True
             break
 
         rhs = np.concatenate([-constraint_value - y * mu, np.zeros(model.nv)])
-
+        #rhs = np.concatenate([np.zeros(model.nv), -constraint_value - y * mu])
         dz = kkt_constraint.solve(rhs)
-        dy = dz[:constraint_dim]
-        dq = dz[constraint_dim:]
 
-        alpha = 0.5
-        q = pin.integrate(model, q, -alpha * dq)
+        dy = dz[:constraint_dim]
+        #dy = dz[model.nv:]
+        dq = dz[constraint_dim:]
+        #dq = dz[:model.nv]
+
+        alpha_q = 0.1
+        alpha = 1
+        q = pin.integrate(model, q, -alpha_q * dq)
         y -= alpha * (-dy + y)
     
     pin.framesForwardKinematics(model, data, q)
