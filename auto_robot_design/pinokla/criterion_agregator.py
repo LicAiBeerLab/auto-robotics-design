@@ -7,7 +7,7 @@ from auto_robot_design.pinokla.loader_tools import (
     Robot,
 )
 from auto_robot_design.pinokla.calc_criterion import (
-    folow_traj_by_proximal_inv_k, )
+    folow_traj_by_proximal_inv_k, closed_loop_pseudo_inverse_follow)
 import numpy as np
 
 
@@ -30,7 +30,10 @@ def calculate_quasi_static_simdata(free_robot: Robot,
         tuple[DataDict, DataDict]: free data, closed data
     """
     # get the actual ee poses, corresponding joint (generalized coordinates) positions and errors for unreachable trajectory points 
-    poses, q_fixed, constraint_errors = folow_traj_by_proximal_inv_k(
+    # poses, q_fixed, constraint_errors = folow_traj_by_proximal_inv_k(
+    #     fixed_robot.model, fixed_robot.data, fixed_robot.constraint_models,
+    #     fixed_robot.constraint_data, ee_frame_name, traj_6d, viz)
+    poses, q_fixed, constraint_errors = closed_loop_pseudo_inverse_follow(
         fixed_robot.model, fixed_robot.data, fixed_robot.constraint_models,
         fixed_robot.constraint_data, ee_frame_name, traj_6d, viz)
 
@@ -52,6 +55,9 @@ def calculate_quasi_static_simdata(free_robot: Robot,
     res_dict_fixed["error"] = constraint_errors
     res_dict_free["error"] = constraint_errors
 
+    res_dict_fixed['q'] = q_fixed
+    res_dict_free['q'] = free_space_q
+
     return res_dict_free, res_dict_fixed
 
 
@@ -65,7 +71,7 @@ class CriteriaAggregator:
         self.dict_along_criteria = dict_along_criteria
         self.end_effector_name = "EE"
 
-    def get_criteria_data(self, fixed_robot, free_robot, traj_6d):
+    def get_criteria_data(self, fixed_robot, free_robot, traj_6d, viz=None):
         """Perform calculating
 
         Args:
@@ -81,14 +87,17 @@ class CriteriaAggregator:
 
         # perform calculations of the data required to calculate the fancy mech criteria
         res_dict_free, res_dict_fixed = calculate_quasi_static_simdata(
-            free_robot, fixed_robot, self.end_effector_name, traj_6d)
+            free_robot, fixed_robot, self.end_effector_name, traj_6d,viz=viz)
         # calculate the criteria that can be assigned to each point at the trajectory 
         point_criteria_vector = moment_criteria_calc(self.dict_moment_criteria,
                                                   res_dict_free, res_dict_fixed)
         # calculate criteria that characterize the performance along the whole trajectory  
         trajectory_criteria = along_criteria_calc(self.dict_along_criteria,res_dict_free,
                                                 res_dict_fixed, fixed_robot, free_robot)
-
+        # remove the first 50 points from the results, as they belong to the auxiliary part of the trajectory
+        for d in [point_criteria_vector,  res_dict_fixed]:
+            for k,v in d.items():
+                d[k] = v[50::]
         return point_criteria_vector, trajectory_criteria, res_dict_fixed
 
 

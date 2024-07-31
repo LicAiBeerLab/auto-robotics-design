@@ -20,6 +20,7 @@ class EndPointIMFReward(Reward):
         self.imf_key = imf_key
         self.trajectory_key = trajectory_key
         self.error_key = error_key
+        super().__init__(name='End Point IMF')
 
     def calculate(self, point_criteria: DataDict, trajectory_criteria: DataDict, trajectory_results: DataDict, **kwargs) -> Tuple[float, list[float]]:
         """Calculate the sum of IMF in starting and end points
@@ -47,7 +48,7 @@ class EndPointIMFReward(Reward):
         return (starting_result + end_result)/2, [starting_result, end_result]
 
 
-class MassReward():
+class MassReward(Reward):
     """Mass of the robot
 
     Currently mass reward does not include the base"""
@@ -59,6 +60,7 @@ class MassReward():
             mass_key (str): key for the mech mass
         """
         self.mass_key = mass_key
+        super().__init__(name='Mass Reward')
 
     def calculate(self, point_criteria: DataDict, trajectory_criteria: DataDict, trajectory_results: DataDict, **kwargs) -> Tuple[float, list[float]]:
         """Just get the total mass from the data dictionaries
@@ -76,8 +78,8 @@ class MassReward():
         return -mass, []
 
 
-class ActuatedMassReward():
-    """Mass of the robot
+class ActuatedMassReward(Reward):
+    """Determinant of the mass matrix in coordinates of the actuated joints
 
     Currently mass reward does not include the base"""
 
@@ -88,6 +90,7 @@ class ActuatedMassReward():
             mass_key (str): key for the mech mass
         """
         self.mass_key = mass_key
+        super().__init__(name='Actuated Mass Reward')
 
     def calculate(self, point_criteria: DataDict, trajectory_criteria: DataDict, trajectory_results: DataDict, **kwargs) -> Tuple[float, list[float]]:
         """Calculate mean determinant of the mass matrix in actuated coordinates. 
@@ -116,7 +119,7 @@ class TrajectoryIMFReward(Reward):
             trajectory_key (str): key for the trajectory points
             error_key (str): key for the pose errors 
         """
-        super().__init__()
+        super().__init__(name='Trajectory IMF')
         self.imf_key = imf_key
         self.trajectory_key = trajectory_key
         self.error_key = error_key
