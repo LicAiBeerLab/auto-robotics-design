@@ -233,19 +233,14 @@ def closed_loop_ik_pseudo_inverse(rmodel, rdata,rconstraint_model,rconstraint_da
             is_reach = True
             break
 
-        # grad = 2*J.T.dot(constraint_value)/dim
-        # target = constraint_value.dot(constraint_value)/dim
-        #grad = np.sign(sum(constraint_value)) * np.sum(J,axis=0)
-        
-        dq = np.linalg.pinv(J).dot(constraint_value)
 
-        # grad = J.T.dot(np.sign(constraint_value))/dim
-        # target = np.sum(np.abs(constraint_value))/dim
-        #step = 1e-4/np.linalg.norm(grad,np.inf)
+        #dq = np.linalg.pinv(J).dot(constraint_value)
+        l = 1e-5 
+        dq = (J.T@(np.linalg.inv(J@J.T-l*np.eye(len(constraint_value))))).dot(constraint_value)
         q = pin.integrate(model, q, 0.5 * dq)
         #pin.framesForwardKinematics(model, data, q)
-        total_delta_q = q-q_start
-        if np.linalg.norm(total_delta_q, np.inf)>0.5:
+        #total_delta_q = q-q_start
+        if np.linalg.norm(dq, np.inf)>0.5:
             break
 
     pin.framesForwardKinematics(model, data, q)
@@ -253,7 +248,7 @@ def closed_loop_ik_pseudo_inverse(rmodel, rdata,rconstraint_model,rconstraint_da
     min_real_feas = real_constrain_feas
     if not is_reach:
         for_sort = np.column_stack((primal_feas_array[0:k+1], real_feas_array[0:k+1] ,q_array[0:k+1,:]))
-        key_sort = lambda x: x[0]
+        key_sort = lambda x: x[1]
         for_sort = sorted(for_sort, key=key_sort)
         finish_q = for_sort[0][2:]
         q = finish_q
@@ -274,7 +269,7 @@ def closedLoopInverseKinematicsProximal(
     onlytranslation=False,
     
     max_it=300,
-    eps=1e-5,
+    eps=1e-4,
     rho=1e-10,
     mu=1e-3,
 ):
@@ -405,15 +400,15 @@ def closedLoopInverseKinematicsProximal(
         dq = dz[constraint_dim:]
         dq_array.append(dq)
 
-        alpha_q = 0.1
+        alpha_q = 1
         alpha = 1
         q = pin.integrate(model, q, -alpha_q * dq)
         total_delta_q = q-q_start
-        if np.linalg.norm(total_delta_q, np.inf)>0.2:
-            break
+        # if np.linalg.norm(total_delta_q, np.inf)>0.2:
+        #   break
         y -= alpha * (-dy + y)
-    
-    #pin.framesForwardKinematics(model, data, q)
+
+    pin.framesForwardKinematics(model, data, q)
 
     # pos_e = np.linalg.norm(data.oMf[id_frame].translation -
     #                     np.array(target_pos[0:3]))
@@ -427,7 +422,7 @@ def closedLoopInverseKinematicsProximal(
         q = finish_q
         min_feas = for_sort[0][0]
         min_real_feas = for_sort[0][1]
-        #pin.framesForwardKinematics(model, data, q)
+        pin.framesForwardKinematics(model, data, q)
     #print(min_real_feas," ", is_reach)
 
 
