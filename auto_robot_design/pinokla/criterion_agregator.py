@@ -33,7 +33,7 @@ def calculate_quasi_static_simdata(free_robot: Robot,
     # poses, q_fixed, constraint_errors = folow_traj_by_proximal_inv_k(
     #     fixed_robot.model, fixed_robot.data, fixed_robot.constraint_models,
     #     fixed_robot.constraint_data, ee_frame_name, traj_6d, viz)
-    poses, q_fixed, constraint_errors = closed_loop_ik_grad_follow(
+    poses, q_fixed, constraint_errors,reach_array = closed_loop_ik_grad_follow(
         fixed_robot.model, fixed_robot.data, fixed_robot.constraint_models,
         fixed_robot.constraint_data, ee_frame_name, traj_6d, viz)
     # add standard body position to all points in the q space
@@ -53,6 +53,9 @@ def calculate_quasi_static_simdata(free_robot: Robot,
 
     res_dict_fixed["error"] = constraint_errors
     res_dict_free["error"] = constraint_errors
+
+    res_dict_fixed["is_reach"] = reach_array
+    res_dict_free["is_reach"] = reach_array
 
     res_dict_fixed['q'] = q_fixed
     res_dict_free['q'] = free_space_q

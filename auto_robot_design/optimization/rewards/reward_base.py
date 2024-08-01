@@ -108,7 +108,13 @@ class PositioningErrorCalculator():
         Returns:
             _type_: _description_
         """
-        pos_err = self.calculate_pos_error(trajectory_results_pos)
+        if not np.all(trajectory_results_pos["is_reach"]):
+            pos_err = (len(trajectory_results_pos["is_reach"])-np.sum(trajectory_results_pos["is_reach"]))*self.point_threshold
+            return pos_err
+        else:
+            pos_err = 0
+        #pos_err = self.calculate_pos_error(trajectory_results_pos)
+
         self.check_continuity(trajectory_results_pos)
         ret = pos_err
         if self.calc_isotropic_thr:
