@@ -955,27 +955,60 @@ class URDFLinkCreater3DConstraints(URDFLinkCreator):
                 "constraint": [name_link_in, name_link_out],
             }
         else:
-            urdf_joint = urdf.Joint(
-                urdf.Parent(link=joint.link_in.name),
-                urdf.Child(link=joint.link_out.name),
-                urdf.Origin(
-                    xyz=origin[0],
-                    rpy=origin[1],
-                ),
-                urdf.Axis(joint.jp.w.tolist()),
-                urdf.Limit(
-                    lower=joint.pos_limits[0],
-                    upper=joint.pos_limits[1],
-                    effort=joint.actuator.get_max_effort(),
-                    velocity=joint.actuator.get_max_vel(),
-                ),
-                urdf.Dynamics(
-                    damping=joint.damphing_friction[0],
-                    friction=joint.damphing_friction[1],
-                ),
-                name=joint.jp.name,
-                type="revolute",
-            )
+            if "EE" in [l.name for l in joint.links]:
+                urdf_joint = urdf.Joint(
+                    urdf.Parent(link=joint.link_in.name),
+                    urdf.Child(link=joint.link_out.name),
+                    urdf.Origin(
+                        xyz=origin[0],
+                        rpy=origin[1],
+                    ),
+                    name=joint.jp.name,
+                    type="fixed",
+                )
+            else:
+                urdf_joint = urdf.Joint(
+                    urdf.Parent(link=joint.link_in.name),
+                    urdf.Child(link=joint.link_out.name),
+                    urdf.Origin(
+                        xyz=origin[0],
+                        rpy=origin[1],
+                    ),
+                    urdf.Axis(joint.jp.w.tolist()),
+                    urdf.Limit(
+                        lower=joint.pos_limits[0],
+                        upper=joint.pos_limits[1],
+                        effort=joint.actuator.get_max_effort(),
+                        velocity=joint.actuator.get_max_vel(),
+                    ),
+                    urdf.Dynamics(
+                        damping=joint.damphing_friction[0],
+                        friction=joint.damphing_friction[1],
+                    ),
+                    name=joint.jp.name,
+                    type="revolute",
+                )
+            # urdf_joint = urdf.Joint(
+            #     urdf.Parent(link=joint.link_in.name),
+            #     urdf.Child(link=joint.link_out.name),
+            #     urdf.Origin(
+            #         xyz=origin[0],
+            #         rpy=origin[1],
+            #     ),
+            #     urdf.Axis(joint.jp.w.tolist()),
+            #     urdf.Limit(
+            #         lower=joint.pos_limits[0],
+            #         upper=joint.pos_limits[1],
+            #         effort=joint.actuator.get_max_effort(),
+            #         velocity=joint.actuator.get_max_vel(),
+            #     ),
+            #     urdf.Dynamics(
+            #         damping=joint.damphing_friction[0],
+            #         friction=joint.damphing_friction[1],
+            #     ),
+            #     name=joint.jp.name,
+            #     type="revolute",
+            # )
             out = {"joint": [urdf_joint]}
             if joint.jp.active:
                 connected_unit = RevoluteUnit()
@@ -1144,7 +1177,7 @@ class ParametrizedBuilder(Builder):
         self,
         creater,
         density: Union[float, dict] = 2700 / 2.8,
-        thickness: Union[float, dict] = 0.005,
+        thickness: Union[float, dict] = 0.001,
         joint_damping: Union[float, dict] = 0.05,
         joint_friction: Union[float, dict] = 0,
         joint_limits: Union[dict, tuple] = (-np.pi, np.pi),

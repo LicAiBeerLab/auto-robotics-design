@@ -251,7 +251,7 @@ def dampfing_least_square(J, damp_coeff = 1e-8):
     return pinvJ
 
 
-def inverseConstraintKinematicsSpeed(model,data,constraint_model,constraint_data,actuation_model,q0,ideff,veff):
+def inverseConstraintKinematicsSpeed(model,data,constraint_model,constraint_data,actuation_model,q0,ideff,veff, viz):
     """
     vq,Jf_cloesd=inverseConstraintKinematicsSpeedOptimized(model,data,constraint_model,constraint_data,actuation_model,q0,ideff,veff)
     
@@ -276,9 +276,12 @@ def inverseConstraintKinematicsSpeed(model,data,constraint_model,constraint_data
     #update of the jacobian an constraint model
     # pin.computeJointJacobians(model,data,q0)
     LJ=[np.array(())]*len(constraint_model)
+    arrs_oMc1c2 = []
+    arrs_c1Mc2 = []
     for (cm,cd,i) in zip(constraint_model,constraint_data,range(len(LJ))):
         LJ[i]=pin.getConstraintJacobian(model,data,cm,cd)
-        
+        arrs_oMc1c2.append([cd.oMc1, cd.oMc2])
+        arrs_c1Mc2.append(cd.oMc2.translation - cd.oMc1.translation)
 
     #init of constant
     Lidmot=actuation_model.idvmot
@@ -343,11 +346,29 @@ def inverseConstraintKinematicsSpeed(model,data,constraint_model,constraint_data
     vq[Lidmot]=vqmotfree[:nv_mot]
     vq[Lidfree]=vqmotfree[nv_mot:]
 
+    for id, oMc1c2 in enumerate(arrs_oMc1c2):
+    
+        ballIDc1 = "world/ball_c1_" + str(id)
+        material = meshcat.geometry.MeshPhongMaterial()
+        material.color = int(0xFF0000)
+        
+        ballIDc2 = "world/ball_c2_" + str(id)
+        material2 = meshcat.geometry.MeshPhongMaterial()
+        material2.color = int(0x00FF00)
+        
+        material.opacity = 0.5
+        viz.viewer[ballIDc1].set_object(meshcat.geometry.Sphere(0.002), material)
+        viz.viewer[ballIDc1].set_transform(oMc1c2[0].np)
+        
+        viz.viewer[ballIDc2].set_object(meshcat.geometry.Sphere(0.002), material2)
+        viz.viewer[ballIDc2].set_transform(oMc1c2[1].np)
+    
+    print(f"constrs: 1. {arrs_c1Mc2[0]}") #2. {arrs_c1Mc2[1]}")
     
     return(vq,Jf_closed)
 
 
-def inverseConstraintPlaneKinematicsSpeed(model,data,constraint_model,constraint_data,actuation_model,q0,ideff,veff):
+def inverseConstraintPlaneKinematicsSpeed(model,data,constraint_model,constraint_data,actuation_model,q0,ideff,veff, viz=None):
     """
     vq,Jf_cloesd=inverseConstraintKinematicsSpeedOptimized(model,data,constraint_model,constraint_data,actuation_model,q0,ideff,veff)
     
@@ -382,7 +403,13 @@ def inverseConstraintPlaneKinematicsSpeed(model,data,constraint_model,constraint
         constraint_frame_id.append([model.getFrameId(n) for n in constraint_frame_name[-1]])
         # arrs_c1Mc2.append(cd.c1Mc2)
         arrs_oMc1c2.append([cd.oMc1, cd.oMc2])
+        
+        # err_cnstr = (pin.log6(cd.oMc2) - pin.log6(cd.oMc1)).np * 10
+        # err_cnstr[4] = 0
+        
+        # arrs_c1Mc2.append(cd.oMc1.action @ err_cnstr)
         arrs_c1Mc2.append(cd.oMc2.translation - cd.oMc1.translation)
+        
 
     #init of constant
     Lidmot=actuation_model.idvmot
@@ -432,8 +459,8 @@ def inverseConstraintPlaneKinematicsSpeed(model,data,constraint_model,constraint
     
     
     
-    Jc1 = (pin.computeFrameJacobian(model,data,q0,constraint_frame_id[0][0],pin.LOCAL_WORLD_ALIGNED))[[0,2],:]
-    Jc2 = (pin.computeFrameJacobian(model,data,q0,constraint_frame_id[1][0],pin.LOCAL_WORLD_ALIGNED))[[0,2],:]
+    Jc1 = (pin.computeFrameJacobian(model,data,q0,constraint_frame_id[0][0],pin.LOCAL))[[0,2],:]
+    Jc2 = (pin.computeFrameJacobian(model,data,q0,constraint_frame_id[1][0],pin.LOCAL))[[0,2],:]
     # Jc1_closed = (pin.computeFrameJacobian(model,data,q0,constraint_frame_id[0][0],pin.LOCAL_WORLD_ALIGNED))[[0,2],:]
     # Jc2_closed = (pin.computeFrameJacobian(model,data,q0,constraint_frame_id[1][0],pin.LOCAL_WORLD_ALIGNED))[[0,2],:]
     # Jf_closed = (pin.computeFrameJacobian(model,data,q0,ideff,pin.LOCAL)@dq_dmot)[[0,2],:]
@@ -456,13 +483,13 @@ def inverseConstraintPlaneKinematicsSpeed(model,data,constraint_model,constraint
 
     # vq += np.linalg.pinv(Jc1 @ Pee) @ (- pin.log6(arrs_c1Mc2[0]).np[[0,2]]/1e-5 - Jc1 @ vq)
     # vq += np.linalg.pinv(Jc1 @ Pee) @ (- arrs_c1Mc2[0][[0,2]]/1e-5 - Jc1 @ vq)
-    vq += np.linalg.pinv(Jc1 @ Pee) @ (- arrs_c1Mc2[0][[0,2]] - Jc1 @ vq)
+    vq += np.linalg.pinv(Jc1 @ Pee) @ (- arrs_c1Mc2[0][[0,2]]*70 - Jc1 @ vq)
     # vq += np.linalg.pinv(Jc1 @ Pee) @ (- pin.log6(arrs_c1Mc2[0].inverse()).np[[0,2]]/1e-5 - Jc1 @ vq)
     
     Pc2 = np.round(Pee - np.linalg.pinv(Jc1 @ Pee) @ Jc1 @ Pee, 6)
     
     # vq += np.linalg.pinv(Jc2 @ Pc2) @ (- arrs_c1Mc2[1][[0,2]]/1e-5 - Jc2 @ vq)
-    vq += np.linalg.pinv(Jc2 @ Pc2) @ (- arrs_c1Mc2[1][[0,2]] - Jc2 @ vq)
+    vq += np.linalg.pinv(Jc2 @ Pc2) @ (- arrs_c1Mc2[1][[0,2]]*70 - Jc2 @ vq)
     # vq += np.linalg.pinv(Jc2 @ Pc2) @ (- pin.log6(arrs_c1Mc2[1]).np[[0,2]]/1e-5 - Jc2 @ vq)
     
     
@@ -471,6 +498,24 @@ def inverseConstraintPlaneKinematicsSpeed(model,data,constraint_model,constraint
     # vq[joint_off_ids] = np.zeros_like(joint_off_ids)
     
     # print(f"c1c2 1 {np.linalg.norm(arrs_c1Mc2[0].translation):.4f}; 2 {np.linalg.norm(arrs_c1Mc2[1].translation):.4f}")
+    for id, oMc1c2 in enumerate(arrs_oMc1c2):
+    
+        ballIDc1 = "world/ball_c1_" + str(id)
+        material = meshcat.geometry.MeshPhongMaterial()
+        material.color = int(0xFF0000)
+        
+        ballIDc2 = "world/ball_c2_" + str(id)
+        material2 = meshcat.geometry.MeshPhongMaterial()
+        material2.color = int(0x00FF00)
+        
+        material.opacity = 0.5
+        viz.viewer[ballIDc1].set_object(meshcat.geometry.Sphere(0.002), material)
+        viz.viewer[ballIDc1].set_transform(oMc1c2[0].np)
+        
+        viz.viewer[ballIDc2].set_object(meshcat.geometry.Sphere(0.002), material2)
+        viz.viewer[ballIDc2].set_transform(oMc1c2[1].np)
+    
+    print(f"constrs: 1. {arrs_c1Mc2[0]} 2. {arrs_c1Mc2[1]}")
     return(vq,Jf_closed)
 
 
@@ -508,7 +553,7 @@ def inverseConstraintPlaneDIK(model,data,constraint_model,constraint_data,actuat
         constraint_frame_name.append(cm.name.split("-"))
         constraint_frame_id.append([model.getFrameId(n) for n in constraint_frame_name[-1]])
         arrs_oMc1c2.append([cd.oMc1, cd.oMc2])
-        arrs_c1Mc2.append(cd.oMc2.translation - cd.oMc1.translation)
+        arrs_c1Mc2.append(cd.oMc1.translation - cd.oMc2.translation)
 
     #init of constant
     Lidmot=actuation_model.idvmot
@@ -557,10 +602,10 @@ def inverseConstraintPlaneDIK(model,data,constraint_model,constraint_data,actuat
     # Jc1 = (pin.computeFrameJacobian(model,data,q0,constraint_frame_id[0][0],pin.LOCAL_WORLD_ALIGNED)@dq_dmot)[[0,2],:]
     # Jc2 = (pin.computeFrameJacobian(model,data,q0,constraint_frame_id[1][0],pin.LOCAL_WORLD_ALIGNED)@dq_dmot)[[0,2],:]
     Jee = (pin.computeFrameJacobian(model,data,q0,ideff,pin.LOCAL_WORLD_ALIGNED))[[0,2],:]
-    Jc1 = (pin.computeFrameJacobian(model,data,q0,constraint_frame_id[0][0],pin.LOCAL_WORLD_ALIGNED))[[0,2],:]
-    Jc2 = (pin.computeFrameJacobian(model,data,q0,constraint_frame_id[1][0],pin.LOCAL_WORLD_ALIGNED))[[0,2],:]
+    Jc1 = (pin.computeFrameJacobian(model,data,q0,constraint_frame_id[0][1],pin.LOCAL_WORLD_ALIGNED))[[0,2],:]
+    # Jc2 = (pin.computeFrameJacobian(model,data,q0,constraint_frame_id[1][0],pin.LOCAL_WORLD_ALIGNED))[[0,2],:]
     
-    Jg = np.vstack([Jee, Jc1, Jc2])
+    Jg = np.vstack([Jee, Jc1])#, Jc2])
 
     # pin.forwardKinematics(model,data, q0)
     # data.oMi[model.getFrameId(ideff)]
@@ -583,7 +628,7 @@ def inverseConstraintPlaneDIK(model,data,constraint_model,constraint_data,actuat
 
     # vq = pinvJg @ np.hstack([veff[[0,2]], 10*pin.log6(arrs_c1Mc2[0].inverse()).np[[0,2]], 10*pin.log6(arrs_c1Mc2[1].inverse()).np[[0,2]]])
     # vqmot = pinvJg @ np.hstack([veff[[0,2]], arrs_c1Mc2[0][[0,2]], arrs_c1Mc2[1][[0,2]]])
-    vq = pinvJg @ np.hstack([veff[[0,2]], arrs_c1Mc2[0][[0,2]], arrs_c1Mc2[1][[0,2]]])
+    vq = pinvJg @ np.hstack([veff[[0,2]], arrs_c1Mc2[0][[0,2]]])#, arrs_c1Mc2[1][[0,2]]])
     
     joint_off_ids = list(map(lambda x: model.getJointId(x), filter(lambda x: not x.find("Main_connection"), model.names)))
     
@@ -615,6 +660,8 @@ def inverseConstraintPlaneDIK(model,data,constraint_model,constraint_data,actuat
         viz.viewer[ballIDc2].set_object(meshcat.geometry.Sphere(0.002), material2)
         viz.viewer[ballIDc2].set_transform(oMc1c2[1].np)
     
+    # print(f"constrs: 1. {arrs_c1Mc2[0]} 2. {arrs_c1Mc2[1]}")
+    print(f"constrs: 1. {arrs_c1Mc2[0]}")
     return(vq,Jf_closed)
 ##########TEST ZONE ##########################
 import unittest

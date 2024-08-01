@@ -5,6 +5,7 @@ from auto_robot_design.control.trajectory_planning import trajectory_planning
 from auto_robot_design.pinokla.closed_loop_jacobian import (
     inverseConstraintKinematicsSpeed,
     inverseConstraintPlaneKinematicsSpeed,
+    inverseConstraintPlaneDIK
 )
 from auto_robot_design.pinokla.default_traj import (
     convert_x_y_to_6d_traj_xz,
@@ -80,7 +81,7 @@ q = np.zeros(robo.model.nq)
 # traj_6d = convert_x_y_to_6d_traj_xz(x_point, y_point)
 traj_6d = convert_x_y_to_6d_traj_xz(
     *create_simple_step_trajectory(
-        starting_point=[-0.11, -0.2], step_height=0.07, step_width=0.22, n_points=20
+        starting_point=[-0.11, -0.35], step_height=0.07, step_width=0.22, n_points=100
     )
 )
 
@@ -129,10 +130,10 @@ q = q_des_points[0]
 
 # for i, q in enumerate(q_des_points):
 #     viz.display(q)
-#     time.sleep(0.5)
+#     time.sleep(0.1)
 
 # q = q_des_points[0]
-q = q_des_points[-10]
+q = q_des_points[30]
 viz.display(q)
 
 # final_time = 0.8
@@ -140,12 +141,13 @@ name_ee = "EE"
 model = robo.model
 data = robo.data
 
-Kp = 0.1
+# Kp = 0.2
+Kp = 50
 Kd = np.sqrt(Kp) * 2
-DT = 1e-5
+DT = 1e-4
 id_ee = model.getFrameId(name_ee)
 
-P_ini = traj_6d[-12]
+P_ini = traj_6d[28]
 pin.framesForwardKinematics(model, data, q)
 
 pos = np.concatenate([data.oMf[id_ee].translation, pin.log(data.oMf[id_ee]).angular])
@@ -156,14 +158,14 @@ old_vq = np.zeros(model.nv)
 while norm(pos - P_ini) > 1e-6 and it < 10000:
     Lxtest.append(norm(pos - P_ini))
     vreel = pos - oldpos
-    # va = Kp * (P_ini - pos)
-    va = Kp * (P_ini - pos) / DT 
-    # va = (P_ini - pos) / DT 
+    # va = (P_ini - pos)
+    va = Kp * (P_ini - pos)
+    # va = Kp * (P_ini - pos) / DT 
     va[4] = 0
-    print(va)
+    print(f"err: {P_ini - pos}")
     if np.isclose(np.sum(va), 0):
         print("zero")
-    vq, Jf36_closed = inverseConstraintPlaneKinematicsSpeed(
+    vq, Jf36_closed = inverseConstraintPlaneDIK(
         model,
         data,
         robo.constraint_models,
@@ -173,12 +175,14 @@ while norm(pos - P_ini) > 1e-6 and it < 10000:
         id_ee,
         # va,
         data.oMf[id_ee].action @ va,
+        viz
     )
     # vq[robo.actuation_model.idvfree] = np.zeros_like(robo.actuation_model.idvfree)
     # vq[0] = 0
     old_vq += vq
     print(vq * DT)
     q = pin.integrate(model, q, vq * DT)
+    
     viz.display(q)
     pin.framesForwardKinematics(model, data, q)
     it = it + 1
