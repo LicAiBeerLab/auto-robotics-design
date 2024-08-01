@@ -71,7 +71,7 @@ class CriteriaAggregator:
         self.dict_along_criteria = dict_along_criteria
         self.end_effector_name = "EE"
 
-    def get_criteria_data(self, fixed_robot, free_robot, traj_6d, viz=None):
+    def get_criteria_data(self, fixed_robot, free_robot, traj_6d, т_auxiliary_points = 50,viz=None):
         """Perform calculating
 
         Args:
@@ -97,7 +97,7 @@ class CriteriaAggregator:
         # remove the first 50 points from the results, as they belong to the auxiliary part of the trajectory
         for d in [point_criteria_vector,  res_dict_fixed]:
             for k,v in d.items():
-                d[k] = v[50::]
+                d[k] = v[т_auxiliary_points::]
         return point_criteria_vector, trajectory_criteria, res_dict_fixed
 
 

@@ -28,8 +28,9 @@ class Reward():
             if warning:
                 print(
                     f'Error exceeds threshold for reward {self.reward_name} at point {np.argmax(errors)} with value {np.max(errors)}')
-            raise ValueError(
-                f"All points should be reachable to calculate a reward {max(errors)}")
+            else:
+                raise ValueError(
+                    f"All points should be reachable to calculate a reward {max(errors)}")
 
         elif np.max(errors) > self.point_precision:
             return False
@@ -92,13 +93,14 @@ class PositioningErrorCalculator():
     """Calculate the special error that that is used as self constrain during optimization
     """
 
-    def __init__(self, error_key, jacobian_key, calc_isotropic_thr=True):
+    def __init__(self, error_key, jacobian_key, calc_isotropic_thr=True, delta_q_threshold=1):
         self.error_key = error_key
         self.jacobian_key = jacobian_key
         self.calc_isotropic_thr = calc_isotropic_thr
         self.point_threshold = 1e-3
         self.point_isotropic_threshold = 15
         self.point_isotropic_clip = 3*15
+        self.delta_q_threshold = delta_q_threshold
 
     def calculate(self, trajectory_results_jacob: DataDict, trajectory_results_pos: DataDict):
         """Normalize self.calculate_eig_error and plus self.calculate_pos_error
@@ -142,13 +144,14 @@ class PositioningErrorCalculator():
             return 0
 
     def check_continuity(self, trajectory_results_pos):
-        """Check if the difference in angles between two points is less then 1 radian"""
+        """Check if the difference in angles between two points is less then self.delta_q_threshold radian"""
         value = np.max(
             np.sum(np.abs(np.diff(trajectory_results_pos['q'], axis=0)), axis=1))
         l = len(trajectory_results_pos['q'][0])
-        if value > 1:
-            with open('cont_check.txt', 'a') as f:
-                f.write(f'Continuity is violated with value: {value}, {l}\n')
+        if value > self.delta_q_threshold:
+            #with open('cont_check.txt', 'a') as f:
+            #f.write(f'Continuity is violated with value: {value}, {l}\n')
+            pass
 
     def calculate_pos_error(self, trajectory_results: DataDict):
         """Returns max max value of the errors along trajectory if error at any point exceeds the threshold.

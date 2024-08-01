@@ -93,7 +93,7 @@ def get_horizontal_trajectory(starting_point, width, x_shift, n_points=50):
     return (x_trajectory, y_trajectory)
 
 
-def enhance_trajectory(trajectory: Tuple[np.array], initial_point=np.array([0, -0.4]), number_points=50):
+def add_auxilary_points_to_trajectory(trajectory: Tuple[np.array], initial_point=np.array([0, -0.4]), number_points=50):
     first_point = np.array([trajectory[0][0], trajectory[1][0]])
     vector = first_point-initial_point
     # length = np.linalg.norm(vector)
