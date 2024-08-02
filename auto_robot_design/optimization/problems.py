@@ -152,6 +152,7 @@ class MultiCriteriaProblem(ElementwiseProblem):
         )
 
     def _evaluate(self, x, out, *args, **kwargs):
+        x = np.round(x, 4)
         graph = self.graph_manager.get_graph(x)
         fixed_robot, free_robot = jps_graph2pinocchio_robot(
             graph, self.builder)
@@ -182,7 +183,7 @@ class MultiCriteriaProblem(ElementwiseProblem):
     @classmethod
     def load(cls, path, **kwargs):
         with open(os.path.join(path, "problem_data.pkl"), "rb") as f:
-            new_prb_inst: CalculateMultiCriteriaProblem = dill.load(f)
+            new_prb_inst: MultiCriteriaProblem = dill.load(f)
         return new_prb_inst
 
 # class CalculateMultiCriteriaProblem(ElementwiseProblem):

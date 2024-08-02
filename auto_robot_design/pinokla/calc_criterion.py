@@ -12,11 +12,11 @@ from auto_robot_design.pinokla.closed_loop_jacobian import (
     closedLoopInverseKinematicsProximal, dq_dqmot,
     inverseConstraintKinematicsSpeed)
 from auto_robot_design.pinokla.closed_loop_kinematics import (
-    ForwardK, closedLoopProximalMount)
+    ForwardK, closedLoopProximalMount, closed_loop_ik_grad, closed_loop_ik_pseudo_inverse)
 from auto_robot_design.pinokla.criterion_math import (calc_manipulability,
-    ImfProjections, calc_actuated_mass, calc_effective_inertia,
-    calc_force_ell_projection_along_trj, calc_IMF, calculate_mass,
-    convert_full_J_to_planar_xz)
+                                                      ImfProjections, calc_actuated_mass, calc_effective_inertia,
+                                                      calc_force_ell_projection_along_trj, calc_IMF, calculate_mass,
+                                                      convert_full_J_to_planar_xz)
 from auto_robot_design.pinokla.loader_tools import Robot
 
 
@@ -116,6 +116,7 @@ def search_workspace(
             c += 1
     return (workspace_xyz[0:c], available_q[0:c])
 
+
 def folow_traj_by_proximal_inv_k(
     model,
     data,
@@ -179,6 +180,7 @@ def folow_traj_by_proximal_inv_k(
         constraint_errors[num] = min_feas
 
     return poses, q_array, constraint_errors
+
 
 def folow_traj_by_proximal_inv_k_2(
     model,
@@ -246,8 +248,77 @@ def folow_traj_by_proximal_inv_k_2(
 
     return poses, q_array, constraint_errors, reach_array
 
+
+def closed_loop_pseudo_inverse_follow(
+    model,
+    data,
+    constraint_models,
+    constraint_data,
+    end_effector_frame: str,
+    traj_6d: np.ndarray,
+    viz=None,
+    q_start: np.ndarray = None,
+):
+    """Solve the inverse kinematic problem
+
+    Args:
+        model (_type_): _description_
+        data (_type_): _description_
+        constraint_models (_type_): _description_
+        constraint_data (_type_): _description_
+        end_effector_frame (str): _description_
+        traj_6d (np.ndarray): _description_
+        viz (_type_, optional): _description_. Defaults to None.
+        q_start (np.ndarray, optional): _description_. Defaults to None.
+
+    Returns:
+        np.array: end-effector positions in final state
+        np.array: joint coordinates in final state
+        np.array: deviations from the desired position
+
+    """
+    if q_start:
+        q = q_start
+    else:
+        q = pin.neutral(model)
+
+    ee_frame_id = model.getFrameId(end_effector_frame)
+    poses = np.zeros((len(traj_6d), 3))
+    reach_array = np.zeros(len(traj_6d))
+    q_array = np.zeros((len(traj_6d), len(q)))
+    constraint_errors = np.zeros((len(traj_6d), 1))
+
+    for num, i_pos in enumerate(traj_6d):
+
+        q, min_feas, is_reach = closed_loop_ik_pseudo_inverse(
+            model,
+            data,
+            constraint_models,
+            constraint_data,
+            i_pos,
+            ee_frame_id,
+            onlytranslation=True,
+            q_start=q,
+        )
+        if not is_reach:
+            q = closedLoopProximalMount(
+                model, data, constraint_models, constraint_data, q
+            )
+        if viz:
+            viz.display(q)
+            time.sleep(0.1)
+
+        pin.framesForwardKinematics(model, data, q)
+        poses[num] = data.oMf[ee_frame_id].translation
+        q_array[num] = q
+        constraint_errors[num] = min_feas
+        reach_array[num] = is_reach
+
+    return poses, q_array, constraint_errors, reach_array
+
+
 def pseudo_static_step(robot: Robot, q_state: np.ndarray,
-                      ee_frame_name: str) -> PsedoStepResault:
+                       ee_frame_name: str) -> PsedoStepResault:
 
     ee_frame_id = robot.model.getFrameId(ee_frame_name)
     pin.framesForwardKinematics(robot.model, robot.data, q_state)
@@ -270,7 +341,8 @@ def pseudo_static_step(robot: Robot, q_state: np.ndarray,
         LJ.append(Jc)
 
     M = pin.crba(robot.model, robot.data, q_state)
-    dq = dq_dqmot(robot.model, robot.actuation_model, LJ)# TODO: force Kirill to explain what is this and why we need it
+    # TODO: force Kirill to explain what is this and why we need it
+    dq = dq_dqmot(robot.model, robot.actuation_model, LJ)
 
     return PsedoStepResault(J_closed, M, dq)
 
@@ -281,7 +353,8 @@ def iterate_over_q_space(robot: Robot, q_space: np.ndarray,
 
     res_dict = DataDict()
     for key, value in zero_step._asdict().items():
-        alocate_array = np.zeros((len(q_space), *value.shape), dtype=np.float64)
+        alocate_array = np.zeros(
+            (len(q_space), *value.shape), dtype=np.float64)
         res_dict[key] = alocate_array
 
     for num, q_state in enumerate(q_space):
@@ -374,6 +447,7 @@ class EffectiveInertiaCompute(ComputeInterfaceMoment):
         )
         return eff_inertia
 
+
 class ActuatedMass(ComputeInterfaceMoment):
     """Wrapper for Actuated_Mass. Criterion implementation src is criterion_math"""
 
@@ -387,6 +461,7 @@ class ActuatedMass(ComputeInterfaceMoment):
             data_frame["M"], data_frame["dq"], data_frame["J_closed"]
         )
         return eff_inertia
+
 
 class ManipCompute(ComputeInterfaceMoment):
     """Wrapper for manipulability. Criterion implementation src is criterion_math"""
@@ -406,6 +481,7 @@ class ManipCompute(ComputeInterfaceMoment):
             raise NotImplemented
         manip_space = calc_manipulability(target_J)
         return manip_space
+
 
 class ManipJacobian(ComputeInterfaceMoment):
     """Wrapper for manipulability. Criterion implementation src is criterion_math"""
@@ -438,6 +514,7 @@ class ForceCapabilityProjectionCompute(ComputeInterface):
             - abs_dot_product_z_u1: The absolute dot product of the z-axis and u1.
             - abs_dot_product_z_u2: The absolute dot product of the z-axis and u2.
     """
+
     def __init__(self) -> None:
         self.is_fixed = True
 
@@ -470,8 +547,10 @@ class ForceCapabilityProjectionCompute(ComputeInterface):
         d_traj_xz = np.diff(traj_xz, axis=0)
         d_traj_xz = np.vstack([d_traj_xz, [0, 0]])
 
-        abs_dot_product_traj_u1 = np.sum(np.abs(np.sum(US1 * d_traj_xz, axis=1))).squeeze()
-        abs_dot_product_traj_u2 = np.sum(np.abs(np.sum(US2 * d_traj_xz, axis=1))).squeeze()
+        abs_dot_product_traj_u1 = np.sum(
+            np.abs(np.sum(US1 * d_traj_xz, axis=1))).squeeze()
+        abs_dot_product_traj_u2 = np.sum(
+            np.abs(np.sum(US2 * d_traj_xz, axis=1))).squeeze()
         abs_dot_product_z_u1 = np.sum(np.abs(US1[:, 1])).squeeze()
         abs_dot_product_z_u2 = np.sum(np.abs(US2[:, 1])).squeeze()
 
@@ -519,10 +598,10 @@ class TranslationErrorMSE(ComputeInterface):
     def __call__(self, data_dict: DataDict, robo: Robot = None):
 
         errors = norm(data_dict["traj_6d"][:, :3] - data_dict["traj_6d_ee"][:, :3],
-                 axis=1)
+                      axis=1)
         mean_error = np.mean(errors)
         if mean_error < 1e-6:
-            return 0 
+            return 0
         return mean_error
 
 
@@ -547,7 +626,7 @@ def moment_criteria_calc(calculate_desription: dict[str,
             data_dict = data_dict_fixed
         else:
             data_dict = data_dict_free
-        
+
         shape = criteria.output_matrix_shape()
         if shape:
             res_dict[key] = np.zeros(

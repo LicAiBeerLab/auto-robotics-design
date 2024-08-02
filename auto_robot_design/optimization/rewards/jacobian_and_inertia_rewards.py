@@ -7,8 +7,9 @@ from auto_robot_design.pinokla.calc_criterion import DataDict
 
 GRAVITY = 9.81
 
+
 def calculate_achievable_forces_z(manipulability_matrices: list[np.array], pick_effort: float,
-              max_effort_coefficient: float) -> np.ndarray:
+                                  max_effort_coefficient: float) -> np.ndarray:
 
     n_steps = len(manipulability_matrices)
 
@@ -41,7 +42,7 @@ class HeavyLiftingReward(Reward):
                  trajectory_key: str,
                  error_key: str,
                  max_effort_coef=0.7) -> None:
-        super().__init__()
+        super().__init__(name="Heavy Lifting Reward")
         self.max_effort_coefficient = max_effort_coef
         self.manip_key = manipulability_key
         self.trajectory_key = trajectory_key
@@ -79,7 +80,7 @@ class HeavyLiftingReward(Reward):
             self.manip_key]
         trajectory_points = trajectory_results[self.trajectory_key]
         mass = trajectory_criteria[self.mass_key]
- 
+
         achievable_forces_z_vec = calculate_achievable_forces_z(
             manipulability_matrices, pick_effort, self.max_effort_coefficient)
         reward_vector = achievable_forces_z_vec / (GRAVITY * mass)
@@ -89,11 +90,13 @@ class HeavyLiftingReward(Reward):
 
 
 class AccelerationCapability(Reward):
-    """Calculate the reward that combine effective inertia and force capability
+    """Calculate the reward that combine effective inertia and force capability. 
+
+        At a point it is an acceleration the EE would have in zero gravity if it has zero speed. 
     """
 
     def __init__(self, manipulability_key: str, trajectory_key: str, error_key: str, actuated_mass_key: str, max_effort_coef=0.7) -> None:
-        super().__init__()
+        super().__init__('Acceleration Capability')
         self.max_effort_coefficient = max_effort_coef
         self.manip_key = manipulability_key
         self.trajectory_key = trajectory_key
@@ -158,7 +161,7 @@ class MeanHeavyLiftingReward(Reward):
     """
 
     def __init__(self, manipulability_key, mass_key: str, trajectory_key: str, error_key: str, max_effort_coef=0.7) -> None:
-        super().__init__()
+        super().__init__('Mean Heavy Lifting Reward')
         self.max_effort_coefficient = max_effort_coef
         self.manip_key = manipulability_key
         self.trajectory_key = trajectory_key
@@ -214,7 +217,7 @@ class MinAccelerationCapability(Reward):
                  error_key: str,
                  actuated_mass_key: str,
                  max_effort_coef=0.7) -> None:
-        super().__init__()
+        super().__init__(name='Min Acceleration Capability')
         self.max_effort_coefficient = max_effort_coef
         self.manip_key = manipulability_key
         self.trajectory_key = trajectory_key
