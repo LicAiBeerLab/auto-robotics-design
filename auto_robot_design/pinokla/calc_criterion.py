@@ -313,7 +313,8 @@ def closed_loop_pseudo_inverse_follow(
         q_array[num] = q
         constraint_errors[num] = min_feas
         reach_array[num] = is_reach
-
+        if not is_reach:
+            break
     return poses, q_array, constraint_errors, reach_array
 
 
