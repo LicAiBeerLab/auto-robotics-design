@@ -577,7 +577,7 @@ def closed_loop_ik_grad(rmodel, rdata, rconstraint_model, rconstraint_data, targ
     return q, min_feas, is_reach
 
 
-def closed_loop_ik_pseudo_inverse(rmodel, rdata, rconstraint_model, rconstraint_data, target_pos, ideff, q_start=None, onlytranslation=False, eps=1e-5, max_it=300, alpha=0.5, l=1e-2,q_delta_threshold=0.5):
+def closed_loop_ik_pseudo_inverse(rmodel, rdata, rconstraint_model, rconstraint_data, target_pos, ideff, q_start=None, onlytranslation=False, eps=1e-5, max_it=300, alpha=0.5, l=1e-5, q_delta_threshold=0.5):
 
     model = pin.Model(rmodel)
     constraint_model = [pin.RigidConstraintModel(x) for x in rconstraint_model]
@@ -647,12 +647,13 @@ def closed_loop_ik_pseudo_inverse(rmodel, rdata, rconstraint_model, rconstraint_
 
         # dq = np.linalg.pinv(J).dot(constraint_value)
 
-        dq = (J.T@(np.linalg.inv(J@J.T-l**2*np.eye(len(constraint_value))))
+        dq = (J.T@(np.linalg.inv(J@J.T-l*np.eye(len(constraint_value))))
               ).dot(constraint_value)
         q = pin.integrate(model, q, alpha * dq)
         # pin.framesForwardKinematics(model, data, q)
         # total_delta_q = q-q_start
         if np.linalg.norm(dq, np.inf) > q_delta_threshold:
+            #print(dq)
             break
 
     pin.framesForwardKinematics(model, data, q)

@@ -33,7 +33,7 @@ def calculate_quasi_static_simdata(free_robot: Robot,
     # poses, q_fixed, constraint_errors = folow_traj_by_proximal_inv_k(
     #     fixed_robot.model, fixed_robot.data, fixed_robot.constraint_models,
     #     fixed_robot.constraint_data, ee_frame_name, traj_6d, viz)
-    poses, q_fixed, constraint_errors = closed_loop_pseudo_inverse_follow(
+    poses, q_fixed, constraint_errors,reach_array = closed_loop_pseudo_inverse_follow(
         fixed_robot.model, fixed_robot.data, fixed_robot.constraint_models,
         fixed_robot.constraint_data, ee_frame_name, traj_6d, viz)
 
@@ -55,6 +55,9 @@ def calculate_quasi_static_simdata(free_robot: Robot,
     res_dict_fixed["error"] = constraint_errors
     res_dict_free["error"] = constraint_errors
 
+    res_dict_fixed["is_reach"] = reach_array
+    res_dict_free["is_reach"] = reach_array
+
     res_dict_fixed['q'] = q_fixed
     res_dict_free['q'] = free_space_q
 
@@ -71,7 +74,7 @@ class CriteriaAggregator:
         self.dict_along_criteria = dict_along_criteria
         self.end_effector_name = "EE"
 
-    def get_criteria_data(self, fixed_robot, free_robot, traj_6d, т_auxiliary_points = 50,viz=None):
+    def get_criteria_data(self, fixed_robot, free_robot, traj_6d, n_auxiliary_points:int = 50,viz=None):
         """Perform calculating
 
         Args:
@@ -97,7 +100,7 @@ class CriteriaAggregator:
         # remove the first 50 points from the results, as they belong to the auxiliary part of the trajectory
         for d in [point_criteria_vector,  res_dict_fixed]:
             for k,v in d.items():
-                d[k] = v[т_auxiliary_points::]
+                d[k] = v[n_auxiliary_points::]
         return point_criteria_vector, trajectory_criteria, res_dict_fixed
 
 
