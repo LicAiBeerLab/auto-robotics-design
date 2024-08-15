@@ -57,6 +57,30 @@ def closed_loop_ik_pseudo_inverse(rmodel,
                                   alpha:float=0.5, 
                                   l:float=1e-5, 
                                   q_delta_threshold:float=0.5):
+    """Finds the IK solution using constraint Jacobian. 
+
+        The target position is added to the list of constraints and treated as a constraint violated in the starting popsition.
+
+    Args:
+        rmodel (_type_): _description_
+        rconstraint_model (_type_): _description_
+        target_pos (_type_): _description_
+        ideff (_type_): _description_
+        q_start (_type_, optional): _description_. Defaults to None.
+        onlytranslation (bool, optional): _description_. Defaults to False.
+        eps (float, optional): _description_. Defaults to 1e-5.
+        max_it (int, optional): _description_. Defaults to 30.
+        alpha (float, optional): _description_. Defaults to 0.5.
+        l (float, optional): _description_. Defaults to 1e-5.
+        q_delta_threshold (float, optional): _description_. Defaults to 0.5.
+
+    Raises:
+        Exception: _description_
+
+    Returns:
+        _type_: _description_
+    """
+    
     # create copy of the model, constraints and corresponding data
     model = pin.Model(rmodel)
     constraint_model = [pin.RigidConstraintModel(x) for x in rconstraint_model]
@@ -66,6 +90,7 @@ def closed_loop_ik_pseudo_inverse(rmodel,
     frame_constraint = model.frames[ideff]
     parent_joint = frame_constraint.parentJoint # ee parent joint is in the same position as the frame?
     placement = frame_constraint.placement # placement is calculated relative to parent joint?
+    # constraint can include orientation or not
     if onlytranslation:
         final_constraint = pin.RigidConstraintModel(pin.ContactType.CONTACT_3D,
                                                     model, parent_joint,
