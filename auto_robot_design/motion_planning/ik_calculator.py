@@ -59,7 +59,7 @@ def closed_loop_ik_pseudo_inverse(rmodel,
                                   q_delta_threshold:float=0.5):
     """Finds the IK solution using constraint Jacobian. 
 
-        The target position is added to the list of constraints and treated as a constraint violated in the starting popsition.
+        The target position is added to the list of constraints and treated as a constraint violated in the starting position.
 
     Args:
         rmodel (_type_): _description_
@@ -84,7 +84,7 @@ def closed_loop_ik_pseudo_inverse(rmodel,
     # create copy of the model, constraints and corresponding data
     model = pin.Model(rmodel)
     constraint_model = [pin.RigidConstraintModel(x) for x in rconstraint_model]
-    # set the SE3 representation of the final position
+    # set the SE3 representation of the final position. Here we add final position as a constraint.
     target_SE3 = pin.SE3.Identity()
     target_SE3.translation = np.array(target_pos[0:3])
     frame_constraint = model.frames[ideff]
@@ -105,6 +105,7 @@ def closed_loop_ik_pseudo_inverse(rmodel,
 
     final_constraint.name = "TrajCons"
     constraint_model.append(final_constraint)
+
     data = model.createData()
     constraint_data = [cm.createData() for cm in constraint_model]
     if q_start is None:
@@ -112,19 +113,21 @@ def closed_loop_ik_pseudo_inverse(rmodel,
         q = q_start
     else:
         q = q_start
-
+    #calculates pin joints and frames corresponding to the q. Neutral position is the position in URDF and it has all q=0
     pin.framesForwardKinematics(model, data, q)
     constraint_dim = 0
     for cm in constraint_model:
         constraint_dim += cm.size()
 
     is_reach = False
+
     kkt_constraint = pin.ContactCholeskyDecomposition(model, constraint_model)
     primal_feas_array = np.zeros(max_it)
     real_feas_array = np.zeros(max_it)
     dim = len(q)
     q_array = np.zeros((max_it, dim))
     constr_array = []
+    # IK search iteration loop
     for k in range(max_it):
         pin.computeJointJacobians(model, data, q)
         kkt_constraint.compute(model, data, constraint_model, constraint_data)
