@@ -55,12 +55,19 @@ def calculate_quasi_static_simdata(free_robot: Robot,
     res_dict_fixed["error"] = constraint_errors
     res_dict_free["error"] = constraint_errors
 
+<<<<<<< HEAD
+    res_dict_fixed['q'] = q_fixed
+    res_dict_free['q'] = free_space_q
+
+
+=======
     res_dict_fixed["is_reach"] = reach_array
     res_dict_free["is_reach"] = reach_array
 
     res_dict_fixed['q'] = q_fixed
     res_dict_free['q'] = free_space_q
 
+>>>>>>> origin/main
     return res_dict_free, res_dict_fixed
 
 
@@ -74,7 +81,11 @@ class CriteriaAggregator:
         self.dict_along_criteria = dict_along_criteria
         self.end_effector_name = "EE"
 
+<<<<<<< HEAD
+    def get_criteria_data(self, fixed_robot, free_robot, traj_6d, viz=None):
+=======
     def get_criteria_data(self, fixed_robot, free_robot, traj_6d, n_auxiliary_points:int = 50,viz=None):
+>>>>>>> origin/main
         """Perform calculating
 
         Args:
@@ -91,10 +102,14 @@ class CriteriaAggregator:
         # perform calculations of the data required to calculate the fancy mech criteria
         res_dict_free, res_dict_fixed = calculate_quasi_static_simdata(
             free_robot, fixed_robot, self.end_effector_name, traj_6d,viz=viz)
+<<<<<<< HEAD
+        # calculate the criteria that can be assigned to each point at the trajectory
+=======
         # calculate the criteria that can be assigned to each point at the trajectory 
+>>>>>>> origin/main
         point_criteria_vector = moment_criteria_calc(self.dict_moment_criteria,
                                                   res_dict_free, res_dict_fixed)
-        # calculate criteria that characterize the performance along the whole trajectory  
+        # calculate criteria that characterize the performance along the whole trajectory
         trajectory_criteria = along_criteria_calc(self.dict_along_criteria,res_dict_free,
                                                 res_dict_fixed, fixed_robot, free_robot)
         # remove the first 50 points from the results, as they belong to the auxiliary part of the trajectory

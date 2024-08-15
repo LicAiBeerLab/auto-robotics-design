@@ -397,7 +397,7 @@ def completeRobotLoaderFromStr(
                     Se3joint2,
                     pin.ReferenceFrame.LOCAL,
                 )
-                constraint.name = name1 + "C" + name2
+                constraint.name = name1 + "-" + name2
             else:
                 constraint = pin.RigidConstraintModel(
                     pin.ContactType.CONTACT_6D,
@@ -408,7 +408,7 @@ def completeRobotLoaderFromStr(
                     Se3joint2,
                     pin.ReferenceFrame.LOCAL,
                 )
-                constraint.name = name1 + "C" + name2
+                constraint.name = name1 + "-" + name2
             Lconstraintmodel.append(constraint)
 
         constraint_models = Lconstraintmodel
