@@ -2,17 +2,10 @@
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import List, Optional, Tuple, Union
-
 import networkx as nx
 import numpy as np
-
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
 import numpy.linalg as la
-from scipy.spatial.transform import Rotation as R
-import modern_robotics as mr
-
-
+import matplotlib.pyplot as plt
 from auto_robot_design.description.kinematics import JointPoint
 from auto_robot_design.description.builder import add_branch
 
@@ -58,6 +51,12 @@ class GraphManager2L():
         self.current_main_branch = []
         self.graph = nx.Graph()
         self.mutation_ranges = {}
+    
+    def get_node_by_name(self, name:str):
+        for node in self.graph.nodes:
+            if node.name == name:
+                return node
+        return None
 
     def build_main(self, length: float, fully_actuated: bool = False):
         """Builds the main branch and create nodes for the connections.
@@ -89,7 +88,7 @@ class GraphManager2L():
             ground_connection_jp, [], [(-0.05, 0.1), None, (-0.3, -0.1)])
         self.main_connections.append(ground_connection_description)
 
-        knee_joint_pos = np.array([0, 0, -length/2])
+        knee_joint_pos = np.array([0.03, 0, -length/2])
         knee_joint = JointPoint(
             r=knee_joint_pos, w=np.array([0, 1, 0]), active=fully_actuated, name="Main_knee")
         self.current_main_branch.append(knee_joint)
@@ -236,7 +235,7 @@ class GraphManager2L():
                                                          relative_to=jp)
         if len(jp_connection_to_main) == 0:
             self.graph.add_edge(jp, branch_jp_1)
-            jp.active = not branch_1_active  
+            jp.active = not branch_1_active
         else:
             self.graph.add_edge(jp, branch_jp_1)
             for cd in jp_connection_to_main:
@@ -383,6 +382,7 @@ class GraphManager2L():
                             parameter_counter += 1
         return self.graph
 
+
 def plot_2d_bounds(graph_manager):
     """
     Plot 2D bounds for each joint points in the graph manager. Different colors are used for different types of mutations.
@@ -397,13 +397,16 @@ def plot_2d_bounds(graph_manager):
     for jp, gen_info in graph_manager.generator_dict.items():
         if gen_info.mutation_type == MutationType.UNMOVABLE:
             continue
-        ez = np.array([1,0,0])
-        x_bound = (-0.001, 0.001) if gen_info.mutation_range[0] is None else gen_info.mutation_range[0]
-        z_bound = (-0.001, 0.001) if gen_info.mutation_range[2] is None else gen_info.mutation_range[2]
+        ez = np.array([1, 0, 0])
+        x_bound = (-0.001,
+                   0.001) if gen_info.mutation_range[0] is None else gen_info.mutation_range[0]
+        z_bound = (-0.001,
+                   0.001) if gen_info.mutation_range[2] is None else gen_info.mutation_range[2]
         bound = np.array([x_bound, z_bound])
 
         if gen_info.mutation_type == MutationType.ABSOLUTE:
-            pos_initial = np.array([gen_info.initial_coordinate[0], gen_info.initial_coordinate[2]])
+            pos_initial = np.array(
+                [gen_info.initial_coordinate[0], gen_info.initial_coordinate[2]])
             xz_rect_start = pos_initial + bound[:, 0]
             wh_rect = bound[:, 1] - bound[:, 0]
             angle = 0
@@ -413,74 +416,80 @@ def plot_2d_bounds(graph_manager):
         elif gen_info.mutation_type == MutationType.RELATIVE:
 
             if isinstance(gen_info.relative_to, JointPoint):
-                rel_jp_xz = np.array([gen_info.relative_to.r[0], gen_info.relative_to.r[2]])
-                xz_rect_start = rel_jp_xz+ bound[:, 0]
+                rel_jp_xz = np.array(
+                    [gen_info.relative_to.r[0], gen_info.relative_to.r[2]])
+                xz_rect_start = rel_jp_xz + bound[:, 0]
                 wh_rect = bound[:, 1] - bound[:, 0]
                 angle = 0
                 rot_point = np.zeros(2)
             else:
                 if len(gen_info.relative_to) == 2:
-                    xz_rect_start = (gen_info.relative_to[0].r + gen_info.relative_to[1].r)/2
+                    xz_rect_start = (
+                        gen_info.relative_to[0].r + gen_info.relative_to[1].r)/2
                     link_direction = gen_info.relative_to[0].r - \
                         gen_info.relative_to[1].r
                     link_ortogonal = np.array(
                         [-link_direction[2], link_direction[1], link_direction[0]])
                     link_length = np.linalg.norm(link_direction)
-                    angle = np.arccos(np.inner(ez, link_ortogonal/link_length) / 
-                    la.norm(link_ortogonal/link_length) / 
-                    la.norm(ez))
-                    
-                    xz_rect_start[0] += (np.array([bound[0,0], 0, 0]) * \
-                        link_ortogonal/link_length)[0]
-                        
-                    xz_rect_start[1] += (np.array([0, 0, bound[1,0]]) * \
-                        link_direction/link_length)[2]
+                    angle = np.arccos(np.inner(ez, link_ortogonal/link_length) /
+                                      la.norm(link_ortogonal/link_length) /
+                                      la.norm(ez))
+
+                    xz_rect_start[0] += (np.array([bound[0, 0], 0, 0]) *
+                                         link_ortogonal/link_length)[0]
+
+                    xz_rect_start[1] += (np.array([0, 0, bound[1, 0]]) *
+                                         link_direction/link_length)[2]
 
                     wh_rect = bound[:, 1] - bound[:, 0]
-                    rot_point = (gen_info.relative_to[1].r + gen_info.relative_to[0].r)/2
+                    rot_point = (
+                        gen_info.relative_to[1].r + gen_info.relative_to[0].r)/2
             color = "b"
 
         elif gen_info.mutation_type == MutationType.RELATIVE_PERCENTAGE:
 
             if len(gen_info.relative_to) == 2:
-                    xz_rect_start = (gen_info.relative_to[1].r + gen_info.relative_to[0].r)[[0,2]]/2
-                    
-                    link_direction = gen_info.relative_to[0].r - \
-                        gen_info.relative_to[1].r
-                    link_ortogonal = np.array(
-                        [-link_direction[2], link_direction[1], link_direction[0]])
-                    link_length = np.linalg.norm(link_direction)
-                    angle = np.arccos(np.inner(ez, link_ortogonal/link_length) / 
-                    la.norm(link_ortogonal/link_length) / 
-                    la.norm(ez))
-                    
-                    bound = bound * link_length
-                    
-                    if np.isclose(abs(angle), np.pi):
-                        angle = 0
-                    
-                    # rot = R.from_rotvec(axis * angle)
-                    
-                    # start_rect_pos = rot.as_matrix() @ np.array([bound[0,0], 0, bound[1,0]])
-                    
-                    xz_rect_start[0] += bound[0,0]#start_rect_pos[0]
-                    xz_rect_start[1] += bound[1,0]#start_rect_pos[2]
+                xz_rect_start = (
+                    gen_info.relative_to[1].r + gen_info.relative_to[0].r)[[0, 2]]/2
 
-                    wh_rect = np.abs(bound[:, 1] - bound[:, 0]) 
-                    rot_point = (gen_info.relative_to[1].r + gen_info.relative_to[0].r)[[0,2]]/2
-                    color = "g"
+                link_direction = gen_info.relative_to[0].r - \
+                    gen_info.relative_to[1].r
+                link_ortogonal = np.array(
+                    [-link_direction[2], link_direction[1], link_direction[0]])
+                link_length = np.linalg.norm(link_direction)
+                angle = np.arccos(np.inner(ez, link_ortogonal/link_length) /
+                                  la.norm(link_ortogonal/link_length) /
+                                  la.norm(ez))
+
+                bound = bound * link_length
+
+                if np.isclose(abs(angle), np.pi):
+                    angle = 0
+
+                # rot = R.from_rotvec(axis * angle)
+
+                # start_rect_pos = rot.as_matrix() @ np.array([bound[0,0], 0, bound[1,0]])
+
+                xz_rect_start[0] += bound[0, 0]  # start_rect_pos[0]
+                xz_rect_start[1] += bound[1, 0]  # start_rect_pos[2]
+
+                wh_rect = np.abs(bound[:, 1] - bound[:, 0])
+                rot_point = (
+                    gen_info.relative_to[1].r + gen_info.relative_to[0].r)[[0, 2]]/2
+                color = "g"
 
         rect = patches.Rectangle(
             (xz_rect_start[0], xz_rect_start[1]),
             width=wh_rect[0],
             height=wh_rect[1],
             angle=-np.rad2deg(angle),
-            rotation_point= (rot_point[0],rot_point[1]),
+            rotation_point=(rot_point[0], rot_point[1]),
             linewidth=1,
             edgecolor=color,
             facecolor="none",
         )
         plt.gca().add_patch(rect)
+
 
 def get_preset_by_index(idx: int):
     if idx == -1:

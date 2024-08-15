@@ -152,7 +152,11 @@ class MultiCriteriaProblem(ElementwiseProblem):
         )
 
     def _evaluate(self, x, out, *args, **kwargs):
+<<<<<<< HEAD
         x= np.round(x, 5)
+=======
+        x = np.round(x, 4)
+>>>>>>> origin/main
         graph = self.graph_manager.get_graph(x)
         fixed_robot, free_robot = jps_graph2pinocchio_robot(
             graph, self.builder)

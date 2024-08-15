@@ -7,8 +7,9 @@ from auto_robot_design.pinokla.calc_criterion import DataDict
 
 GRAVITY = 9.81
 
+
 def calculate_achievable_forces_z(manipulability_matrices: list[np.array], pick_effort: float,
-              max_effort_coefficient: float) -> np.ndarray:
+                                  max_effort_coefficient: float) -> np.ndarray:
 
     n_steps = len(manipulability_matrices)
 
@@ -79,7 +80,7 @@ class HeavyLiftingReward(Reward):
             self.manip_key]
         trajectory_points = trajectory_results[self.trajectory_key]
         mass = trajectory_criteria[self.mass_key]
- 
+
         achievable_forces_z_vec = calculate_achievable_forces_z(
             manipulability_matrices, pick_effort, self.max_effort_coefficient)
         reward_vector = achievable_forces_z_vec / (GRAVITY * mass)
