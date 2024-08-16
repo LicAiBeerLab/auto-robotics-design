@@ -208,18 +208,25 @@ class BreadthFirstSearchPlanner:
 
             
             material = meshcat.geometry.MeshPhongMaterial()
-            material.opacity = 0.1
+            material.opacity = 0.2
             if not bool(current.is_reach):
                 # viz.viewer[boxID].delete()
-                material.color = int(0xFF0000)
+                # material.color = int(0xFF0000)
                 plt.plot(current.pos[0],current.pos[1], "xr")
             elif np.all(all_direct_reach):
                 plt.plot(current.pos[0],current.pos[1], "xc")
-                material.color = int(0x00FF00)
+                # material.color = int(0x00FF00)
             else:
-                material.color = 0xFFFF33
+                # material.color = 0xFFFF33
                 plt.plot(current.pos[0],current.pos[1], "xy")
-                
+
+            if 1/current.cost < 1.5:
+                material.color = int(0x00FF00)
+            elif 1.5 <= 1/current.cost < 2:
+                material.color = 0xFFFF33
+            else:
+                material.color = int(0xFF0000)
+
             pos_3d = np.array([current.pos[0], 0, current.pos[1]])
             size_box = np.array([self.resolution[0], 0.001, self.resolution[1]])
             viz.viewer[boxID].set_object(meshcat.geometry.Box(size_box), material)
@@ -353,7 +360,7 @@ if __name__== "__main__":
 
     robo, __ = jps_graph2pinocchio_robot_3d_constraints(graph_jp, builder=builder)
     
-    center_bound = np.array([0, -0.25])
+    center_bound = np.array([0.0, -0.25])
     size_box_bound = np.array([0.05, 0.05])
     
     start_pos = center_bound
@@ -429,4 +436,4 @@ if __name__== "__main__":
     
     dext_index = [1/n.cost for n in viewed_nodes.values()]
     
-    print(np.max(dext_index), np.min(dext_index))
+    print(np.nanmax(dext_index), np.nanmin(dext_index))
