@@ -1,14 +1,11 @@
-import time
-from collections import UserDict
-from enum import IntFlag, auto
-from typing import NamedTuple, Optional
+from itertools import product
+from collections import deque
+from math import isclose
+from tabnanny import check
 
 import numpy as np
 import pinocchio as pin
 import matplotlib.pyplot as plt
-
-from collections import deque
-from numpy.linalg import norm
 
 from auto_robot_design.pinokla.closed_loop_jacobian import (
     jacobian_constraint,
@@ -30,6 +27,7 @@ from auto_robot_design.pinokla.criterion_math import (
     calculate_mass,
     convert_full_J_to_planar_xz,
 )
+from auto_robot_design.pinokla.default_traj import add_auxilary_points_to_trajectory
 from auto_robot_design.pinokla.loader_tools import Robot
 
 from auto_robot_design.pinokla.calc_criterion import (
@@ -72,42 +70,59 @@ class BreadthFirstSearchPlanner:
         self.resolution = grid_resolution
         self.threshold = singularity_threshold
 
-        num_indexes = np.max(bounds[:3], 1) - np.min(bounds[:3], 1) / self.resolution
-
+        num_indexes = (np.max(bounds, 1) - np.min(bounds, 1)) / self.resolution
+        self.num_indexes = np.zeros_like(num_indexes)
         self.bounds = np.zeros_like(bounds)
         for id, idx_value in enumerate(num_indexes):
-            residue_div = idx_value % 1
-            if residue_div != 0.0:
-                self.bounds[id, 0] = bounds[id, 0] - residue_div / 2
-                self.bounds[id, 1] = bounds[id, 1] + residue_div / 2
+            residue_div = np.round(idx_value % 1, 6)
+            
+            check_bound_size = np.isclose(residue_div, 0.0)
+            check_min_bound = np.isclose(bounds[id,0] % self.resolution[id], 0)
+            check_max_bound = np.isclose(bounds[id,1] % self.resolution[id], 0)
+            if check_bound_size and check_min_bound and check_max_bound:
+                self.bounds[id,:] = bounds[id,:]
+                self.num_indexes[id] = num_indexes[id]
+            else:
+                self.bounds[id,1] = bounds[id,1] + bounds[id,1] % self.resolution[id]
+                self.bounds[id,0] = bounds[id,0] - bounds[id,0] % self.resolution[id]
+                self.num_indexes[id] = np.ceil((self.bounds[id,1]-self.bounds[id,0]) / self.resolution[id])
 
-                num_indexes[id] = np.ceil(num_indexes[id])
-        self.num_indexes = np.asarray(num_indexes, dtype=int)
+        self.num_indexes = np.asarray(self.num_indexes, dtype=int)
 
         self.motion = self.get_motion_model()
 
-    def find_workspace(self, start_pos, viz=None):
+    def find_workspace(self, start_pos, prev_q, viz=None):
 
-        start_n = self.create_node(start_pos, -1, None)
+        start_n = self.create_node(start_pos, -1, None, prev_q)
 
         open_set, closed_set = dict(), dict()
+        queue = deque()
         open_set[self.calc_grid_index(start_n)] = start_n
 
-        while len(open_set) != 0:
-
-            current = open_set.pop(list(open_set.keys())[0])
-
-            c_id = self.calc_grid_index(current)
+        queue.append(self.calc_grid_index(start_n))
+        while len(queue) != 0:
+            
+            c_id = queue.popleft()
+            current = open_set.pop(c_id)
             
             closed_set[c_id] = current
             
-            if current.is_reach:
-                plt.plot(current.pos[0],current.pos[1], "xc")
-                viz.display(current.q_arr)
-                # time.sleep(0.5)
-            else:
-                plt.plot(current.pos[0],current.pos[1], "xr")
-                viz.display(current.q_arr)
+            viz.display(current.q_arr)
+            boxID = "world/box" + "_ws_" + str(c_id)
+            # material = meshcat.geometry.MeshPhongMaterial()
+            # material.opacity = 0.5
+            # if current.is_reach:
+            #     plt.plot(current.pos[0],current.pos[1], "xc")
+            #     # time.sleep(0.5)
+            #     material.color = int(0x00FF00)
+            # else:
+            #     material.color = int(0xFF0000)
+            #     plt.plot(current.pos[0],current.pos[1], "xr")
+            # pos_3d = np.array([current.pos[0], 0, current.pos[1]])
+            # size_box = np.array([self.resolution[0], 0.001, self.resolution[1]])
+            # viz.viewer[boxID].set_object(meshcat.geometry.Box(size_box), material)
+            # T = np.r_[np.c_[np.eye(3), pos_3d], np.array([[0, 0, 0, 1]])]
+            # viz.viewer[boxID].set_transform(T)
                 # time.sleep(2)
             # for stopping simulation with the esc key.
             plt.gcf().canvas.mpl_connect('key_release_event',
@@ -117,18 +132,113 @@ class BreadthFirstSearchPlanner:
             if len(closed_set.keys()) % 1 == 0:
                 plt.pause(0.001)
 
+            all_direct_reach = []
+            close_rachable_node = []
             for i, moving in enumerate(self.motion):
                 new_pos = current.pos + moving[:-1] * self.resolution
 
                 if np.all(self.bounds[:, 0] <= new_pos) and np.all(new_pos <= self.bounds[:, 1]):
                     node = self.create_node(new_pos, c_id, None, current.q_arr)
                     n_id = self.calc_grid_index(node)
+                    all_direct_reach.append(node.is_reach)
                 else:
                     continue
+                if n_id in closed_set and closed_set[n_id].is_reach:
+                    close_rachable_node.append(closed_set[n_id])
+                
+                line_id = "world/line" + "_from_" + str(c_id) + "_to_" + str(n_id)
+                verteces = np.zeros((2,3))
+                verteces[0,:] = self.robot.motion_space.get_6d_point(current.pos)[:3]
+                verteces[1,:] = self.robot.motion_space.get_6d_point(node.pos)[:3]
+            
+                material = meshcat.geometry.LineBasicMaterial()
+                material.opacity = 1
+                material.linewidth = 50
+                if bool(node.is_reach):
+                    material.color = 0x66FFFF
+                else:
+                    material.color = 0x990099
+                pts_meshcat = meshcat.geometry.PointsGeometry(verteces.astype(np.float32).T)
+                viz.viewer[line_id].set_object(meshcat.geometry.Line(pts_meshcat, material))
                 
                 if (n_id not in closed_set) and (n_id not in open_set):
                     node.parent = current
                     open_set[n_id] = node
+                    # if bool(current.is_reach):
+                    queue.append(n_id)
+                    
+            
+            if not bool(current.is_reach) and len(close_rachable_node) > 0:
+                q_new_start = close_rachable_node[-1].q_arr
+                fix_current = self.create_node(current.pos, current.parent_index, current.parent,
+                                               q_new_start)
+                
+                if fix_current.is_reach:
+                    closed_set[c_id] = fix_current
+                    current = fix_current
+                    all_direct_reach = []
+                    for i, moving in enumerate(self.motion):
+                        new_pos = current.pos + moving[:-1] * self.resolution
+
+                        if np.all(self.bounds[:, 0] <= new_pos) and np.all(new_pos <= self.bounds[:, 1]):
+                            node = self.create_node(new_pos, c_id, None, current.q_arr)
+                            n_id = self.calc_grid_index(node)
+                            all_direct_reach.append(node.is_reach)
+                        else:
+                            continue
+                        line_id = "world/line" + "_from_" + str(c_id) + "_to_" + str(n_id)
+                        verteces = np.zeros((2,3))
+                        verteces[0,:] = self.robot.motion_space.get_6d_point(current.pos)[:3]
+                        verteces[1,:] = self.robot.motion_space.get_6d_point(node.pos)[:3]
+                    
+                        material = meshcat.geometry.LineBasicMaterial()
+                        material.opacity = 1
+                        material.linewidth = 50
+                        if bool(node.is_reach):
+                            material.color = 0x66FFFF
+                        else:
+                            material.color = 0x990099
+                        pts_meshcat = meshcat.geometry.PointsGeometry(verteces.astype(np.float32).T)
+                        viz.viewer[line_id].set_object(meshcat.geometry.Line(pts_meshcat, material))
+                        
+                        if n_id not in open_set:
+                            node.parent = current
+                            open_set[n_id] = node
+                            # queue.append(n_id)
+
+            
+            material = meshcat.geometry.MeshPhongMaterial()
+            material.opacity = 0.1
+            if not bool(current.is_reach):
+                # viz.viewer[boxID].delete()
+                material.color = int(0xFF0000)
+                plt.plot(current.pos[0],current.pos[1], "xr")
+            elif np.all(all_direct_reach):
+                plt.plot(current.pos[0],current.pos[1], "xc")
+                material.color = int(0x00FF00)
+            else:
+                material.color = 0xFFFF33
+                plt.plot(current.pos[0],current.pos[1], "xy")
+                
+            pos_3d = np.array([current.pos[0], 0, current.pos[1]])
+            size_box = np.array([self.resolution[0], 0.001, self.resolution[1]])
+            viz.viewer[boxID].set_object(meshcat.geometry.Box(size_box), material)
+            T = np.r_[np.c_[np.eye(3), pos_3d], np.array([[0, 0, 0, 1]])]
+            viz.viewer[boxID].set_transform(T)
+                    
+                    # cls_boxID = "world/box" + "_ws_" + str(n_id)
+                    # viz.viewer[cls_boxID].delete()
+                    # prev_node = closed_set[n_id]
+                    # pos_3d = np.array([prev_node.pos[0], 0, prev_node.pos[1]])
+                    # size_box = np.array([self.resolution[0], 0.001, self.resolution[1]])
+                    # viz.viewer[cls_boxID].set_object(meshcat.geometry.Box(size_box), material)
+                    # T = np.r_[np.c_[np.eye(3), pos_3d], np.array([[0, 0, 0, 1]])]
+                    # viz.viewer[cls_boxID].set_transform(T)
+                    # plt.plot(prev_node.pos[0],prev_node.pos[1], "xy")
+                    
+                
+
+        return closed_set
 
     def create_node(self, pos, parent_index, parent, prev_q = None):
         robot = self.robot
@@ -152,9 +262,10 @@ class BreadthFirstSearchPlanner:
             robot.constraint_models,
             robot.constraint_data,
             robot.actuation_model,
-            q_fixed,
+            q_fixed[0],
         )
         ee_id = robot.model.getFrameId(robot.ee_name)
+        pin.framesForwardKinematics(robot.model, robot.data, q_fixed[0])
         Jfclosed = (
             pin.computeFrameJacobian(
                 robot.model, robot.data, q_fixed[0], ee_id, pin.LOCAL_WORLD_ALIGNED
@@ -162,8 +273,11 @@ class BreadthFirstSearchPlanner:
             @ dq_dqmot
         )
 
-        __, S, __ = np.linalg.svd(Jfclosed)
+        __, S, __ = np.linalg.svd(Jfclosed[self.robot.motion_space.indexes,:],hermitian=True)
 
+        # if np.isclose(np.abs(S).min(), 0):
+        #     dext_index = 100
+        # else:
         dext_index = np.abs(S).max() / np.abs(S).min()
 
         real_pos = robot_ms.rewind_6d_point(poses_6d[0])
@@ -177,7 +291,7 @@ class BreadthFirstSearchPlanner:
 
         grid_index = 0
         for k, id in enumerate(idx):
-            grid_index += id * np.prod(self.num_indexes[k:])
+            grid_index += id * np.prod(self.num_indexes[:k])
 
         return grid_index
 
@@ -188,7 +302,7 @@ class BreadthFirstSearchPlanner:
         return pos_6d
 
     def calc_index(self, pos):
-        return (np.round((pos - self.bounds[:, 0]) / self.resolution)).astype(int)
+        return np.round((pos - self.bounds[:, 0]) / self.resolution).astype(int)
 
     def verify_node(self, node):
         pos = node.pos
@@ -203,11 +317,11 @@ class BreadthFirstSearchPlanner:
             [1, -1, np.sqrt(2)],
             [1, 0, 1],
             [1, 1, np.sqrt(2)],
+            [0, 1, 1],
             [-1, 1, np.sqrt(2)],
             [-1, 0, 1],
             [-1, -1, np.sqrt(2)],
             [0, -1, 1],
-            [0, 1, 1],
         ]
 
         return motion
@@ -218,7 +332,9 @@ if __name__== "__main__":
     from auto_robot_design.description.builder import (
         ParametrizedBuilder,
         URDFLinkCreator,
-        jps_graph2pinocchio_robot
+        URDFLinkCreater3DConstraints,
+        jps_graph2pinocchio_robot,
+        jps_graph2pinocchio_robot_3d_constraints
         )
     import meshcat
     from pinocchio.visualize import MeshcatVisualizer
@@ -228,31 +344,40 @@ if __name__== "__main__":
         closedLoopProximalMount,
     )
 
-    builder = ParametrizedBuilder(URDFLinkCreator)
+    builder = ParametrizedBuilder(URDFLinkCreater3DConstraints)
     
-    gm = get_preset_by_index_with_bounds(0)
+    gm = get_preset_by_index_with_bounds(8)
     x_centre = gm.generate_central_from_mutation_range()
     graph_jp = gm.get_graph(x_centre)
     
 
-    robo, __ = jps_graph2pinocchio_robot(graph_jp, builder=builder)
+    robo, __ = jps_graph2pinocchio_robot_3d_constraints(graph_jp, builder=builder)
     
-    start_pos = np.array([-0.12, -0.33])
+    center_bound = np.array([0, -0.25])
+    size_box_bound = np.array([0.05, 0.05])
+    
+    start_pos = center_bound
     pos_6d = np.zeros(6)
     pos_6d[[0,2]] = start_pos
     
     id_ee = robo.model.getFrameId(robo.ee_name)
     
+    pin.framesForwardKinematics(robo.model, robo.data, np.zeros(robo.model.nq))
+    
+    init_pos = robo.data.oMf[id_ee].translation[[0,2]]
+    traj_init_to_center = add_auxilary_points_to_trajectory(([start_pos[0]],[start_pos[1]]), init_pos)
+    
+    point_6d = robo.motion_space.get_6d_traj(np.array(traj_init_to_center).T)
     poses_6d, q_fixed, constraint_errors, reach_array = closed_loop_pseudo_inverse_follow(
         robo.model,
         robo.data,
         robo.constraint_models,
         robo.constraint_data,
         robo.ee_name,
-        [pos_6d],
+        point_6d,
     )
     
-    q = q_fixed[0]
+    q = q_fixed[-1]
     is_reach = reach_array[0]
     pin.forwardKinematics(robo.model, robo.data, q)
     ballID = "world/ball" + "_start"
@@ -272,16 +397,36 @@ if __name__== "__main__":
     viz.loadViewerModel()
     
     material.opacity = 1
-    viz.viewer[ballID].set_object(meshcat.geometry.Sphere(0.01), material)
-    T = np.r_[np.c_[np.eye(3), poses_6d[0][:3]], np.array([[0, 0, 0, 1]])]
+    viz.viewer[ballID].set_object(meshcat.geometry.Sphere(0.001), material)
+    T = np.r_[np.c_[np.eye(3), pos_6d[:3]], np.array([[0, 0, 0, 1]])]
     viz.viewer[ballID].set_transform(T)
     pin.framesForwardKinematics(robo.model, robo.data, q)
     viz.display(q)
 
-    bounds = np.array([[-0.09/2, 0.09/2], [-0.24/2, 0.24/2]])
-    bounds[0,: ] += -0.12
-    bounds[1,: ] += -0.33
+    bounds = np.array([[-size_box_bound[0]/2-.001, size_box_bound[0]/2], [-size_box_bound[1]/2, size_box_bound[1]/2]])
+    bounds[0,: ] += center_bound[0]
+    bounds[1,: ] += center_bound[1]
     
+    bound_pos = product(bounds[0,:], bounds[1,:])
     
-    ws_bfs = BreadthFirstSearchPlanner(robo, bounds, np.array([0.001, 0.001]), 0.5)
-    ws_bfs.find_workspace(start_pos, viz)
+    for k, pos in enumerate(bound_pos):
+        ballID = "world/ball" + "_bound_" + str(k)
+        material = meshcat.geometry.MeshPhongMaterial()
+        material.color = int(0x0000FF)
+        material.opacity = 1
+        pos_3d = np.array([pos[0], 0, pos[1]])
+        viz.viewer[ballID].set_object(meshcat.geometry.Sphere(0.003), material)
+        T = np.r_[np.c_[np.eye(3), pos_3d], np.array([[0, 0, 0, 1]])]
+        viz.viewer[ballID].set_transform(T)
+
+    pin.framesForwardKinematics(robo.model, robo.data, q)
+    viz.display(q)
+        
+    
+    ws_bfs = BreadthFirstSearchPlanner(robo, bounds, np.array([0.002, 0.002]), 0.5)
+    ws_bfs.vis = viz
+    viewed_nodes = ws_bfs.find_workspace(start_pos, q, viz)
+    
+    dext_index = [1/n.cost for n in viewed_nodes.values()]
+    
+    print(np.max(dext_index), np.min(dext_index))
