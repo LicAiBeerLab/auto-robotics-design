@@ -136,7 +136,7 @@ def dq_dqmot(model,actuation_model,LJ):
 
 def constraint_jacobian_active_to_passive(model,data,constraint_model,constraint_data,actuation_model,q0):
     #update of the jacobian an constraint model
-    # pin.computeJointJacobians(model,data,q0)
+    pin.computeJointJacobians(model,data,q0)
     LJ=[np.array(())]*len(constraint_model)
     for (cm,cd,i) in zip(constraint_model,constraint_data,range(len(LJ))):
         LJ[i]=pin.getConstraintJacobian(model,data,cm,cd)
@@ -191,7 +191,7 @@ def constraint_jacobian_active_to_passive(model,data,constraint_model,constraint
 
 def jacobian_constraint(model,data,constraint_model,constraint_data,actuation_model,q0):
     #update of the jacobian an constraint model
-    # pin.computeJointJacobians(model,data,q0)
+    pin.computeJointJacobians(model,data,q0)
     LJ=[np.array(())]*len(constraint_model)
     for (cm,cd,i) in zip(constraint_model,constraint_data,range(len(LJ))):
         LJ[i]=pin.getConstraintJacobian(model,data,cm,cd)
@@ -252,7 +252,7 @@ def inverseConstraintKinematicsSpeed(model,data,constraint_model,constraint_data
             - Jf_closed (np.array): Closed loop Jacobian on frame `ideff`.
     """
     #update of the jacobian an constraint model
-    # pin.computeJointJacobians(model,data,q0)
+    pin.computeJointJacobians(model,data,q0)
     LJ=[np.array(())]*len(constraint_model)
     for (cm,cd,i) in zip(constraint_model,constraint_data,range(len(LJ))):
         LJ[i]=pin.getConstraintJacobian(model,data,cm,cd)
