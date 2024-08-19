@@ -102,14 +102,15 @@ class BreadthFirstSearchPlanner:
         def __init__(
             self, pos, parent_index, cost=None, q_arr=None, parent=None, is_reach=None
         ):
-            self.pos = pos
-            self.cost = cost
-            self.q_arr = q_arr
-            self.parent_index = parent_index
-            self.parent = parent
-            self.is_reach = is_reach
+            self.pos = pos # Положение ноды в рабочем пространстве
+            self.cost = cost # Стоимость ноды = 1 / число обусловленности Якобиана
+            self.q_arr = q_arr # Координаты в конфигурационном пространстве
+            self.parent_index = parent_index # Индекс предыдущей ноды для bfs
+            self.parent = parent # Предыдущая нода, неоьязательное поле
+            self.is_reach = is_reach # Флаг, что до положение ноды можно достигнуть
 
         def transit_to_node(self, parent, q_arr, cost, is_reach):
+            # Обновляет параметры ноды
             self.q_arr = q_arr
             self.cost = cost
             self.parent = parent
@@ -135,12 +136,13 @@ class BreadthFirstSearchPlanner:
     ) -> None:
 
         self.robot = robot
-        self.resolution = grid_resolution
-        self.threshold = singularity_threshold
+        self.resolution = grid_resolution # Шаг сетки 
+        self.threshold = singularity_threshold # Максимальное значения для `индекса маневеренности` пока не используется
 
         num_indexes = (np.max(bounds, 1) - np.min(bounds, 1)) / self.resolution
         self.num_indexes = np.zeros_like(num_indexes)
         self.bounds = np.zeros_like(bounds)
+        # Коррекстируется бонды, чтобы не была проблем с расчетом индексов
         for id, idx_value in enumerate(num_indexes):
             residue_div = np.round(idx_value % 1, 6)
 
@@ -158,29 +160,31 @@ class BreadthFirstSearchPlanner:
                 )
 
         self.num_indexes = np.asarray(self.num_indexes, dtype=int)
-
+        # Варианты движения при обходе сетки (8-связности)
         self.motion = self.get_motion_model()
 
     def find_workspace(self, start_pos, prev_q, viz=None):
-
+        # Функция для заполнения сетки нодами и обхода их BFS
+        # Псевдо первая нода, определяется по стартовым положению, может не лежать на сетки
         pseudo_start_node = self.Node(start_pos, -1, q_arr=prev_q)
 
         start_index_on_grid = self.calc_index(start_pos)
         start_pos_on_grid = self.calc_grid_position(start_index_on_grid)
-
+        # Настоящая стартовая нода, которая лежит на сетки. Не имеет предков
         start_n = self.Node(start_pos_on_grid, -1)
+        # Проверка достижимости стартовой ноды из псевдо ноды
         self.transition_function(pseudo_start_node, start_n)
         start_n.parent = None
 
         del pseudo_start_node, start_index_on_grid, start_pos_on_grid
-
+        # Словари для обхода bfs
         open_set, closed_set = dict(), dict()
         queue = deque()
         open_set[self.calc_grid_index(start_n)] = start_n
 
         queue.append(self.calc_grid_index(start_n))
         while len(queue) != 0:
-
+            # Вытаскиваем первую из очереди ноду
             c_id = queue.popleft()
             current = open_set.pop(c_id)
 
@@ -211,21 +215,25 @@ class BreadthFirstSearchPlanner:
             if len(closed_set.keys()) % 1 == 0:
                 plt.pause(0.001)
 
+            # Массив для проверки, что из ноды можно идти в любую сторону
             all_direction_reach = []
+            # Массив соседей нодов, которые достижимы механизмом. 
+            # Необходимо для доп проверки текущей ноды
             close_rachable_node = []
-
+            # Соседние ноды
             neigb_node = {}
             for i, moving in enumerate(self.motion):
                 new_pos = current.pos + moving[:-1] * self.resolution
                 node = self.Node(new_pos, c_id)
-
+                # Проверка что ноды не вышли за бонды
                 if self.verify_node(node):
                     # node = self.create_node(new_pos, c_id, None, current.q_arr)
                     n_id = self.calc_grid_index(node)
                     neigb_node[n_id] = node
                 else:
                     continue
-
+                # Если в соседях есть исследованные вершины и достижимые
+                # то они добавляются в массив
                 if n_id in closed_set and closed_set[n_id].is_reach:
                     close_rachable_node.append(closed_set[n_id])
                 # line_id = "world/line" + "_from_" + str(c_id) + "_to_" + str(n_id)
@@ -242,10 +250,12 @@ class BreadthFirstSearchPlanner:
                 #     material.color = 0x990099
                 # pts_meshcat = meshcat.geometry.PointsGeometry(verteces.astype(np.float32).T)
                 # viz.viewer[line_id].set_object(meshcat.geometry.Line(pts_meshcat, material))
-
+            # Если текущая нода не достижима, то выполняется переход из достижимого соседа.
+            # Это необходимо для избавления случаев, когда переход из невалидной ноды в валидную ноду
+            # невозможно по причине плохих начальных условиях для IK. 
             if not bool(current.is_reach) and len(close_rachable_node) > 0:
                 self.transition_function(close_rachable_node[-1], current)
-
+            # Если нода достижима делаем шаг BFS
             if current.is_reach:
                 all_direction_reach = []
                 for n_id, node in neigb_node.items():
@@ -310,6 +320,9 @@ class BreadthFirstSearchPlanner:
         return closed_set
 
     def transition_function(self, from_node: Node, to_node: Node):
+        # Функция для перехода от одной ноды в другую. 
+        # По сути рассчитывает IK, где стартовая точка `from_node` (известны кушки) 
+        # в `to_node`
         robot = self.robot
 
         robot_ms = robot.motion_space
@@ -341,7 +354,7 @@ class BreadthFirstSearchPlanner:
             )
             @ dq_dqmot
         )
-
+        # Подсчет числа обусловленности Якобиана или индекса маневренности
         __, S, __ = np.linalg.svd(
             Jfclosed[self.robot.motion_space.indexes, :], hermitian=True
         )
