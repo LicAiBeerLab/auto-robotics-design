@@ -36,6 +36,66 @@ from auto_robot_design.pinokla.calc_criterion import (
 )
 
 
+class Workspace:
+    def __init__(self, robot, bounds, resolution):
+        ''' Class for working workspace of robot like grid with `resolution` and `bounds`. 
+        Grid's indices go from bottom-right to upper-left corner of bounds
+        
+        '''
+        self.robot = robot
+        self.resolution = resolution
+        self.bounds = bounds
+
+        # TODO: Need to change pattern. For example first create a workspace and BFS work and update with it.
+        num_indexes = (np.max(bounds, 1) - np.min(bounds, 1)) / self.resolution
+        self.mask_shape = np.zeros_like(num_indexes)
+        self.bounds = np.zeros_like(bounds)
+        # Bounds correction for removing ucertainties with indices. Indices was calculated with minimal `bounds` and `resolution`
+        for id, idx_value in enumerate(num_indexes):
+            residue_div = np.round(idx_value % 1, 6)
+
+            check_bound_size = np.isclose(residue_div, 0.0)
+            check_min_bound = np.isclose(bounds[id, 0] % self.resolution[id], 0)
+            check_max_bound = np.isclose(bounds[id, 1] % self.resolution[id], 0)
+            if check_bound_size and check_min_bound and check_max_bound:
+                self.bounds[id, :] = bounds[id, :]
+                self.mask_shape[id] = num_indexes[id]
+            else:
+                self.bounds[id, 1] = bounds[id, 1] + bounds[id, 1] % self.resolution[id]
+                self.bounds[id, 0] = bounds[id, 0] - bounds[id, 0] % self.resolution[id]
+                self.mask_shape[id] = np.ceil(
+                    (self.bounds[id, 1] - self.bounds[id, 0]) / self.resolution[id]
+                )
+
+        self.mask_shape = np.asarray(self.mask_shape, dtype=int)
+        
+        self.set_nodes = {}
+        # self.grid_nodes = np.zeros(tuple(self.mask_shape), dtype=object)
+    
+    def updated_by_bfs(self, set_expl_nodes):
+        
+        self.set_nodes = set_expl_nodes
+
+    def calc_grid_position(self, indexes):
+
+        pos = indexes * self.resolution + self.bounds[:, 0]
+
+        return pos
+
+    def calc_index(self, pos):
+        return np.round((pos - self.bounds[:, 0]) / self.resolution).astype(int)
+    
+    @property
+    def reachabilty_mask(self):
+        
+        mask = np.zeros(tuple(self.mask_shape), dtype=float)
+        
+        for node in self.set_nodes.values():
+            index = self.calc_index(node.pos)
+            mask[index-1] = node.is_reach
+
+        return mask
+
 class BreadthFirstSearchPlanner:
 
     class Node:
@@ -365,8 +425,8 @@ if __name__ == "__main__":
 
     robo, __ = jps_graph2pinocchio_robot_3d_constraints(graph_jp, builder=builder)
 
-    center_bound = np.array([0, -0.4])
-    size_box_bound = np.array([0.6, 0.3])
+    center_bound = np.array([0, -0.3])
+    size_box_bound = np.array([0.1, 0.1])
 
     start_pos = center_bound
     pos_6d = np.zeros(6)
@@ -449,3 +509,8 @@ if __name__ == "__main__":
     dext_index = [1 / n.cost for n in viewed_nodes.values()]
 
     print(np.nanmax(dext_index), np.nanmin(dext_index))
+    
+    workspace = Workspace(robo, bounds, np.array([0.01, 0.01]))
+    workspace.updated_by_bfs(viewed_nodes)
+    
+    workspace.reachabilty_mask
