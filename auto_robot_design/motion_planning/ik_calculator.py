@@ -3,7 +3,7 @@ import numpy as np
 from numpy.linalg import solve, norm, pinv
 
 
-def open_loop_ik(rmodel,  target_pos, ideff, q_start=None, eps=1e-5, max_it=30):
+def open_loop_ik(rmodel, target_pos, ideff, q_start=None, eps=1e-5, max_it=30):
     """This function is hitting nails with a microscope
 
         It actually works only for 2 link robot. For more links it will return some result, 
@@ -51,7 +51,7 @@ def closed_loop_ik_pseudo_inverse(rmodel,
                                   rconstraint_model, 
                                   target_pos, ideff, 
                                   q_start=None, 
-                                  onlytranslation:bool=False, 
+                                  onlytranslation:bool=True, 
                                   eps:float=1e-5, 
                                   max_it:int=30, 
                                   alpha:float=0.5, 
@@ -120,7 +120,7 @@ def closed_loop_ik_pseudo_inverse(rmodel,
         constraint_dim += cm.size()
 
     is_reach = False
-
+    # I dont know why we need kkt here, but it seems to fail without it
     kkt_constraint = pin.ContactCholeskyDecomposition(model, constraint_model)
     primal_feas_array = np.zeros(max_it)
     real_feas_array = np.zeros(max_it)
@@ -130,12 +130,12 @@ def closed_loop_ik_pseudo_inverse(rmodel,
     # IK search iteration loop
     for k in range(max_it):
         pin.computeJointJacobians(model, data, q)
-        kkt_constraint.compute(model, data, constraint_model, constraint_data)
+        kkt_constraint.compute(model, data, constraint_model, constraint_data)# mb here we actually update constraint_data and we can find more direct way to do it
         constraint_value = np.concatenate([
             (pin.log(cd.c1Mc2).np[:cm.size()])
             for (cd, cm) in zip(constraint_data, constraint_model)
         ])
-
+        # calculate total constraint Jacobian
         LJ = []
         for cm, cd in zip(constraint_model, constraint_data):
             Jc = pin.getConstraintJacobian(model, data, cm, cd)
@@ -151,21 +151,22 @@ def closed_loop_ik_pseudo_inverse(rmodel,
         if primal_feas < eps:
             is_reach = True
             break
-
-        # dq = np.linalg.pinv(J).dot(constraint_value)
-
+        # here we use pseudo inverse with additional regularization and l is parameter of the regularization
         dq = (J.T@(np.linalg.inv(J@J.T-l*np.eye(len(constraint_value))))
               ).dot(constraint_value)
-        q = pin.integrate(model, q, alpha * dq)
-        # pin.framesForwardKinematics(model, data, q)
-        # total_delta_q = q-q_start
+
+        # Jacobian methods use linearization, so any solution works only in small area. 
+        # If the solution step is large, it means the direction is close to singular one. 
+        # TODO: may be we should add some kind of normalization, the solution for dq is actually a direction and it is proportional to current constraints violation 
         if np.linalg.norm(dq, np.inf) > q_delta_threshold:
-            # print(dq)
             break
 
-    pin.framesForwardKinematics(model, data, q)
+        q = pin.integrate(model, q, alpha * dq)
+        # total_delta_q = q-q_start - alternatively we can use total error instead of a step error
+
     min_feas = primal_feas
     min_real_feas = real_constrain_feas
+    # if the required position is unreachable we choose the position closest to the required point 
     if not is_reach:
         for_sort = np.column_stack(
             (primal_feas_array[0:k+1], real_feas_array[0:k+1], q_array[0:k+1, :]))
@@ -181,7 +182,7 @@ def closed_loop_ik_pseudo_inverse(rmodel,
     return q, min_feas, is_reach
 
 
-def closed_loop_ik_grad(rmodel, rdata, rconstraint_model, rconstraint_data, target_pos, ideff, q_start=None, onlytranslation=False, eps=1e-5, step=1e-1, max_it=1000000):
+def closed_loop_ik_grad(rmodel, rconstraint_model, target_pos, ideff, q_start=None, onlytranslation=False, eps=1e-5, step=1e-1, max_it=1000000):
 
     model = pin.Model(rmodel)
     constraint_model = [pin.RigidConstraintModel(x) for x in rconstraint_model]

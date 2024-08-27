@@ -271,8 +271,6 @@ def inverseConstraintKinematicsSpeed(model,data,constraint_model,constraint_data
     Jmot=np.zeros((nc,nv_mot))
     Jfree=np.zeros((nc,nv_free))
     
-
-
     #separation between Jmot and Jfree
     
     nprec=0
@@ -307,7 +305,7 @@ def inverseConstraintKinematicsSpeed(model,data,constraint_model,constraint_data
     # data.oMi[model.getFrameId(ideff)]
     
     #computation of the kinematics
-    vqmot=np.linalg.pinv(Jf_closed)@veff 
+    vqmot=np.linalg.pinv(Jf_closed)@veff
     vqfree=-pinvJfree@Jmot@vqmot
     vqmotfree=np.concatenate((vqmot,vqfree))  # qmotfree=[qmot qfree]
     

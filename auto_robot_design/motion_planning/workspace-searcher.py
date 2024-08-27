@@ -11,7 +11,7 @@ from auto_robot_design.pinokla.closed_loop_jacobian import (
     closedLoopInverseKinematicsProximal, dq_dqmot,
     inverseConstraintKinematicsSpeed)
 from auto_robot_design.pinokla.closed_loop_kinematics import (
-    ForwardK, closedLoopProximalMount, closed_loop_ik_grad, closed_loop_ik_pseudo_inverse)
+    ForwardK, closedLoopProximalMount)
 from auto_robot_design.pinokla.criterion_math import (calc_manipulability,
                                                       ImfProjections, calc_actuated_mass, calc_effective_inertia,
                                                       calc_force_ell_projection_along_trj, calc_IMF, calculate_mass,

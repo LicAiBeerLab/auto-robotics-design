@@ -12,12 +12,13 @@ from auto_robot_design.pinokla.closed_loop_jacobian import (
     closedLoopInverseKinematicsProximal, dq_dqmot,
     inverseConstraintKinematicsSpeed)
 from auto_robot_design.pinokla.closed_loop_kinematics import (
-    ForwardK, closedLoopProximalMount, closed_loop_ik_grad, closed_loop_ik_pseudo_inverse)
+    ForwardK, closedLoopProximalMount)
 from auto_robot_design.pinokla.criterion_math import (calc_manipulability,
                                                       ImfProjections, calc_actuated_mass, calc_effective_inertia,
                                                       calc_force_ell_projection_along_trj, calc_IMF, calculate_mass,
                                                       convert_full_J_to_planar_xz)
 from auto_robot_design.pinokla.loader_tools import Robot
+from auto_robot_design.motion_planning.trajectory_ik_manager import IK_METHODS, open_loop_ik, closed_loop_ik_pseudo_inverse
 
 
 class MovmentSurface(IntFlag):
