@@ -54,7 +54,7 @@ class Workspace:
         for id, idx_value in enumerate(num_indexes):
             residue_div = np.round(idx_value % 1, 6)
 
-            check_bound_size = np.isclose(residue_div, 0.0)
+            check_bound_size = np.isclose(residue_div, 1.0)
             check_min_bound = np.isclose(bounds[id, 0] % self.resolution[id], 0)
             check_max_bound = np.isclose(bounds[id, 1] % self.resolution[id], 0)
             if check_bound_size and check_min_bound and check_max_bound:
@@ -66,12 +66,11 @@ class Workspace:
                 self.mask_shape[id] = np.ceil(
                     (self.bounds[id, 1] - self.bounds[id, 0]) / self.resolution[id]
                 )
-
         self.mask_shape = np.asarray(self.mask_shape, dtype=int)
-        
+        self.bounds = self.bounds.round(3)
         self.set_nodes = {}
         # self.grid_nodes = np.zeros(tuple(self.mask_shape), dtype=object)
-    
+
     def updated_by_bfs(self, set_expl_nodes):
         
         self.set_nodes = set_expl_nodes
@@ -92,7 +91,7 @@ class Workspace:
         
         for node in self.set_nodes.values():
             index = self.calc_index(node.pos)
-            mask[index-1] = node.is_reach
+            mask[tuple(index)] = node.is_reach
 
         return mask
 
@@ -129,37 +128,39 @@ class BreadthFirstSearchPlanner:
 
     def __init__(
         self,
-        robot: Robot,
-        bounds: np.ndarray,
-        grid_resolution: float,
-        singularity_threshold: float,
+        # robot: Robot,
+        # bounds: np.ndarray,
+        # grid_resolution: float,
+        workspace: Workspace
     ) -> None:
 
-        self.robot = robot
-        self.resolution = grid_resolution # Шаг сетки 
-        self.threshold = singularity_threshold # Максимальное значения для `индекса маневеренности` пока не используется
+        # self.robot = robot
+        # self.resolution = grid_resolution # Шаг сетки 
 
-        num_indexes = (np.max(bounds, 1) - np.min(bounds, 1)) / self.resolution
-        self.num_indexes = np.zeros_like(num_indexes)
-        self.bounds = np.zeros_like(bounds)
-        # Коррекстируется бонды, чтобы не была проблем с расчетом индексов
-        for id, idx_value in enumerate(num_indexes):
-            residue_div = np.round(idx_value % 1, 6)
+        # num_indexes = (np.max(bounds, 1) - np.min(bounds, 1)) / self.resolution
+        # self.num_indexes = np.zeros_like(num_indexes)
+        # self.bounds = np.zeros_like(bounds)
+        # # Коррекстируется бонды, чтобы не была проблем с расчетом индексов
+        # for id, idx_value in enumerate(num_indexes):
+        #     residue_div = np.round(idx_value % 1, 6)
 
-            check_bound_size = np.isclose(residue_div, 0.0)
-            check_min_bound = np.isclose(bounds[id, 0] % self.resolution[id], 0)
-            check_max_bound = np.isclose(bounds[id, 1] % self.resolution[id], 0)
-            if check_bound_size and check_min_bound and check_max_bound:
-                self.bounds[id, :] = bounds[id, :]
-                self.num_indexes[id] = num_indexes[id]
-            else:
-                self.bounds[id, 1] = bounds[id, 1] + bounds[id, 1] % self.resolution[id]
-                self.bounds[id, 0] = bounds[id, 0] - bounds[id, 0] % self.resolution[id]
-                self.num_indexes[id] = np.ceil(
-                    (self.bounds[id, 1] - self.bounds[id, 0]) / self.resolution[id]
-                )
+        #     check_bound_size = np.isclose(residue_div, 0.0)
+        #     check_min_bound = np.isclose(bounds[id, 0] % self.resolution[id], 0)
+        #     check_max_bound = np.isclose(bounds[id, 1] % self.resolution[id], 0)
+        #     if check_bound_size and check_min_bound and check_max_bound:
+        #         self.bounds[id, :] = bounds[id, :]
+        #         self.num_indexes[id] = num_indexes[id]
+        #     else:
+        #         self.bounds[id, 1] = bounds[id, 1] + bounds[id, 1] % self.resolution[id]
+        #         self.bounds[id, 0] = bounds[id, 0] - bounds[id, 0] % self.resolution[id]
+        #         self.num_indexes[id] = np.ceil(
+        #             (self.bounds[id, 1] - self.bounds[id, 0]) / self.resolution[id]
+        #         )
 
-        self.num_indexes = np.asarray(self.num_indexes, dtype=int)
+        # self.num_indexes = np.asarray(self.num_indexes, dtype=int)
+        self.workspace = workspace
+        self.num_indexes = self.workspace.mask_shape
+        
         # Варианты движения при обходе сетки (8-связности)
         self.motion = self.get_motion_model()
 
@@ -168,8 +169,8 @@ class BreadthFirstSearchPlanner:
         # Псевдо первая нода, определяется по стартовым положению, может не лежать на сетки
         pseudo_start_node = self.Node(start_pos, -1, q_arr=prev_q)
 
-        start_index_on_grid = self.calc_index(start_pos)
-        start_pos_on_grid = self.calc_grid_position(start_index_on_grid)
+        start_index_on_grid = self.workspace.calc_index(start_pos)
+        start_pos_on_grid = self.workspace.calc_grid_position(start_index_on_grid)
         # Настоящая стартовая нода, которая лежит на сетки. Не имеет предков
         start_n = self.Node(start_pos_on_grid, -1)
         # Проверка достижимости стартовой ноды из псевдо ноды
@@ -183,7 +184,7 @@ class BreadthFirstSearchPlanner:
         open_set[self.calc_grid_index(start_n)] = start_n
 
         queue.append(self.calc_grid_index(start_n))
-        while len(queue) != 0:
+        while len(open_set) != 0:
             # Вытаскиваем первую из очереди ноду
             c_id = queue.popleft()
             current = open_set.pop(c_id)
@@ -223,7 +224,7 @@ class BreadthFirstSearchPlanner:
             # Соседние ноды
             neigb_node = {}
             for i, moving in enumerate(self.motion):
-                new_pos = current.pos + moving[:-1] * self.resolution
+                new_pos = current.pos + moving[:-1] * self.workspace.resolution
                 node = self.Node(new_pos, c_id)
                 # Проверка что ноды не вышли за бонды
                 if self.verify_node(node):
@@ -231,6 +232,7 @@ class BreadthFirstSearchPlanner:
                     n_id = self.calc_grid_index(node)
                     neigb_node[n_id] = node
                 else:
+                    print(f"woop {node.pos}")
                     continue
                 # Если в соседях есть исследованные вершины и достижимые
                 # то они добавляются в массив
@@ -317,13 +319,14 @@ class BreadthFirstSearchPlanner:
             # viz.viewer[cls_boxID].set_transform(T)
             # plt.plot(prev_node.pos[0],prev_node.pos[1], "xy")
 
-        return closed_set
+        self.workspace.updated_by_bfs(closed_set)
+        return self.workspace
 
     def transition_function(self, from_node: Node, to_node: Node):
         # Функция для перехода от одной ноды в другую. 
         # По сути рассчитывает IK, где стартовая точка `from_node` (известны кушки) 
         # в `to_node`
-        robot = self.robot
+        robot = self.workspace.robot
 
         robot_ms = robot.motion_space
         poses_6d, q_fixed, constraint_errors, reach_array = (
@@ -356,7 +359,7 @@ class BreadthFirstSearchPlanner:
         )
         # Подсчет числа обусловленности Якобиана или индекса маневренности
         __, S, __ = np.linalg.svd(
-            Jfclosed[self.robot.motion_space.indexes, :], hermitian=True
+            Jfclosed[robot.motion_space.indexes, :], hermitian=True
         )
 
         # if np.isclose(np.abs(S).min(), 0):
@@ -371,7 +374,7 @@ class BreadthFirstSearchPlanner:
         )
 
     def calc_grid_index(self, node):
-        idx = self.calc_index(node.pos)
+        idx = self.workspace.calc_index(node.pos)
 
         grid_index = 0
         for k, id in enumerate(idx):
@@ -379,20 +382,20 @@ class BreadthFirstSearchPlanner:
 
         return grid_index
 
-    def calc_grid_position(self, indexes):
+    # def calc_grid_position(self, indexes):
 
-        pos = indexes * self.resolution + self.bounds[:, 0]
+    #     pos = indexes * self.workspace.resolution + self.workspace.bounds[:, 0]
 
-        return pos
+    #     return pos
 
-    def calc_index(self, pos):
-        return np.round((pos - self.bounds[:, 0]) / self.resolution).astype(int)
+    # def calc_index(self, pos):
+    #     return np.round((pos - self.workspace.bounds[:, 0]) / self.workspace.resolution).astype(int)
 
     def verify_node(self, node):
         pos = node.pos
-        if np.any(pos < self.bounds[:, 0]) or np.any(pos > self.bounds[:, 1]):
-            return False
-        return True
+        if np.all(pos >= self.workspace.bounds[:, 0]) and np.all(pos <= self.workspace.bounds[:, 1]):
+            return True
+        return False
 
     @staticmethod
     def get_motion_model():
@@ -438,7 +441,7 @@ if __name__ == "__main__":
 
     robo, __ = jps_graph2pinocchio_robot_3d_constraints(graph_jp, builder=builder)
 
-    center_bound = np.array([0, -0.3])
+    center_bound = np.array([0, -0.4])
     size_box_bound = np.array([0.1, 0.1])
 
     start_pos = center_bound
@@ -515,15 +518,15 @@ if __name__ == "__main__":
     pin.framesForwardKinematics(robo.model, robo.data, q)
     viz.display(q)
 
-    ws_bfs = BreadthFirstSearchPlanner(robo, bounds, np.array([0.01, 0.01]), 0.5)
-    ws_bfs.vis = viz
-    viewed_nodes = ws_bfs.find_workspace(start_pos, q, viz)
-
-    dext_index = [1 / n.cost for n in viewed_nodes.values()]
-
-    print(np.nanmax(dext_index), np.nanmin(dext_index))
-    
     workspace = Workspace(robo, bounds, np.array([0.01, 0.01]))
-    workspace.updated_by_bfs(viewed_nodes)
+    ws_bfs = BreadthFirstSearchPlanner(workspace)
+    ws_bfs.vis = viz
+    workspace = ws_bfs.find_workspace(start_pos, q, viz)
+
+    # dext_index = [1 / n.cost for n in viewed_nodes.values()]
+
+    # print(np.nanmax(dext_index), np.nanmin(dext_index))
+    
+    # workspace.updated_by_bfs(viewed_nodes)
     
     workspace.reachabilty_mask
