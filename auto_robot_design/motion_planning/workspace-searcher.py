@@ -90,7 +90,7 @@ class Workspace:
         mask = np.zeros(tuple(self.mask_shape), dtype=float)
         
         for node in self.set_nodes.values():
-            index = self.calc_index(node.pos)
+            index = self.calc_index(node.pos) -1 
             mask[tuple(index)] = node.is_reach
 
         return mask
@@ -179,7 +179,7 @@ class BreadthFirstSearchPlanner:
 
         del pseudo_start_node, start_index_on_grid, start_pos_on_grid
         # Словари для обхода bfs
-        open_set, closed_set = dict(), dict()
+        open_set, closed_set, bad_nodes = dict(), dict(), dict()
         queue = deque()
         open_set[self.calc_grid_index(start_n)] = start_n
 
@@ -193,21 +193,23 @@ class BreadthFirstSearchPlanner:
 
             viz.display(current.q_arr)
             boxID = "world/box" + "_ws_" + str(c_id)
-            # material = meshcat.geometry.MeshPhongMaterial()
-            # material.opacity = 0.5
-            # if current.is_reach:
-            #     plt.plot(current.pos[0],current.pos[1], "xc")
-            #     # time.sleep(0.5)
-            #     material.color = int(0x00FF00)
-            # else:
-            #     material.color = int(0xFF0000)
-            #     plt.plot(current.pos[0],current.pos[1], "xr")
-            # pos_3d = np.array([current.pos[0], 0, current.pos[1]])
-            # size_box = np.array([self.resolution[0], 0.001, self.resolution[1]])
-            # viz.viewer[boxID].set_object(meshcat.geometry.Box(size_box), material)
-            # T = np.r_[np.c_[np.eye(3), pos_3d], np.array([[0, 0, 0, 1]])]
-            # viz.viewer[boxID].set_transform(T)
+            material = meshcat.geometry.MeshPhongMaterial()
+            material.opacity = 0.5
+            if current.is_reach:
+                plt.plot(current.pos[0],current.pos[1], "xc")
+                # time.sleep(0.5)
+                material.color = int(0x00FF00)
+            else:
+                material.color = int(0xFF0000)
+                plt.plot(current.pos[0],current.pos[1], "xr")
+            pos_3d = np.array([current.pos[0], 0, current.pos[1]])
+            size_box = np.array([self.workspace.resolution[0], 0.001, self.workspace.resolution[1]])
+            viz.viewer[boxID].set_object(meshcat.geometry.Box(size_box), material)
+            T = np.r_[np.c_[np.eye(3), pos_3d], np.array([[0, 0, 0, 1]])]
+            viz.viewer[boxID].set_transform(T)
             # time.sleep(2)
+            
+            
             # for stopping simulation with the esc key.
             plt.gcf().canvas.mpl_connect(
                 "key_release_event",
@@ -232,12 +234,11 @@ class BreadthFirstSearchPlanner:
                     n_id = self.calc_grid_index(node)
                     neigb_node[n_id] = node
                 else:
-                    print(f"woop {node.pos}")
                     continue
                 # Если в соседях есть исследованные вершины и достижимые
                 # то они добавляются в массив
-                if n_id in closed_set and closed_set[n_id].is_reach:
-                    close_rachable_node.append(closed_set[n_id])
+                # if n_id in closed_set and closed_set[n_id].is_reach:
+                #     close_rachable_node.append(closed_set[n_id])
                 # line_id = "world/line" + "_from_" + str(c_id) + "_to_" + str(n_id)
                 # verteces = np.zeros((2,3))
                 # verteces[0,:] = self.robot.motion_space.get_6d_point(current.pos)[:3]
@@ -252,36 +253,44 @@ class BreadthFirstSearchPlanner:
                 #     material.color = 0x990099
                 # pts_meshcat = meshcat.geometry.PointsGeometry(verteces.astype(np.float32).T)
                 # viz.viewer[line_id].set_object(meshcat.geometry.Line(pts_meshcat, material))
+                
+    
             # Если текущая нода не достижима, то выполняется переход из достижимого соседа.
             # Это необходимо для избавления случаев, когда переход из невалидной ноды в валидную ноду
             # невозможно по причине плохих начальных условиях для IK. 
-            if not bool(current.is_reach) and len(close_rachable_node) > 0:
-                self.transition_function(close_rachable_node[-1], current)
+            # if not bool(current.is_reach) and len(close_rachable_node) > 0:
+            #     self.transition_function(close_rachable_node[-1], current)
             # Если нода достижима делаем шаг BFS
-            if current.is_reach:
-                all_direction_reach = []
-                for n_id, node in neigb_node.items():
+            
+            # if current.is_reach:
+            # all_direction_reach = []
+            for n_id, node in neigb_node.items():
 
-                    if (n_id not in closed_set) and (n_id not in open_set):
-                        self.transition_function(current, node)
-                        all_direction_reach.append(node.is_reach)
+                if (n_id not in closed_set) and (n_id not in open_set) and (n_id not in bad_nodes):
+                    self.transition_function(current, node)
+                    # all_direction_reach.append(node.is_reach)
+                    if node.is_reach:
                         open_set[n_id] = node
-                        # if bool(current.is_reach):
+                    # if bool(current.is_reach):
                         queue.append(n_id)
-                        # line_id = "world/line" + "_from_" + str(c_id) + "_to_" + str(n_id)
-                        # verteces = np.zeros((2,3))
-                        # verteces[0,:] = self.robot.motion_space.get_6d_point(current.pos)[:3]
-                        # verteces[1,:] = self.robot.motion_space.get_6d_point(node.pos)[:3]
+                    else:
+                        bad_nodes[n_id] = node
+                        
 
-                        # material = meshcat.geometry.LineBasicMaterial()
-                        # material.opacity = 1
-                        # material.linewidth = 50
-                        # if bool(node.is_reach):
-                        #     material.color = 0x66FFFF
-                        # else:
-                        #     material.color = 0x990099
-                        # pts_meshcat = meshcat.geometry.PointsGeometry(verteces.astype(np.float32).T)
-                        # viz.viewer[line_id].set_object(meshcat.geometry.Line(pts_meshcat, material))
+                    line_id = "world/line" + "_from_" + str(c_id) + "_to_" + str(n_id)
+                    verteces = np.zeros((2,3))
+                    verteces[0,:] = self.workspace.robot.motion_space.get_6d_point(current.pos)[:3]
+                    verteces[1,:] = self.workspace.robot.motion_space.get_6d_point(node.pos)[:3]
+
+                    material = meshcat.geometry.LineBasicMaterial()
+                    material.opacity = 1
+                    material.linewidth = 50
+                    if bool(node.is_reach):
+                        material.color = 0x66FFFF
+                    else:
+                        material.color = 0x990099
+                    pts_meshcat = meshcat.geometry.PointsGeometry(verteces.astype(np.float32).T)
+                    viz.viewer[line_id].set_object(meshcat.geometry.Line(pts_meshcat, material))
 
             # material = meshcat.geometry.MeshPhongMaterial()
             # material.opacity = 0.2
@@ -289,12 +298,13 @@ class BreadthFirstSearchPlanner:
                 # viz.viewer[boxID].delete()
                 # material.color = int(0xFF0000)
                 plt.plot(current.pos[0], current.pos[1], "xr")
-            elif np.all(all_direction_reach):
-                plt.plot(current.pos[0], current.pos[1], "xc")
+            # elif np.all(all_direction_reach):
+            #     plt.plot(current.pos[0], current.pos[1], "xc")
                 # material.color = int(0x00FF00)
             else:
                 # material.color = 0xFFFF33
-                plt.plot(current.pos[0], current.pos[1], "xy")
+                # plt.plot(current.pos[0], current.pos[1], "xy")
+                plt.plot(current.pos[0], current.pos[1], "xc")
 
             # if 1/current.cost < 1.5:
             #     material.color = int(0x00FF00)
@@ -340,35 +350,38 @@ class BreadthFirstSearchPlanner:
                 q_start=from_node.q_arr,
             )
         )
+        if not np.isclose(reach_array[0], 0):
 
-        dq_dqmot, __ = constraint_jacobian_active_to_passive(
-            robot.model,
-            robot.data,
-            robot.constraint_models,
-            robot.constraint_data,
-            robot.actuation_model,
-            q_fixed[0],
-        )
-        ee_id = robot.model.getFrameId(robot.ee_name)
-        pin.framesForwardKinematics(robot.model, robot.data, q_fixed[0])
-        Jfclosed = (
-            pin.computeFrameJacobian(
-                robot.model, robot.data, q_fixed[0], ee_id, pin.LOCAL_WORLD_ALIGNED
+            dq_dqmot, __ = constraint_jacobian_active_to_passive(
+                robot.model,
+                robot.data,
+                robot.constraint_models,
+                robot.constraint_data,
+                robot.actuation_model,
+                q_fixed[0],
             )
-            @ dq_dqmot
-        )
-        # Подсчет числа обусловленности Якобиана или индекса маневренности
-        __, S, __ = np.linalg.svd(
-            Jfclosed[robot.motion_space.indexes, :], hermitian=True
-        )
+            ee_id = robot.model.getFrameId(robot.ee_name)
+            pin.framesForwardKinematics(robot.model, robot.data, q_fixed[0])
+            Jfclosed = (
+                pin.computeFrameJacobian(
+                    robot.model, robot.data, q_fixed[0], ee_id, pin.LOCAL_WORLD_ALIGNED
+                )
+                @ dq_dqmot
+            )
+            # Подсчет числа обусловленности Якобиана или индекса маневренности
+            __, S, __ = np.linalg.svd(
+                Jfclosed[robot.motion_space.indexes, :], hermitian=True
+            )
 
-        # if np.isclose(np.abs(S).min(), 0):
-        #     dext_index = 100
-        # else:
-        dext_index = np.abs(S).max() / np.abs(S).min()
+            # if np.isclose(np.abs(S).min(), 0):
+            #     dext_index = 100
+            # else:
+            dext_index = np.abs(S).max() / np.abs(S).min()
 
-        real_pos = robot_ms.rewind_6d_point(poses_6d[0])
-
+            real_pos = robot_ms.rewind_6d_point(poses_6d[0])
+        else:
+            dext_index = np.inf
+            
         to_node.transit_to_node(
             from_node, q_fixed[0], 1 / dext_index, bool(reach_array[0])
         )
@@ -401,13 +414,13 @@ class BreadthFirstSearchPlanner:
     def get_motion_model():
         # dx, dy, cost
         motion = [
-            [1, -1, np.sqrt(2)],
+            # [1, -1, np.sqrt(2)],
             [1, 0, 1],
-            [1, 1, np.sqrt(2)],
+            # [1, 1, np.sqrt(2)],
             [0, 1, 1],
-            [-1, 1, np.sqrt(2)],
+            # [-1, 1, np.sqrt(2)],
             [-1, 0, 1],
-            [-1, -1, np.sqrt(2)],
+            # [-1, -1, np.sqrt(2)],
             [0, -1, 1],
         ]
 
@@ -435,14 +448,14 @@ if __name__ == "__main__":
 
     builder = ParametrizedBuilder(URDFLinkCreater3DConstraints)
 
-    gm = get_preset_by_index_with_bounds(0)
+    gm = get_preset_by_index_with_bounds(7)
     x_centre = gm.generate_central_from_mutation_range()
     graph_jp = gm.get_graph(x_centre)
 
     robo, __ = jps_graph2pinocchio_robot_3d_constraints(graph_jp, builder=builder)
 
-    center_bound = np.array([0, -0.4])
-    size_box_bound = np.array([0.1, 0.1])
+    center_bound = np.array([0, -0.3])
+    size_box_bound = np.array([0.6, 0.4])
 
     start_pos = center_bound
     pos_6d = np.zeros(6)
@@ -468,8 +481,12 @@ if __name__ == "__main__":
             point_6d,
         )
     )
+    start_pos = init_pos
+    pos_6d = np.zeros(6)
+    pos_6d[[0, 2]] = start_pos
 
-    q = q_fixed[-1]
+    q = np.zeros(robo.model.nq)
+    # q = q_fixed[-1]
     is_reach = reach_array[0]
     pin.forwardKinematics(robo.model, robo.data, q)
     ballID = "world/ball" + "_start"
