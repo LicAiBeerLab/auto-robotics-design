@@ -1,15 +1,18 @@
-from hashlib import sha256
 import os
+from hashlib import sha256
 from pathlib import Path
-from auto_robot_design.pinokla.calc_criterion import ComputeInterfaceMoment, DataDict, along_criteria_calc, iterate_over_q_space, moment_criteria_calc
-from auto_robot_design.pinokla.loader_tools import (
-    build_model_with_extensions,
-    Robot,
-)
-# from auto_robot_design.pinokla.calc_criterion import (
-#     folow_traj_by_proximal_inv_k, closed_loop_pseudo_inverse_follow)
+
 import numpy as np
-from auto_robot_design.motion_planning.trajectory_ik_manager import IK_METHODS, TrajectoryIKManager
+
+from auto_robot_design.motion_planning.trajectory_ik_manager import (
+    IK_METHODS, TrajectoryIKManager)
+from auto_robot_design.pinokla.calc_criterion import (ComputeInterfaceMoment,
+                                                      DataDict,
+                                                      along_criteria_calc,
+                                                      iterate_over_q_space,
+                                                      moment_criteria_calc)
+from auto_robot_design.pinokla.loader_tools import (
+    Robot, build_model_with_extensions)
 
 
 def calculate_quasi_static_simdata(free_robot: Robot,
@@ -30,18 +33,11 @@ def calculate_quasi_static_simdata(free_robot: Robot,
     Returns:
         tuple[DataDict, DataDict]: free data, closed data
     """
-    # get the actual ee poses, corresponding joint (generalized coordinates) positions and errors for unreachable trajectory points 
-    # poses, q_fixed, constraint_errors = folow_traj_by_proximal_inv_k(
-    #     fixed_robot.model, fixed_robot.data, fixed_robot.constraint_models,
-    #     fixed_robot.constraint_data, ee_frame_name, traj_6d, viz)
-    
+    # create the trajectory manager and set the solver
     ik_manager = TrajectoryIKManager()
     ik_manager.register_model(fixed_robot.model, fixed_robot.constraint_models)
     ik_manager.set_solver("Closed_Loop_PI")
     poses, q_fixed, constraint_errors,reach_array = ik_manager.follow_trajectory(traj_6d)
-    # poses, q_fixed, constraint_errors,reach_array = closed_loop_pseudo_inverse_follow(
-    #     fixed_robot.model, fixed_robot.data, fixed_robot.constraint_models,
-    #     fixed_robot.constraint_data, ee_frame_name, traj_6d, viz)
 
     # add standard body position to all points in the q space
     normal_pose = np.array([0, 0, 0, 0, 0, 0, 1], dtype=np.float64)
@@ -80,7 +76,7 @@ class CriteriaAggregator:
         self.dict_along_criteria = dict_along_criteria
         self.end_effector_name = "EE"
 
-    def get_criteria_data(self, fixed_robot, free_robot, traj_6d, n_auxiliary_points:int = 50,viz=None):
+    def get_criteria_data(self, fixed_robot, free_robot, traj_6d, n_auxiliary_points:int = 50, viz=None):
         """Perform calculating
 
         Args:

@@ -80,7 +80,6 @@ def closed_loop_ik_pseudo_inverse(rmodel,
     Returns:
         _type_: _description_
     """
-    
     # create copy of the model, constraints and corresponding data
     model = pin.Model(rmodel)
     constraint_model = [pin.RigidConstraintModel(x) for x in rconstraint_model]
@@ -166,7 +165,7 @@ def closed_loop_ik_pseudo_inverse(rmodel,
 
     min_feas = primal_feas
     min_real_feas = real_constrain_feas
-    # if the required position is unreachable we choose the position closest to the required point 
+    # if the required position is unreachable we choose the position closest to the required point
     if not is_reach:
         for_sort = np.column_stack(
             (primal_feas_array[0:k+1], real_feas_array[0:k+1], q_array[0:k+1, :]))
