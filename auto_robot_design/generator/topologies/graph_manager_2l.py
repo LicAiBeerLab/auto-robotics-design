@@ -12,7 +12,7 @@ from auto_robot_design.description.builder import add_branch
 
 class MutationType(Enum):
     """Enumerate for mutation types."""
-    UNMOVABLE = 0  # Unmovable joint that is not used for optimization
+    #UNMOVABLE = 0  # Unmovable joint that is not used for optimization
     ABSOLUTE = 1  # The movement of the joint are in the absolute coordinate system and are relative to the initial position
     RELATIVE = 2  # The movement of the joint are relative to some other joint or joints and doesn't have an initial position
     # The movement of the joint are relative to some other joint or joints and doesn't have an initial position. The movement is in percentage of the distance between the joints.
@@ -22,11 +22,13 @@ class MutationType(Enum):
 @dataclass
 class GeneratorInfo:
     """Information for node of a generator."""
-    mutation_type: int = MutationType.UNMOVABLE
+    mutation_type: int = MutationType.ABSOLUTE
     initial_coordinate: np.ndarray = np.zeros(3)
     mutation_range: List[Optional[Tuple]] = field(
         default_factory=lambda: [None, None, None])
     relative_to: Optional[Union[JointPoint, List[JointPoint]]] = None
+    freeze_pos: List[Optional[Tuple]] = field(
+        default_factory=lambda: [None, 0, None])
 
 
 @dataclass
@@ -34,7 +36,7 @@ class ConnectionInfo:
     """Description of a point for branch connection."""
     connection_jp: JointPoint
     jp_connection_to_main: List[JointPoint]
-    relative_mutation_range: List[Optional[Tuple]]
+    relative_mutation_range: List[Optional[Tuple]] # this parameter is used to set the mutation range of the branch joints
 
 
 class GraphManager2L():
@@ -65,7 +67,7 @@ class GraphManager2L():
             length (float): length of the main branch that we use as a reference for all sizes.
         """
         ground_joint = JointPoint(
-            r=np.zeros(3),
+            r=None,
             w=np.array([0, 1, 0]),
             attach_ground=True,
             active=True,
@@ -75,25 +77,27 @@ class GraphManager2L():
         self.generator_dict[ground_joint] = GeneratorInfo()
 
         ground_connection_jp = JointPoint(
-            r=np.array([0, 0, 0.001]),
+            r=None,
             w=np.array([0, 1, 0]),
             attach_ground=True,
             active=False,  # initial value is false, it should be changed in branch attachment process
             name="Ground_connection"
         )
 
-        self.generator_dict[ground_connection_jp] = GeneratorInfo(MutationType.ABSOLUTE, np.array(
+        self.generator_dict[ground_connection_jp] = GeneratorInfo(mutation_type= MutationType.ABSOLUTE, initial_coordinate=np.array(
             [0, 0, 0.001]), mutation_range=[(-0.2, 0.), None, (-0.03, 0.07)])
+
         ground_connection_description = ConnectionInfo(
             ground_connection_jp, [], [(-0.05, 0.1), None, (-0.3, -0.1)])
         self.main_connections.append(ground_connection_description)
 
         knee_joint_pos = np.array([0.03, 0, -length/2])
         knee_joint = JointPoint(
-            r=knee_joint_pos, w=np.array([0, 1, 0]), active=fully_actuated, name="Main_knee")
+            r=None, w=np.array([0, 1, 0]), active=fully_actuated, name="Main_knee")
         self.current_main_branch.append(knee_joint)
+        
         self.generator_dict[knee_joint] = GeneratorInfo(
-            MutationType.ABSOLUTE, knee_joint_pos.copy(), mutation_range=[None, None, (-0.1, 0.1)])
+            MutationType.ABSOLUTE, initial_coordinate=knee_joint_pos.copy(), mutation_range=[None, None, (-0.1, 0.1)])
 
         first_connection = JointPoint(r=None, w=np.array([
                                       0, 1, 0]), name="Main_connection_1")
@@ -106,7 +110,7 @@ class GraphManager2L():
         self.main_connections.append(first_connection_description)
 
         ee = JointPoint(
-            r=np.array([0, 0, -length]),
+            r=None,
             w=np.array([0, 1, 0]),
             attach_endeffector=True,
             name="Main_ee"
@@ -115,12 +119,10 @@ class GraphManager2L():
         self.generator_dict[ee] = GeneratorInfo(
             initial_coordinate=np.array([0, 0, -length]))
 
-        second_connection = JointPoint(r=None, w=np.array([
-                                       0, 1, 0]), name="Main_connection_2")
+        second_connection = JointPoint(r=None, w=np.array([0, 1, 0]), name="Main_connection_2")
         # self.generator_dict[second_connection] = GeneratorInfo(MutationType.RELATIVE, None, mutation_range=[
         #                                                        (-0.05, 0.05), None, (-0.15, 0.15)], relative_to=[knee_joint, ee])
-        self.generator_dict[second_connection] = GeneratorInfo(MutationType.RELATIVE_PERCENTAGE, None, mutation_range=[
-                                                               (-0.2, 0.2), None, (-0.6, 0.3)], relative_to=[knee_joint, ee])
+        self.generator_dict[second_connection] = GeneratorInfo(MutationType.RELATIVE_PERCENTAGE, None, mutation_range=[(-0.2, 0.2), None, (-0.6, 0.3)], relative_to=[knee_joint, ee])
         second_connection_description = ConnectionInfo(
             second_connection, [knee_joint, ee], [(-0.1, 0), None, (0, 0.1)])
         self.main_connections.append(second_connection_description)
@@ -263,10 +265,20 @@ class GraphManager2L():
                 self.graph.add_edge(cd, jp)
         self.graph.add_edge(branch_jp_2, branch_jp_1)
 
+    def freeze_joint(self, joint: JointPoint, freeze_pos: List[Optional[Tuple]]):
+        """Freeze the position of the joint.
+
+        Args:
+            joint (JointPoint): the joint to be frozen.
+            freeze_pos (List[Optional[Tuple]]): the position to be frozen.
+        """
+        self.generator_dict[joint].freeze_pos = freeze_pos
+
     def set_mutation_ranges(self):
         """Traverse the generator_dict to get all mutable parameters and their ranges.
         """
-        
+        self.mutation_ranges = {}
+        # remove all auxiliary joint points from generator_dict
         keys = list(self.generator_dict)
         for key in keys:
             if key not in self.graph.nodes:
@@ -275,11 +287,11 @@ class GraphManager2L():
         for key, value in self.generator_dict.items():
             if value.mutation_type == MutationType.RELATIVE or value.mutation_type == MutationType.RELATIVE_PERCENTAGE:
                 for i, r in enumerate(value.mutation_range):
-                    if r is not None:
+                    if r is not None and value.freeze_pos[i] is None:
                         self.mutation_ranges[key.name+'_'+str(i)] = r
             elif value.mutation_type == MutationType.ABSOLUTE:
                 for i, r in enumerate(value.mutation_range):
-                    if r is not None:
+                    if r is not None and value.freeze_pos[i] is None:
                         self.mutation_ranges[key.name+'_'+str(i)] = (
                             r[0]+value.initial_coordinate[i], r[1]+value.initial_coordinate[i])
 
@@ -324,63 +336,82 @@ class GraphManager2L():
         parameter_counter = 0
         for jp, gi in self.generator_dict.items():
             if jp.r is None:
-                jp.r = np.zeros(3)
+                jp.r = np.full(3, np.nan)
 
             if gi.mutation_type == MutationType.ABSOLUTE:
                 for i, r in enumerate(gi.mutation_range):
-                    if r is not None:
+                    if gi.freeze_pos[i] is not None:
+                        jp.r[i] = gi.freeze_pos[i]
+                    elif r is not None:
                         jp.r[i] = parameters[parameter_counter]
                         parameter_counter += 1
+                    elif gi.initial_coordinate[i] is not None:
+                        jp.r[i] = gi.initial_coordinate[i]
+                    else:
+                        raise ValueError(f"Failed to assign value for Joint Point {jp.name} coordinate {i}")
 
             elif gi.mutation_type == MutationType.RELATIVE:
                 if isinstance(gi.relative_to, list) and len(gi.relative_to) == 2:
                     jp.r = (gi.relative_to[0].r + gi.relative_to[1].r)/2
 
                 for i, r in enumerate(gi.mutation_range):
-                    if r is not None:
-                        if isinstance(gi.relative_to, JointPoint):
-                            jp.r[i] = gi.relative_to.r[i] + \
-                                parameters[parameter_counter]
-                            parameter_counter += 1
-                        else:
-                            if len(gi.relative_to) == 2:
-                                link_direction = gi.relative_to[0].r - \
-                                    gi.relative_to[1].r
-                                link_ortogonal = np.array(
-                                    [-link_direction[2], link_direction[1], link_direction[0]])
-                                link_length = np.linalg.norm(link_direction)
-                                if i == 0:
-                                    jp.r += parameters[parameter_counter] * \
-                                        link_ortogonal/link_length
-                                if i == 2:
-                                    jp.r += parameters[parameter_counter] * \
-                                        link_direction/link_length
-                            #     jp.r += parameters[parameter_counter]*link_direction/link_length
-                            #     jp.r += parameters[parameter_counter]*np.array([-link_direction[2],link_direction[1],link_direction[0]])/link_length
-                            parameter_counter += 1
+                    if gi.freeze_pos[i] is not None:
+                        parameter = gi.freeze_pos[i]
+                    elif r is not None:
+                        parameter =parameters[parameter_counter]
+                        parameter_counter += 1
+                    else:
+                        raise ValueError(f"Failed to assign value for Joint Point {jp.name} coordinate {i}")
+
+                    if isinstance(gi.relative_to, JointPoint):
+                        # if relative point is relative to a single joint we just add parameter to the coordinate of this joint
+                        jp.r[i] = gi.relative_to.r[i] + parameter
+                    else:
+                        if len(gi.relative_to) == 2:
+                            # TODO: this part would fail in 3D case
+                            # if relative point is relative to two joints we calculate the direction of the link between these joints 
+                            # and use its direction as z axis and the orthogonal direction as the x axis. Then we add the parameter to the center of the link.
+                            link_direction = gi.relative_to[0].r - \
+                                gi.relative_to[1].r
+                            link_ortogonal = np.array(
+                                [-link_direction[2], link_direction[1], link_direction[0]])
+                            link_length = np.linalg.norm(link_direction)
+                            if i == 0:
+                                jp.r += parameter * link_ortogonal/link_length
+                            if i == 2:
+                                jp.r += parameter *  link_direction/link_length
+                        #     jp.r += parameters[parameter_counter]*link_direction/link_length
+                        #     jp.r += parameters[parameter_counter]*np.array([-link_direction[2],link_direction[1],link_direction[0]])/link_length
 
             elif gi.mutation_type == MutationType.RELATIVE_PERCENTAGE:
                 if isinstance(gi.relative_to, list) and len(gi.relative_to) == 2:
                     jp.r = (gi.relative_to[0].r + gi.relative_to[1].r)/2
+
                 for i, r in enumerate(gi.mutation_range):
-                    if r is not None:
-                        if isinstance(gi.relative_to, JointPoint):
-                            raise ValueError(
-                                'Relative percentage mutation type should have a list of joints as relative_to')
-                        else:
-                            if len(gi.relative_to) == 2:
-                                link_direction = gi.relative_to[0].r - \
-                                    gi.relative_to[1].r
-                                link_ortogonal = np.array(
-                                    [-link_direction[2], link_direction[1], link_direction[0]])
-                                link_length = np.linalg.norm(link_direction)
-                                if i == 0:
-                                    jp.r += parameters[parameter_counter] * \
-                                        link_ortogonal
-                                if i == 2:
-                                    jp.r += parameters[parameter_counter] * \
-                                        link_direction
-                            parameter_counter += 1
+                    if gi.freeze_pos[i] is not None:
+                        parameter = gi.freeze_pos[i]
+                    elif r is not None:
+                        parameter =parameters[parameter_counter]
+                        parameter_counter += 1
+                    else:
+                        raise ValueError(f"Failed to assign value for Joint Point {jp.name} coordinate {i}")
+
+                    if isinstance(gi.relative_to, JointPoint):
+                        raise ValueError(
+                            'Relative percentage mutation type should have a list of joints as relative_to')
+                    else:
+                        #TODO: this part would fail in 3D case
+                        if len(gi.relative_to) == 2:
+                            link_direction = gi.relative_to[0].r - \
+                                gi.relative_to[1].r
+                            link_ortogonal = np.array(
+                                [-link_direction[2], link_direction[1], link_direction[0]])
+                            link_length = np.linalg.norm(link_direction)
+                            if i == 0:
+                                jp.r += parameter * link_ortogonal
+                            if i == 2:
+                                jp.r += parameter * link_direction
+
         return self.graph
 
 
