@@ -46,6 +46,7 @@ class GraphManager2L():
         self.current_main_branch = []
         self.main_connections: List[ConnectionInfo] = []
         self.mutation_ranges = {}
+        self.name = "Default"
 
     def reset(self):
         """Reset the graph builder."""
