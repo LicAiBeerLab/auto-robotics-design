@@ -1,7 +1,6 @@
 from itertools import product
 from collections import deque
-from math import isclose
-from tabnanny import check
+from tabnanny import verbose
 
 import numpy as np
 import pinocchio as pin
@@ -17,16 +16,7 @@ from auto_robot_design.pinokla.closed_loop_kinematics import (
     closed_loop_ik_grad,
     closed_loop_ik_pseudo_inverse,
 )
-from auto_robot_design.pinokla.criterion_math import (
-    calc_manipulability,
-    ImfProjections,
-    calc_actuated_mass,
-    calc_effective_inertia,
-    calc_force_ell_projection_along_trj,
-    calc_IMF,
-    calculate_mass,
-    convert_full_J_to_planar_xz,
-)
+
 from auto_robot_design.pinokla.default_traj import add_auxilary_points_to_trajectory
 from auto_robot_design.pinokla.loader_tools import Robot
 
@@ -35,65 +25,10 @@ from auto_robot_design.pinokla.calc_criterion import (
     closed_loop_pseudo_inverse_follow,
 )
 
+from auto_robot_design.motion_planning.utils import (
+    Workspace
+)
 
-class Workspace:
-    def __init__(self, robot, bounds, resolution):
-        ''' Class for working workspace of robot like grid with `resolution` and `bounds`. 
-        Grid's indices go from bottom-right to upper-left corner of bounds
-        
-        '''
-        self.robot = robot
-        self.resolution = resolution
-        self.bounds = bounds
-
-        # TODO: Need to change pattern. For example first create a workspace and BFS work and update with it.
-        num_indexes = (np.max(bounds, 1) - np.min(bounds, 1)) / self.resolution
-        self.mask_shape = np.zeros_like(num_indexes)
-        self.bounds = np.zeros_like(bounds)
-        # Bounds correction for removing ucertainties with indices. Indices was calculated with minimal `bounds` and `resolution`
-        for id, idx_value in enumerate(num_indexes):
-            residue_div = np.round(idx_value % 1, 6)
-
-            check_bound_size = np.isclose(residue_div, 1.0)
-            check_min_bound = np.isclose(bounds[id, 0] % self.resolution[id], 0)
-            check_max_bound = np.isclose(bounds[id, 1] % self.resolution[id], 0)
-            if check_bound_size and check_min_bound and check_max_bound:
-                self.bounds[id, :] = bounds[id, :]
-                self.mask_shape[id] = num_indexes[id]
-            else:
-                self.bounds[id, 1] = bounds[id, 1] + bounds[id, 1] % self.resolution[id]
-                self.bounds[id, 0] = bounds[id, 0] - bounds[id, 0] % self.resolution[id]
-                self.mask_shape[id] = np.ceil(
-                    (self.bounds[id, 1] - self.bounds[id, 0]) / self.resolution[id]
-                )
-        self.mask_shape = np.asarray(self.mask_shape, dtype=int)
-        self.bounds = self.bounds.round(3)
-        self.set_nodes = {}
-        # self.grid_nodes = np.zeros(tuple(self.mask_shape), dtype=object)
-
-    def updated_by_bfs(self, set_expl_nodes):
-        
-        self.set_nodes = set_expl_nodes
-
-    def calc_grid_position(self, indexes):
-
-        pos = indexes * self.resolution + self.bounds[:, 0]
-
-        return pos
-
-    def calc_index(self, pos):
-        return np.round((pos - self.bounds[:, 0]) / self.resolution).astype(int)
-    
-    @property
-    def reachabilty_mask(self):
-        
-        mask = np.zeros(tuple(self.mask_shape), dtype=float)
-        
-        for node in self.set_nodes.values():
-            index = self.calc_index(node.pos) -1 
-            mask[tuple(index)] = node.is_reach
-
-        return mask
 
 class BreadthFirstSearchPlanner:
 
@@ -128,43 +63,28 @@ class BreadthFirstSearchPlanner:
 
     def __init__(
         self,
-        # robot: Robot,
-        # bounds: np.ndarray,
-        # grid_resolution: float,
-        workspace: Workspace
+        workspace: Workspace,
+        verbose: int = 0 
     ) -> None:
 
-        # self.robot = robot
-        # self.resolution = grid_resolution # Шаг сетки 
 
-        # num_indexes = (np.max(bounds, 1) - np.min(bounds, 1)) / self.resolution
-        # self.num_indexes = np.zeros_like(num_indexes)
-        # self.bounds = np.zeros_like(bounds)
-        # # Коррекстируется бонды, чтобы не была проблем с расчетом индексов
-        # for id, idx_value in enumerate(num_indexes):
-        #     residue_div = np.round(idx_value % 1, 6)
-
-        #     check_bound_size = np.isclose(residue_div, 0.0)
-        #     check_min_bound = np.isclose(bounds[id, 0] % self.resolution[id], 0)
-        #     check_max_bound = np.isclose(bounds[id, 1] % self.resolution[id], 0)
-        #     if check_bound_size and check_min_bound and check_max_bound:
-        #         self.bounds[id, :] = bounds[id, :]
-        #         self.num_indexes[id] = num_indexes[id]
-        #     else:
-        #         self.bounds[id, 1] = bounds[id, 1] + bounds[id, 1] % self.resolution[id]
-        #         self.bounds[id, 0] = bounds[id, 0] - bounds[id, 0] % self.resolution[id]
-        #         self.num_indexes[id] = np.ceil(
-        #             (self.bounds[id, 1] - self.bounds[id, 0]) / self.resolution[id]
-        #         )
-
-        # self.num_indexes = np.asarray(self.num_indexes, dtype=int)
         self.workspace = workspace
+        self.verbose = verbose
         self.num_indexes = self.workspace.mask_shape
         
         # Варианты движения при обходе сетки (8-связности)
         self.motion = self.get_motion_model()
 
-    def find_workspace(self, start_pos, prev_q, viz=None):
+    def find_workspace(self, start_pos, prev_q):
+        """Поиск рабочее пространство с помощью алгоритма BFS. 
+
+        Args:
+            start_pos (_type_): _description_
+            prev_q (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """
         # Функция для заполнения сетки нодами и обхода их BFS
         # Псевдо первая нода, определяется по стартовым положению, может не лежать на сетки
         pseudo_start_node = self.Node(start_pos, -1, q_arr=prev_q)
@@ -183,6 +103,22 @@ class BreadthFirstSearchPlanner:
         queue = deque()
         open_set[self.calc_grid_index(start_n)] = start_n
 
+        points = []
+        point = self.workspace.bounds[:,0]
+        k, m = 0,0
+        while point[1] <= self.workspace.bounds[1,1]:
+            
+            while point[0] <= self.workspace.bounds[0,1]:
+                points.append(point)
+                m +=1
+                point = self.workspace.bounds[:,0] + np.array(self.workspace.resolution) * np.array([m, k])
+            k += 1
+            m = 0
+            point = self.workspace.bounds[:,0] + np.array(self.workspace.resolution) * np.array([m, k])
+
+        points = np.array(points)
+        plt.plot(points[:,0], points[:,1], "xy")
+        
         queue.append(self.calc_grid_index(start_n))
         while len(open_set) != 0:
             # Вытаскиваем первую из очереди ноду
@@ -218,16 +154,12 @@ class BreadthFirstSearchPlanner:
             if len(closed_set.keys()) % 1 == 0:
                 plt.pause(0.001)
 
-            # Массив для проверки, что из ноды можно идти в любую сторону
-            all_direction_reach = []
-            # Массив соседей нодов, которые достижимы механизмом. 
-            # Необходимо для доп проверки текущей ноды
-            close_rachable_node = []
             # Соседние ноды
             neigb_node = {}
             for i, moving in enumerate(self.motion):
                 new_pos = current.pos + moving[:-1] * self.workspace.resolution
                 node = self.Node(new_pos, c_id)
+                
                 # Проверка что ноды не вышли за бонды
                 if self.verify_node(node):
                     # node = self.create_node(new_pos, c_id, None, current.q_arr)
@@ -275,7 +207,7 @@ class BreadthFirstSearchPlanner:
                         queue.append(n_id)
                     else:
                         bad_nodes[n_id] = node
-                        
+                        plt.plot(node.pos[0], node.pos[1], "xr")
 
                     line_id = "world/line" + "_from_" + str(c_id) + "_to_" + str(n_id)
                     verteces = np.zeros((2,3))
@@ -406,7 +338,9 @@ class BreadthFirstSearchPlanner:
 
     def verify_node(self, node):
         pos = node.pos
-        if np.all(pos >= self.workspace.bounds[:, 0]) and np.all(pos <= self.workspace.bounds[:, 1]):
+        node_index = self.workspace.calc_index(pos)
+        self.workspace.mask_shape 
+        if np.all(pos >= self.workspace.bounds[:, 0] - self.workspace.resolution*0.9) and np.all(pos <= self.workspace.bounds[:, 1] + self.workspace.resolution*0.9):
             return True
         return False
 
@@ -448,14 +382,14 @@ if __name__ == "__main__":
 
     builder = ParametrizedBuilder(URDFLinkCreater3DConstraints)
 
-    gm = get_preset_by_index_with_bounds(7)
+    gm = get_preset_by_index_with_bounds(5)
     x_centre = gm.generate_central_from_mutation_range()
     graph_jp = gm.get_graph(x_centre)
 
     robo, __ = jps_graph2pinocchio_robot_3d_constraints(graph_jp, builder=builder)
 
     center_bound = np.array([0, -0.3])
-    size_box_bound = np.array([0.6, 0.4])
+    size_box_bound = np.array([0.3, 0.3])
 
     start_pos = center_bound
     pos_6d = np.zeros(6)
@@ -538,7 +472,7 @@ if __name__ == "__main__":
     workspace = Workspace(robo, bounds, np.array([0.01, 0.01]))
     ws_bfs = BreadthFirstSearchPlanner(workspace)
     ws_bfs.vis = viz
-    workspace = ws_bfs.find_workspace(start_pos, q, viz)
+    workspace = ws_bfs.find_workspace(start_pos, q)
 
     # dext_index = [1 / n.cost for n in viewed_nodes.values()]
 
