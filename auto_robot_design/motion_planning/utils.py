@@ -43,7 +43,7 @@ class Workspace:
                 self.mask_shape[id] = np.ceil(
                     (self.bounds[id, 1] - self.bounds[id, 0]) / self.resolution[id]
                 )
-        self.mask_shape = np.asarray(self.mask_shape.round(4), dtype=int)
+        self.mask_shape = np.asarray(self.mask_shape.round(4), dtype=int) + 1
         self.bounds = self.bounds.round(4)
         self.set_nodes = {}
         # self.grid_nodes = np.zeros(tuple(self.mask_shape), dtype=object)
