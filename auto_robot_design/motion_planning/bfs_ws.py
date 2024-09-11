@@ -101,7 +101,7 @@ class BreadthFirstSearchPlanner:
             viz.viewer["/Background"].set_property("visible", False)
             viz.viewer["/Grid"].set_property("visible", False)
             viz.viewer["/Axes"].set_property("visible", False)
-            viz.viewer["/Cameras/default/rotated/<object>"].set_property("position", [0,0,0.5])
+            viz.viewer["/Cameras/default/rotated/<object>"].set_property("position", [0,-0.1,0.5])
             viz.clean()
             viz.loadViewerModel()
 
