@@ -279,7 +279,10 @@ class Link:
 
     def define_geometry(self):
         num_joint = len(self.joints)
-        color = (np.r_[np.random.uniform(0, 1, 3), 1]).tolist()
+        if self.geometry and np.sum(self.geometry.color) > 0:
+            color = self.geometry.color
+        else:
+            color = (np.r_[np.random.uniform(0, 1, 3), 1]).tolist()
         if self.name == "G":
             size = [self._thickness * 2 for __ in range(3)]
             self.geometry = Box(self._density, size, color=color)

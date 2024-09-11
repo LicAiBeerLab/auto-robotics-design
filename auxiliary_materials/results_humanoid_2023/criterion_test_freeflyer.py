@@ -59,6 +59,10 @@ for path,name,ncolor in zip(Lpath,Lname,Lcolor):
 
     viz = MeshcatVisualizer(model_free, visual_model, visual_model)
     viz.viewer = meshcat.Visualizer().open()
+    viz.viewer["/Background"].set_property("visible", False)
+    viz.viewer["/Grid"].set_property("visible", False)
+    viz.viewer["/Axes"].set_property("visible", False)
+    viz.viewer["/Cameras/default/rotated/<object>"].set_property("position", [0,0,0.5])
     viz.clean()
     viz.loadViewerModel(rootNodeName="number 1")
 
