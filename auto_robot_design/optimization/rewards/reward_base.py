@@ -10,11 +10,7 @@ class Reward():
     """Interface for the optimization criteria"""
 
     def __init__(self, name) -> None:
-<<<<<<< HEAD
-        self.point_precision = 1e-3
-=======
         self.point_precision = 1e-4
->>>>>>> origin/main
         self.reward_name = name
 
     def calculate(self, point_criteria: DataDict, trajectory_criteria: DataDict, trajectory_results: DataDict, **kwargs) -> Tuple[float, list[float]]:
@@ -22,33 +18,20 @@ class Reward():
 
         raise NotImplementedError("A reward must implement calculate method!")
 
-<<<<<<< HEAD
-    def check_reachability(self, errors, checked = True, warning = False):
-        """The function that checks the reachability of the mech for all points at trajectory
-        
-=======
     def check_reachability(self, errors, checked=True, warning=False):
         """The function that checks the reachability of the mech for all points at trajectory
 
->>>>>>> origin/main
             The idea is that the trajectory at the moment of the reward calculation is 
             already checked for reachability by the workspace checker.
         """
         if np.max(errors) > self.point_precision and checked:
             if warning:
-<<<<<<< HEAD
-                print(f'Error exceeds threshold for reward {self.reward_name} at point {np.argmax(errors)} with value {np.max(errors)}')
-            raise ValueError(
-                f"All points should be reachable to calculate a reward {max(errors)}")
-        
-=======
                 print(
                     f'Error exceeds threshold for reward {self.reward_name} at point {np.argmax(errors)} with value {np.max(errors)}')
             else:
                 raise ValueError(
                     f"All points should be reachable to calculate a reward {max(errors)}")
 
->>>>>>> origin/main
         elif np.max(errors) > self.point_precision:
             return False
 
@@ -95,11 +78,7 @@ class PositioningReward(Reward):
 class PositioningErrorCalculatorOld():
     def __init__(self, error_key):
         self.error_key = error_key
-<<<<<<< HEAD
-        self.point_threshold = 1e-3
-=======
         self.point_threshold = 1e-4
->>>>>>> origin/main
 
     def calculate(self, trajectory_results: DataDict):
         errors = trajectory_results[self.error_key]
@@ -113,20 +92,12 @@ class PositioningErrorCalculatorOld():
 class PositioningErrorCalculator():
     """Calculate the special error that that is used as self constrain during optimization
     """
-<<<<<<< HEAD
-    def __init__(self, error_key, jacobian_key, calc_isotropic_thr=True):
-        self.error_key = error_key
-        self.jacobian_key = jacobian_key
-        self.calc_isotropic_thr = calc_isotropic_thr
-        self.point_threshold = 1e-3
-=======
 
     def __init__(self, error_key, jacobian_key, calc_isotropic_thr=True, delta_q_threshold=1):
         self.error_key = error_key
         self.jacobian_key = jacobian_key
         self.calc_isotropic_thr = calc_isotropic_thr
         self.point_threshold = 1e-4
->>>>>>> origin/main
         self.point_isotropic_threshold = 15
         self.point_isotropic_clip = 3*15
         self.delta_q_threshold = delta_q_threshold
@@ -226,10 +197,6 @@ class PositioningErrorCalculator():
 
 class PositioningConstrain():
     """Represents the constrains that are used as a part of the reward function"""
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/main
     def __init__(self, error_calculator, points=None) -> None:
         self.points = points
         self.calculator = error_calculator
@@ -329,11 +296,7 @@ class RewardManager():
 
         return total_rewards
 
-<<<<<<< HEAD
-    def calculate_total(self, fixed_robot, free_robot, motor,viz=None):
-=======
     def calculate_total(self, fixed_robot, free_robot, motor, viz=None):
->>>>>>> origin/main
         # trajectory_rewards = []
         partial_rewards = []
         weighted_partial_rewards = []
