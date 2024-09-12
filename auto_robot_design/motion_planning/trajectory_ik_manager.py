@@ -17,10 +17,11 @@ class TrajectoryIKManager():
         self.model = None
         self.constraint_models = None
         self.solver = None
+        self.visual_model = None
         self.default_name = "Closed_Loop_PI"
         self.frame_name = "EE"
 
-    def register_model(self, model, constraint_models):
+    def register_model(self, model, constraint_models,visual_model=None):
         """The function to register a model of a mechanism
 
         Args:
@@ -29,6 +30,8 @@ class TrajectoryIKManager():
         """
         self.model = model
         self.constraint_models = constraint_models
+        if visual_model:
+            self.visual_model = visual_model
 
     def set_solver(self, name: str, **params):
         """Set the IK solver for trajectory following.
@@ -49,7 +52,7 @@ class TrajectoryIKManager():
                 f"Cannot set solver - wrong parameters for solver: {name}. Solver set to default value: {self.default_name}")
             self.solver = partial(IK_METHODS[self.default_name], {})
 
-    def follow_trajectory(self, trajectory: np.array, q_start: np.array = None, viz=False):
+    def follow_trajectory(self, trajectory: np.array, q_start: np.array = None, viz=None):
         """The function to follow a trajectory.
 
         Args:
@@ -72,7 +75,7 @@ class TrajectoryIKManager():
         # create a copy of a registered model
         model = pin.Model(self.model)
         data = model.createData()
-        if q_start:
+        if q_start is not None:
             q = q_start
         else:
             q = pin.neutral(self.model)
@@ -86,12 +89,12 @@ class TrajectoryIKManager():
         q_array = np.zeros((len(trajectory), len(q)))
         # final error for each point
         constraint_errors = np.zeros((len(trajectory), 1))
-        if viz:
-            visualizer = MeshcatVisualizer(
-                fixed_robot.model, fixed_robot.visual_model, fixed_robot.visual_model)
-            visualizer.viewer = meshcat.Visualizer().open()
-            visualizer.clean()
-            visualizer.loadViewerModel()
+        # if viz:
+        #     visualizer = MeshcatVisualizer(
+        #         self.model, self.visual_model, self.visual_model)
+        #     visualizer.viewer = meshcat.Visualizer().open()
+        #     visualizer.clean()
+        #     visualizer.loadViewerModel()
         for idx, point in enumerate(trajectory):
             q, min_feas, is_reach = ik_solver(
                 model,
@@ -104,7 +107,7 @@ class TrajectoryIKManager():
             if not is_reach:
                 break
             if viz:
-                visualizer.display(q)
+                viz.display(q)
 
             # if the point is reachable, we store the values in corresponding arrays
             pin.framesForwardKinematics(model, data, q)
