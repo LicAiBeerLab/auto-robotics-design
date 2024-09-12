@@ -49,7 +49,7 @@ class TrajectoryIKManager():
                 f"Cannot set solver - wrong parameters for solver: {name}. Solver set to default value: {self.default_name}")
             self.solver = partial(IK_METHODS[self.default_name], {})
 
-    def follow_trajectory(self, trajectory: np.array, q_start: np.array = None, viz=False):
+    def follow_trajectory(self, trajectory: np.ndarray, q_start: np.ndarray = None, viz=False):
         """The function to follow a trajectory.
 
         Args:
@@ -72,7 +72,7 @@ class TrajectoryIKManager():
         # create a copy of a registered model
         model = pin.Model(self.model)
         data = model.createData()
-        if q_start:
+        if q_start is not None:
             q = q_start
         else:
             q = pin.neutral(self.model)
