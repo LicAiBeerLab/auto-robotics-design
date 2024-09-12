@@ -30,12 +30,12 @@ class BreadthFirstSearchPlanner:
         def __init__(
             self, pos, parent_index, cost=None, q_arr=None, parent=None, is_reach=None
         ):
-            self.pos = pos # Положение ноды в рабочем пространстве
-            self.cost = cost # Стоимость ноды = 1 / число обусловленности Якобиана
-            self.q_arr = q_arr # Координаты в конфигурационном пространстве
-            self.parent_index = parent_index # Индекс предыдущей ноды для bfs
-            self.parent = parent # Предыдущая нода, неоьязательное поле
-            self.is_reach = is_reach # Флаг, что до положение ноды можно достигнуть
+            self.pos = pos  # Положение ноды в рабочем пространстве
+            self.cost = cost  # Стоимость ноды = 1 / число обусловленности Якобиана
+            self.q_arr = q_arr  # Координаты в конфигурационном пространстве
+            self.parent_index = parent_index  # Индекс предыдущей ноды для bfs
+            self.parent = parent  # Предыдущая нода, необязательное поле
+            self.is_reach = is_reach  # Флаг, что до положение ноды можно достигнуть
 
         def transit_to_node(self, parent, q_arr, cost, is_reach):
             # Обновляет параметры ноды
@@ -58,21 +58,20 @@ class BreadthFirstSearchPlanner:
     def __init__(
         self,
         workspace: Workspace,
-        verbose: int = 0 
+        verbose: int = 0
     ) -> None:
-
 
         self.workspace = workspace
         self.verbose = verbose
         self.num_indexes = self.workspace.mask_shape
-        
+
         # Варианты движения при обходе сетки (8-связности)
         self.motion = self.get_motion_model()
 
     def find_workspace(self, start_pos, prev_q):
         """Поиск рабочее пространство с помощью алгоритма BFS. Алгоритм работает по сетке, которая задается в `workspace`. Обход выполняется по 4-связности.
         Перед основным циклом ищется ближайшая стартовая точка на сетке от `start_pos`. Найденная точка считается начальной и добавляется в очередь.
-        
+
         Общие описание алгоритма: Из очереди достается нода и находяться для нее соседи, которые не выходят за бонды. После отбора идет проверка, что сосед это не проверенная точка (не находится в `closed_set`),
         не нахдоится в очереди (`open_set`). Если со соседом все хорошо, то запускатеся алгоритм ОК из рассматриваемой точки `current` в соседа `node`. Если решение есть, то соседнию точку считаем достижимой и добавлем ее в очередь.
         Иначе, нода заносится в `bad_nodes`, множество в которые алгоритм ОК не смог дойти. Алгоритм заканчивает работу, когда очередь опустеет
@@ -84,11 +83,12 @@ class BreadthFirstSearchPlanner:
             Workspace: обновляет переменную `workspace` и возвращает её.
         """
         robot = self.workspace.robot
-        
+
         pin.framesForwardKinematics(robot.model, robot.data, prev_q)
         if self.verbose > 1:
             pos_6d = self.workspace.robot.motion_space.get_6d_point(start_pos)
-            pin.framesForwardKinematics(robot.model, robot.data, np.zeros(robot.model.nq))
+            pin.framesForwardKinematics(
+                robot.model, robot.data, np.zeros(robot.model.nq))
 
             q = prev_q
             pin.forwardKinematics(robot.model, robot.data, q)
@@ -96,43 +96,48 @@ class BreadthFirstSearchPlanner:
             material = meshcat.geometry.MeshPhongMaterial()
             material.color = int(0x00FF00)
 
-            viz = MeshcatVisualizer(robot.model, robot.visual_model, robot.visual_model)
+            viz = MeshcatVisualizer(
+                robot.model, robot.visual_model, robot.visual_model)
             viz.viewer = meshcat.Visualizer().open()
             viz.viewer["/Background"].set_property("visible", False)
             viz.viewer["/Grid"].set_property("visible", False)
             viz.viewer["/Axes"].set_property("visible", False)
-            viz.viewer["/Cameras/default/rotated/<object>"].set_property("position", [0,-0.1,0.5])
+            viz.viewer["/Cameras/default/rotated/<object>"].set_property("position", [
+                                                                         0, -0.1, 0.5])
             viz.clean()
             viz.loadViewerModel()
 
             material.opacity = 1
-            viz.viewer[ballID].set_object(meshcat.geometry.Sphere(0.001), material)
+            viz.viewer[ballID].set_object(
+                meshcat.geometry.Sphere(0.001), material)
             T = np.r_[np.c_[np.eye(3), pos_6d[:3]], np.array([[0, 0, 0, 1]])]
             viz.viewer[ballID].set_transform(T)
             pin.framesForwardKinematics(robot.model, robot.data, q)
             viz.display(q)
 
             bound_pos = product(bounds[0, :], bounds[1, :])
-            
+
             for k, pos in enumerate(bound_pos):
                 ballID = "world/ball" + "_bound_" + str(k)
                 material = meshcat.geometry.MeshPhongMaterial()
                 material.color = int(0x0000FF)
                 material.opacity = 1
                 pos_3d = np.array([pos[0], 0, pos[1]])
-                viz.viewer[ballID].set_object(meshcat.geometry.Sphere(0.003), material)
+                viz.viewer[ballID].set_object(
+                    meshcat.geometry.Sphere(0.003), material)
                 T = np.r_[np.c_[np.eye(3), pos_3d], np.array([[0, 0, 0, 1]])]
                 viz.viewer[ballID].set_transform(T)
 
             pin.framesForwardKinematics(robot.model, robot.data, q)
             viz.display(q)
-        
+
         # Функция для заполнения сетки нодами и обхода их BFS
         # Псевдо первая нода, определяется по стартовым положению, может не лежать на сетки
         pseudo_start_node = self.Node(start_pos, -1, q_arr=prev_q)
 
         start_index_on_grid = self.workspace.calc_index(start_pos)
-        start_pos_on_grid = self.workspace.calc_grid_position(start_index_on_grid)
+        start_pos_on_grid = self.workspace.calc_grid_position(
+            start_index_on_grid)
         # Настоящая стартовая нода, которая лежит на сетки. Не имеет предков
         start_n = self.Node(start_pos_on_grid, -1)
         # Проверка достижимости стартовой ноды из псевдо ноды
@@ -140,28 +145,30 @@ class BreadthFirstSearchPlanner:
         start_n.parent = None
 
         del pseudo_start_node, start_index_on_grid, start_pos_on_grid
-        # Словари для обхода bfs
+        # Словари для обхis_reachода bfs
         open_set, closed_set, bad_nodes = dict(), dict(), dict()
         queue = deque()
         open_set[self.calc_grid_index(start_n)] = start_n
 
         if self.verbose > 0:
             points = []
-            point = self.workspace.bounds[:,0]
-            k, m = 0,0
-            while point[1] <= self.workspace.bounds[1,1]:
-                
-                while point[0] <= self.workspace.bounds[0,1]:
+            point = self.workspace.bounds[:, 0]
+            k, m = 0, 0
+            while point[1] <= self.workspace.bounds[1, 1]:
+
+                while point[0] <= self.workspace.bounds[0, 1]:
                     points.append(point)
-                    m +=1
-                    point = self.workspace.bounds[:,0] + np.array(self.workspace.resolution) * np.array([m, k])
+                    m += 1
+                    point = self.workspace.bounds[:, 0] + np.array(
+                        self.workspace.resolution) * np.array([m, k])
                 k += 1
                 m = 0
-                point = self.workspace.bounds[:,0] + np.array(self.workspace.resolution) * np.array([m, k])
+                point = self.workspace.bounds[:, 0] + np.array(
+                    self.workspace.resolution) * np.array([m, k])
 
             points = np.array(points)
-            plt.plot(points[:,0], points[:,1], "xy")
-        
+            plt.plot(points[:, 0], points[:, 1], "xy")
+
         queue.append(self.calc_grid_index(start_n))
         while len(open_set) != 0:
             # Вытаскиваем первую из очереди ноду
@@ -169,26 +176,28 @@ class BreadthFirstSearchPlanner:
             current = open_set.pop(c_id)
 
             closed_set[c_id] = current
-            
+
             if self.verbose > 1:
                 viz.display(current.q_arr)
                 boxID = "world/box" + "_ws_" + str(c_id)
                 material = meshcat.geometry.MeshPhongMaterial()
                 material.opacity = 0.5
                 if current.is_reach:
-                    plt.plot(current.pos[0],current.pos[1], "xc")
+                    plt.plot(current.pos[0], current.pos[1], "xc")
                     # time.sleep(0.5)
                     material.color = int(0x00FF00)
                 else:
                     material.color = int(0xFF0000)
-                    plt.plot(current.pos[0],current.pos[1], "xr")
+                    plt.plot(current.pos[0], current.pos[1], "xr")
                 pos_3d = np.array([current.pos[0], 0, current.pos[1]])
-                size_box = np.array([self.workspace.resolution[0], 0.001, self.workspace.resolution[1]])
-                viz.viewer[boxID].set_object(meshcat.geometry.Box(size_box), material)
+                size_box = np.array(
+                    [self.workspace.resolution[0], 0.001, self.workspace.resolution[1]])
+                viz.viewer[boxID].set_object(
+                    meshcat.geometry.Box(size_box), material)
                 T = np.r_[np.c_[np.eye(3), pos_3d], np.array([[0, 0, 0, 1]])]
                 viz.viewer[boxID].set_transform(T)
             # time.sleep(2)
-            
+
             if self.verbose > 0:
                 # for stopping simulation with the esc key.
                 plt.gcf().canvas.mpl_connect(
@@ -203,17 +212,15 @@ class BreadthFirstSearchPlanner:
             for i, moving in enumerate(self.motion):
                 new_pos = current.pos + moving[:-1] * self.workspace.resolution
                 node = self.Node(new_pos, c_id)
-                
+
                 # Проверка что ноды не вышли за бонды
                 if self.verify_node(node):
                     n_id = self.calc_grid_index(node)
                     neigb_node[n_id] = node
                 else:
                     continue
-                
 
             for n_id, node in neigb_node.items():
-
                 if (n_id not in closed_set) and (n_id not in open_set) and (n_id not in bad_nodes):
                     self.transition_function(current, node)
                     if node.is_reach:
@@ -225,10 +232,13 @@ class BreadthFirstSearchPlanner:
                             plt.plot(node.pos[0], node.pos[1], "xr")
 
                     if self.verbose > 1:
-                        line_id = "world/line" + "_from_" + str(c_id) + "_to_" + str(n_id)
-                        verteces = np.zeros((2,3))
-                        verteces[0,:] = self.workspace.robot.motion_space.get_6d_point(current.pos)[:3]
-                        verteces[1,:] = self.workspace.robot.motion_space.get_6d_point(node.pos)[:3]
+                        line_id = "world/line" + "_from_" + \
+                            str(c_id) + "_to_" + str(n_id)
+                        verteces = np.zeros((2, 3))
+                        verteces[0, :] = self.workspace.robot.motion_space.get_6d_point(current.pos)[
+                            :3]
+                        verteces[1, :] = self.workspace.robot.motion_space.get_6d_point(node.pos)[
+                            :3]
 
                         material = meshcat.geometry.LineBasicMaterial()
                         material.opacity = 1
@@ -237,8 +247,10 @@ class BreadthFirstSearchPlanner:
                             material.color = 0x66FFFF
                         else:
                             material.color = 0x990099
-                        pts_meshcat = meshcat.geometry.PointsGeometry(verteces.astype(np.float32).T)
-                        viz.viewer[line_id].set_object(meshcat.geometry.Line(pts_meshcat, material))
+                        pts_meshcat = meshcat.geometry.PointsGeometry(
+                            verteces.astype(np.float32).T)
+                        viz.viewer[line_id].set_object(
+                            meshcat.geometry.Line(pts_meshcat, material))
 
             if self.verbose > 0:
                 if not bool(current.is_reach):
@@ -250,8 +262,8 @@ class BreadthFirstSearchPlanner:
         return self.workspace
 
     def transition_function(self, from_node: Node, to_node: Node):
-        # Функция для перехода от одной ноды в другую. 
-        # По сути рассчитывает IK, где стартовая точка `from_node` (известны кушки) 
+        # Функция для перехода от одной ноды в другую.
+        # По сути рассчитывает IK, где стартовая точка `from_node` (известны кушки)
         # в `to_node`
         robot = self.workspace.robot
         ee_id = robot.model.getFrameId(robot.ee_name)
@@ -266,16 +278,8 @@ class BreadthFirstSearchPlanner:
             onlytranslation=True,
             q_start=from_node.q_arr,
         )
-        if not is_reach:
-            q = closedLoopProximalMount(
-                robot.model,
-                robot.data,
-                robot.constraint_models,
-                robot.constraint_data,
-                q
-            )
 
-        if not np.isclose(is_reach, 0):
+        if is_reach:
 
             dq_dqmot, __ = constraint_jacobian_active_to_passive(
                 robot.model,
@@ -285,7 +289,7 @@ class BreadthFirstSearchPlanner:
                 robot.actuation_model,
                 q,
             )
-            
+
             pin.framesForwardKinematics(robot.model, robot.data, q)
             Jfclosed = (
                 pin.computeFrameJacobian(
@@ -299,12 +303,11 @@ class BreadthFirstSearchPlanner:
             )
 
             dext_index = np.abs(S).max() / np.abs(S).min()
+            to_node.transit_to_node(
+                from_node, q, 1 / dext_index, bool(is_reach)
+            )
         else:
             dext_index = np.inf
-            
-        to_node.transit_to_node(
-            from_node, q, 1 / dext_index, bool(is_reach)
-        )
 
     def calc_grid_index(self, node):
         idx = self.workspace.calc_index(node.pos)
@@ -317,7 +320,7 @@ class BreadthFirstSearchPlanner:
 
     def verify_node(self, node):
         pos = node.pos
-        self.workspace.mask_shape 
+        self.workspace.mask_shape
         if np.all(pos >= self.workspace.bounds[:, 0] - self.workspace.resolution*0.9) and np.all(pos <= self.workspace.bounds[:, 1] + self.workspace.resolution*0.9):
             return True
         return False
@@ -360,7 +363,8 @@ if __name__ == "__main__":
     x_centre = gm.generate_central_from_mutation_range()
     graph_jp = gm.get_graph(x_centre)
 
-    robo, __ = jps_graph2pinocchio_robot_3d_constraints(graph_jp, builder=builder)
+    robo, __ = jps_graph2pinocchio_robot_3d_constraints(
+        graph_jp, builder=builder)
 
     center_bound = np.array([0, -0.3])
     size_box_bound = np.array([0.3, 0.3])
@@ -405,13 +409,13 @@ if __name__ == "__main__":
     bounds[1, :] += center_bound[1]
 
     workspace = Workspace(robo, bounds, np.array([0.01, 0.01]))
-    ws_bfs = BreadthFirstSearchPlanner(workspace, 2)
+    ws_bfs = BreadthFirstSearchPlanner(workspace, 1)
     workspace = ws_bfs.find_workspace(start_pos, q)
 
     # dext_index = [1 / n.cost for n in viewed_nodes.values()]
 
     # print(np.nanmax(dext_index), np.nanmin(dext_index))
-    
+
     # workspace.updated_by_bfs(viewed_nodes)
-    
-    workspace.reachabilty_mask
+
+    print(workspace.reachabilty_mask)
