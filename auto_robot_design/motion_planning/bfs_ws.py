@@ -143,6 +143,9 @@ class BreadthFirstSearchPlanner:
         # Проверка достижимости стартовой ноды из псевдо ноды
         self.transition_function(pseudo_start_node, start_n)
         start_n.parent = None
+        
+        if not start_n.is_reach:
+            raise Exception("Start position of workspace is not reachable")
 
         del pseudo_start_node, start_index_on_grid, start_pos_on_grid
         # Словари для обхis_reachода bfs
