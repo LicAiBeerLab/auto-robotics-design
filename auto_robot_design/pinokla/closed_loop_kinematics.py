@@ -5,7 +5,7 @@ Ludovic DE MATTEIS & Virgile BATTO, April 2023
 Tools to compute the forwark and inverse kinematics of a robot with  closed loop 
 
 """
-
+import random
 from copy import deepcopy
 from numpy.linalg import solve, norm, pinv
 import pinocchio as pin
@@ -577,7 +577,7 @@ def closed_loop_ik_grad(rmodel, rdata, rconstraint_model, rconstraint_data, targ
     return q, min_feas, is_reach
 
 
-def closed_loop_ik_pseudo_inverse(rmodel, rdata, rconstraint_model, rconstraint_data, target_pos, ideff, q_start=None, onlytranslation=False, eps=1e-5, max_it=300, alpha=0.5, l=1e-5, q_delta_threshold=0.5):
+def closed_loop_ik_pseudo_inverse(rmodel, rdata, rconstraint_model, rconstraint_data, target_pos, ideff, q_start=None, onlytranslation=False, eps=1e-5, max_it=30, alpha=0.5, l=1e-5, q_delta_threshold=1):
 
     model = pin.Model(rmodel)
     constraint_model = [pin.RigidConstraintModel(x) for x in rconstraint_model]

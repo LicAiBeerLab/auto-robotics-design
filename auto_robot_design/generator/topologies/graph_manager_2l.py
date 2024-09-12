@@ -365,7 +365,7 @@ class GraphManager2L():
                     if r is not None:
                         if isinstance(gi.relative_to, JointPoint):
                             raise ValueError(
-                                'Relative percentage mutation type should have a list of joints as relative_to')
+                        'Relative percentage mutation type should have a list of joints as relative_to')
                         else:
                             if len(gi.relative_to) == 2:
                                 link_direction = gi.relative_to[0].r - \

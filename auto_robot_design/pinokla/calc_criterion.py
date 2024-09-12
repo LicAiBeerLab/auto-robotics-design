@@ -277,10 +277,10 @@ def closed_loop_pseudo_inverse_follow(
         np.array: deviations from the desired position
 
     """
-    if q_start:
-        q = q_start
-    else:
+    if q_start is None:
         q = pin.neutral(model)
+    else:
+        q = q_start
 
     ee_frame_id = model.getFrameId(end_effector_frame)
     poses = np.zeros((len(traj_6d), 3))

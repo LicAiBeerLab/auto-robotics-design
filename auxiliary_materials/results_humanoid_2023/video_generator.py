@@ -41,6 +41,10 @@ data = model.createData()
 
 viz = MeshcatVisualizer(model, visual_model, visual_model)
 viz.viewer = meshcat.Visualizer(zmq_url="tcp://127.0.0.1:6000")
+viz.viewer["/Background"].set_property("visible", False)
+viz.viewer["/Grid"].set_property("visible", False)
+viz.viewer["/Axes"].set_property("visible", False)
+viz.viewer["/Cameras/default/rotated/<object>"].set_property("position", [0,0,0.5])
 viz.clean()
 viz.loadViewerModel(rootNodeName="number 1")
 
