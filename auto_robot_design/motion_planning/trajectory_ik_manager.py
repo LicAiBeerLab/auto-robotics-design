@@ -52,7 +52,7 @@ class TrajectoryIKManager():
                 f"Cannot set solver - wrong parameters for solver: {name}. Solver set to default value: {self.default_name}")
             self.solver = partial(IK_METHODS[self.default_name], {})
 
-    def follow_trajectory(self, trajectory: np.ndarray, q_start: np.ndarray = None, viz=False):
+    def follow_trajectory(self, trajectory: np.ndarray, q_start: np.ndarray = None, viz=None):
         """The function to follow a trajectory.
 
         Args:
@@ -89,12 +89,6 @@ class TrajectoryIKManager():
         q_array = np.zeros((len(trajectory), len(q)))
         # final error for each point
         constraint_errors = np.zeros((len(trajectory), 1))
-        # if viz:
-        #     visualizer = MeshcatVisualizer(
-        #         self.model, self.visual_model, self.visual_model)
-        #     visualizer.viewer = meshcat.Visualizer().open()
-        #     visualizer.clean()
-        #     visualizer.loadViewerModel()
         for idx, point in enumerate(trajectory):
             q, min_feas, is_reach = ik_solver(
                 model,
