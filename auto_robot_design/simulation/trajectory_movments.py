@@ -77,8 +77,14 @@ class TrajectoryMovements:
         """
         des_trajectories = np.zeros((self.num_sim_steps, 2))
         des_trajectories[:,0] = np.linspace(self.traj[0,0], self.traj[-1,0], self.num_sim_steps)
-        cs_z_by_x = np.polyfit(self.traj[:,0], self.traj[:,1], 3)
-        des_trajectories[:,1] = np.polyval(cs_z_by_x, des_trajectories[:,0])
+        # cs_z_by_x = np.polyfit(self.traj[:,0], self.traj[:,1], 3)
+        # des_trajectories[:,1] = np.polyval(cs_z_by_x, des_trajectories[:,0])
+
+        if self.traj[:,0].max() - self.traj[:,0].min() < 1e-3:
+            des_trajectories[:,1] = np.linspace(self.traj[0,1], self.traj[-1,1], self.num_sim_steps)
+        else:
+            cs_z_by_x = np.polyfit(self.traj[:,0], self.traj[:,1], 3)
+            des_trajectories[:,1] = np.polyval(cs_z_by_x, des_trajectories[:,0])
         time_arr = np.linspace(0, self.time, self.num_sim_steps)
         
         des_traj_6d = convert_x_y_to_6d_traj_xz(des_trajectories[:,0], des_trajectories[:,1])
