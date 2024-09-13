@@ -69,7 +69,7 @@ class PositioningReward(Reward):
         Returns:
             float: value of the reward
         """
-        # get the manipulability for each point at the trajectory
+        
         mean_error = trajectory_criteria[self.pos_error_key]
         # the empty list is for the consistency with the other rewards
         return -mean_error, []
@@ -197,7 +197,6 @@ class PositioningErrorCalculator():
 
 class PositioningConstrain():
     """Represents the constrains that are used as a part of the reward function"""
-
     def __init__(self, error_calculator, points=None) -> None:
         self.points = points
         self.calculator = error_calculator

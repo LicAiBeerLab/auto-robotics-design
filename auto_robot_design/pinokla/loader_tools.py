@@ -1,4 +1,5 @@
 from copy import deepcopy
+from dataclasses import dataclass, field
 import unittest
 from typing import Optional, Tuple, Union
 import pinocchio as pin
@@ -12,20 +13,77 @@ from warnings import warn
 
 
 from auto_robot_design.pinokla.actuation_model import ActuationModel
-from collections import namedtuple
+import pinocchio as pin
 
-Robot = namedtuple(
-    "Robot",
-    [
-        "model",
-        "constraint_models",
-        "actuation_model",
-        "visual_model",
-        "constraint_data",
-        "data",
-    ],
-)
 
+# Robot = namedtuple(
+#     "Robot",
+#     [
+#         "model",
+#         "constraint_models",
+#         "actuation_model",
+#         "visual_model",
+#         "constraint_data",
+#         "data",
+#     ],
+# )
+
+class MotionSpace:
+    wrap = {"x": 0, "y": 1, "z": 2, "ang_x": 3, "ang_y": 4, "ang_z": 5}
+    
+    def __init__(self, *cartesian_terms):
+        self.terms = cartesian_terms
+    
+    @property
+    def mask(self):
+        idx = self.indexes
+        out = np.zeros(len(self.wrap))
+        out[idx,] = np.ones_like(idx)
+        
+        return out
+    
+    @property
+    def indexes(self):
+        return tuple(self.wrap[t] for t in self.terms)
+    
+    def get_6d_traj(self, traj: np.ndarray):
+        
+        traj_shape = np.shape(traj)
+        
+        if traj_shape[1] != len(self.terms):
+            raise Exception("Wrong size of trajactory")
+        
+        out = np.zeros((traj_shape[0], len(self.wrap)))
+        
+        out[:, self.indexes] = traj
+        
+        return out
+    
+    def get_6d_point(self, point: np.ndarray):
+        
+        out = np.zeros(len(self.wrap))
+        out[self.indexes,] = point
+        
+        return out
+    
+    def rewind_6d_point(self, point_6d: np.ndarray):
+        return point_6d[self.indexes,]
+    
+    def rewind_6d_traj(self, traj_6d: np.ndarray):
+        return traj_6d[:, self.indexes]
+
+@dataclass
+class Robot:
+    model:  pin.Model
+    constraint_models: list = field(default_factory=list)
+    actuation_model: ActuationModel = field(default_factory=ActuationModel)
+    visual_model: pin.GeometryModel = field(default_factory=pin.GeometryModel)
+    constraint_data: list = field(default_factory=list)
+    data: pin.Data = field(default_factory=pin.Data)
+    ee_name: str = "EE"
+    motion_space: MotionSpace = MotionSpace("x", "z")
+        
+        
 
 def make_Robot_copy(robo: Robot):
     # Make real copy
@@ -339,7 +397,7 @@ def completeRobotLoaderFromStr(
                     Se3joint2,
                     pin.ReferenceFrame.LOCAL,
                 )
-                constraint.name = name1 + "C" + name2
+                constraint.name = name1 + "-" + name2
             else:
                 constraint = pin.RigidConstraintModel(
                     pin.ContactType.CONTACT_6D,
@@ -350,7 +408,7 @@ def completeRobotLoaderFromStr(
                     Se3joint2,
                     pin.ReferenceFrame.LOCAL,
                 )
-                constraint.name = name1 + "C" + name2
+                constraint.name = name1 + "-" + name2
             Lconstraintmodel.append(constraint)
 
         constraint_models = Lconstraintmodel

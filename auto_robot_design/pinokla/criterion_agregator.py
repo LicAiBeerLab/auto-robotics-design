@@ -97,7 +97,7 @@ class CriteriaAggregator:
         # calculate the criteria that can be assigned to each point at the trajectory 
         point_criteria_vector = moment_criteria_calc(self.dict_moment_criteria,
                                                   res_dict_free, res_dict_fixed)
-        # calculate criteria that characterize the performance along the whole trajectory  
+        # calculate criteria that characterize the performance along the whole trajectory
         trajectory_criteria = along_criteria_calc(self.dict_along_criteria,res_dict_free,
                                                 res_dict_fixed, fixed_robot, free_robot)
         # remove the first 50 points from the results, as they belong to the auxiliary part of the trajectory

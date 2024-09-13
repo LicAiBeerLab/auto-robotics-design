@@ -5,7 +5,7 @@ Ludovic DE MATTEIS & Virgile BATTO, April 2023
 Tools to compute the forwark and inverse kinematics of a robot with  closed loop 
 
 """
-
+import random
 from copy import deepcopy
 from numpy.linalg import solve, norm, pinv
 import pinocchio as pin

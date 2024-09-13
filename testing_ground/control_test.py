@@ -58,6 +58,10 @@ robo, __ = jps_graph2pinocchio_robot(graph_jp, builder)
 
 viz = MeshcatVisualizer(robo.model, robo.visual_model, robo.visual_model)
 viz.viewer = meshcat.Visualizer().open()
+viz.viewer["/Background"].set_property("visible", False)
+viz.viewer["/Grid"].set_property("visible", False)
+viz.viewer["/Axes"].set_property("visible", False)
+viz.viewer["/Cameras/default/rotated/<object>"].set_property("position", [0,0,0.5])
 viz.clean()
 viz.loadViewerModel()
 
