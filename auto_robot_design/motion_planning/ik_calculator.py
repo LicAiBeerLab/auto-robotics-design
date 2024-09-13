@@ -3,7 +3,7 @@ import numpy as np
 from numpy.linalg import solve, norm, pinv
 
 
-def open_loop_ik(rmodel, target_pos, ideff, q_start=None, eps=1e-5, max_it=30):
+def open_loop_ik(rmodel,cs, target_pos, ideff, q_start=None, eps=1e-5, max_it=100):
     """This function is hitting nails with a microscope
 
         It actually works only for 2 link robot. For more links it will return some result, 
@@ -33,7 +33,7 @@ def open_loop_ik(rmodel, target_pos, ideff, q_start=None, eps=1e-5, max_it=30):
     target_SE3 = pin.SE3.Identity()
     target_SE3.translation = np.array(target_pos[0:3])
     is_reach = False
-    DT = 1e-1  # Optimization step
+    DT = 3e-1  # Optimization step
     for _ in range(max_it):
         pin.framesForwardKinematics(model, data, q)
         err = data.oMf[ideff].translation-target_SE3.translation
@@ -44,6 +44,7 @@ def open_loop_ik(rmodel, target_pos, ideff, q_start=None, eps=1e-5, max_it=30):
             model, data, q, ideff, pin.LOCAL_WORLD_ALIGNED)[:3, :]
         v = - pinv(J) @ err
         q = pin.integrate(model, q, v * DT)
+
     return q, norm(err), is_reach
 
 

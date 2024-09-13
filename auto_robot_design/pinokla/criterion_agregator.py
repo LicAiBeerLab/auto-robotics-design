@@ -19,7 +19,7 @@ def calculate_quasi_static_simdata(free_robot: Robot,
                                    fixed_robot: Robot,
                                    ee_frame_name: str,
                                    traj_6d: np.ndarray,
-                                   viz=None) -> tuple[DataDict, DataDict]:
+                                   viz=None, alg_name = "Closed_Loop_PI") -> tuple[DataDict, DataDict]:
     """Calculate criteria for free model(root joint is universal) and 
     fixed model (root joint is weld).
 
@@ -36,7 +36,7 @@ def calculate_quasi_static_simdata(free_robot: Robot,
     # create the trajectory manager and set the solver
     ik_manager = TrajectoryIKManager()
     ik_manager.register_model(fixed_robot.model, fixed_robot.constraint_models)
-    ik_manager.set_solver("Closed_Loop_PI")
+    ik_manager.set_solver(alg_name)
     poses, q_fixed, constraint_errors,reach_array = ik_manager.follow_trajectory(traj_6d)
 
     # add standard body position to all points in the q space
@@ -71,10 +71,11 @@ class CriteriaAggregator:
     """
 
     def __init__(self, dict_moment_criteria: dict[str, ComputeInterfaceMoment],
-                 dict_along_criteria: dict[str, ComputeInterfaceMoment]) -> None:
+                 dict_along_criteria: dict[str, ComputeInterfaceMoment], alg_name="Closed_Loop_PI") -> None:
         self.dict_moment_criteria = dict_moment_criteria
         self.dict_along_criteria = dict_along_criteria
         self.end_effector_name = "EE"
+        self.IK_alg_name = alg_name
 
     def get_criteria_data(self, fixed_robot, free_robot, traj_6d, n_auxiliary_points:int = 50, viz=None):
         """Perform calculating
@@ -92,7 +93,7 @@ class CriteriaAggregator:
 
         # perform calculations of the data required to calculate the fancy mech criteria
         res_dict_free, res_dict_fixed = calculate_quasi_static_simdata(
-            free_robot, fixed_robot, self.end_effector_name, traj_6d,viz=viz)
+            free_robot, fixed_robot, self.end_effector_name, traj_6d,viz=viz, alg_name=self.IK_alg_name)
         # calculate the criteria that can be assigned to each point at the trajectory 
         point_criteria_vector = moment_criteria_calc(self.dict_moment_criteria,
                                                   res_dict_free, res_dict_fixed)

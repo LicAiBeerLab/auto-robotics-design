@@ -52,7 +52,7 @@ class TrajectoryIKManager():
                 f"Cannot set solver - wrong parameters for solver: {name}. Solver set to default value: {self.default_name}")
             self.solver = partial(IK_METHODS[self.default_name], {})
 
-    def follow_trajectory(self, trajectory: np.array, q_start: np.array = None, viz=None):
+    def follow_trajectory(self, trajectory: np.ndarray, q_start: np.ndarray = None, viz=None):
         """The function to follow a trajectory.
 
         Args:
