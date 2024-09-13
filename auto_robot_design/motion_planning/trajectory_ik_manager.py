@@ -89,12 +89,6 @@ class TrajectoryIKManager():
         q_array = np.zeros((len(trajectory), len(q)))
         # final error for each point
         constraint_errors = np.zeros((len(trajectory), 1))
-        # if viz:
-        #     visualizer = MeshcatVisualizer(
-        #         self.model, self.visual_model, self.visual_model)
-        #     visualizer.viewer = meshcat.Visualizer().open()
-        #     visualizer.clean()
-        #     visualizer.loadViewerModel()
         for idx, point in enumerate(trajectory):
             q, min_feas, is_reach = ik_solver(
                 model,
