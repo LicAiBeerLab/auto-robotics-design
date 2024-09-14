@@ -189,7 +189,7 @@ def constraint_jacobian_active_to_passive(model,data,constraint_model,constraint
     dq_dmot[Lidmot]=dq_dmot_no[:nv_mot,:]
     dq_dmot[Lidfree]=dq_dmot_no[nv_mot:,:]
     
-    return dq_dmot_no, E_tau
+    return dq_dmot, E_tau
 
 
 def jacobian_constraint(model,data,constraint_model,constraint_data,actuation_model,q0):
@@ -251,7 +251,7 @@ def dampfing_least_square(J, damp_coeff = 1e-8):
     return pinvJ
 
 
-def inverseConstraintKinematicsSpeed(model,data,constraint_model,constraint_data,actuation_model,q0,ideff,veff, viz):
+def inverseConstraintKinematicsSpeed(model,data,constraint_model,constraint_data,actuation_model,q0,ideff,veff, viz=None):
     """
     vq,Jf_cloesd=inverseConstraintKinematicsSpeedOptimized(model,data,constraint_model,constraint_data,actuation_model,q0,ideff,veff)
     
@@ -296,6 +296,8 @@ def inverseConstraintKinematicsSpeed(model,data,constraint_model,constraint_data
     Jmot=np.zeros((nc,nv_mot))
     Jfree=np.zeros((nc,nv_free))
     
+
+
     #separation between Jmot and Jfree
     
     nprec=0
@@ -344,24 +346,25 @@ def inverseConstraintKinematicsSpeed(model,data,constraint_model,constraint_data
     vq[Lidmot]=vqmotfree[:nv_mot]
     vq[Lidfree]=vqmotfree[nv_mot:]
 
-    for id, oMc1c2 in enumerate(arrs_oMc1c2):
-    
-        ballIDc1 = "world/ball_c1_" + str(id)
-        material = meshcat.geometry.MeshPhongMaterial()
-        material.color = int(0xFF0000)
+    if viz:
+        for id, oMc1c2 in enumerate(arrs_oMc1c2):
         
-        ballIDc2 = "world/ball_c2_" + str(id)
-        material2 = meshcat.geometry.MeshPhongMaterial()
-        material2.color = int(0x00FF00)
+            ballIDc1 = "world/ball_c1_" + str(id)
+            material = meshcat.geometry.MeshPhongMaterial()
+            material.color = int(0xFF0000)
+            
+            ballIDc2 = "world/ball_c2_" + str(id)
+            material2 = meshcat.geometry.MeshPhongMaterial()
+            material2.color = int(0x00FF00)
+            
+            material.opacity = 0.5
+            viz.viewer[ballIDc1].set_object(meshcat.geometry.Sphere(0.002), material)
+            viz.viewer[ballIDc1].set_transform(oMc1c2[0].np)
+            
+            viz.viewer[ballIDc2].set_object(meshcat.geometry.Sphere(0.002), material2)
+            viz.viewer[ballIDc2].set_transform(oMc1c2[1].np)
         
-        material.opacity = 0.5
-        viz.viewer[ballIDc1].set_object(meshcat.geometry.Sphere(0.002), material)
-        viz.viewer[ballIDc1].set_transform(oMc1c2[0].np)
-        
-        viz.viewer[ballIDc2].set_object(meshcat.geometry.Sphere(0.002), material2)
-        viz.viewer[ballIDc2].set_transform(oMc1c2[1].np)
-    
-    print(f"constrs: 1. {arrs_c1Mc2[0]}") #2. {arrs_c1Mc2[1]}")
+        print(f"constrs: 1. {arrs_c1Mc2[0]}") #2. {arrs_c1Mc2[1]}")
     
     return(vq,Jf_closed)
 
@@ -686,4 +689,3 @@ if __name__ == "__main__":
     
     #test
     unittest.main()
-

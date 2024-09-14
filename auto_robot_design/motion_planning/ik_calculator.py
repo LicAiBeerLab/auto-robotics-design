@@ -54,26 +54,30 @@ def closed_loop_ik_pseudo_inverse(rmodel,
                                   q_start=None, 
                                   onlytranslation:bool=True, 
                                   eps:float=1e-5, 
-                                  max_it:int=30, 
+                                  max_it:int=100, 
                                   alpha:float=0.5, 
                                   l:float=1e-5, 
                                   q_delta_threshold:float=0.5):
     """Finds the IK solution using constraint Jacobian. 
 
         The target position is added to the list of constraints and treated as a constraint violated in the starting position.
+        The algorithm uses the pseudo-inverse of the total constraint Jacobian to find the dq that eliminate constrain violation in linearized model.
+        The linear model solution is integrated with alpha factor to find the new configuration at each step. Parameter l is used to regularize the pseudo-inverse.
+        We assume that if linear solution is too large, it means the direction to the desired pose is close to singular one and we stop the search. 
+        Large dq leads to chaotic behavior and mechanism reassembly in new configurations.
 
     Args:
-        rmodel (_type_): _description_
-        rconstraint_model (_type_): _description_
-        target_pos (_type_): _description_
-        ideff (_type_): _description_
-        q_start (_type_, optional): _description_. Defaults to None.
-        onlytranslation (bool, optional): _description_. Defaults to False.
-        eps (float, optional): _description_. Defaults to 1e-5.
-        max_it (int, optional): _description_. Defaults to 30.
-        alpha (float, optional): _description_. Defaults to 0.5.
-        l (float, optional): _description_. Defaults to 1e-5.
-        q_delta_threshold (float, optional): _description_. Defaults to 0.5.
+        rmodel (_type_): pinocchio model
+        rconstraint_model (_type_): constraints model
+        target_pos (_type_): 6d position of the target
+        ideff (_type_): end-effector id
+        q_start (_type_, optional): starting position for ik search. Defaults to None.
+        onlytranslation (bool, optional): True if only desired position do not include ee orientation. Defaults to False.
+        eps (float, optional): desired error. Defaults to 1e-5.
+        max_it (int, optional): max number of iterations. Defaults to 100.
+        alpha (float, optional): step factor. Defaults to 0.5.
+        l (float, optional): regularization parameter. Defaults to 1e-5.
+        q_delta_threshold (float, optional): dq threshold. Defaults to 0.5.
 
     Raises:
         Exception: _description_

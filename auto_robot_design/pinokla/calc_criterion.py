@@ -7,7 +7,9 @@ from typing import NamedTuple, Optional
 import numpy as np
 import pinocchio as pin
 from numpy.linalg import norm
-
+from auto_robot_design.pinokla.closed_loop_jacobian import (
+    constraint_jacobian_active_to_passive,
+)
 from auto_robot_design.pinokla.closed_loop_jacobian import (
     closedLoopInverseKinematicsProximal, dq_dqmot,
     inverseConstraintKinematicsSpeed)
@@ -258,7 +260,7 @@ def pseudo_static_step(robot: Robot, q_state: np.ndarray,
     pin.computeJointJacobians(robot.model, robot.data, q_state)
     pin.centerOfMass(robot.model, robot.data, q_state)
 
-    vq, J_closed = inverseConstraintKinematicsSpeed(
+    vq, _J_closed = inverseConstraintKinematicsSpeed(
         robot.model,
         robot.data,
         robot.constraint_models,
@@ -267,6 +269,21 @@ def pseudo_static_step(robot: Robot, q_state: np.ndarray,
         q_state,
         ee_frame_id,
         robot.data.oMf[ee_frame_id].action @ np.zeros(6),
+    )
+    _dq_dqmot, __ = constraint_jacobian_active_to_passive(
+        robot.model,
+        robot.data,
+        robot.constraint_models,
+        robot.constraint_data,
+        robot.actuation_model,
+        q_state,
+    )
+
+    J_closed = (
+        pin.computeFrameJacobian(
+            robot.model, robot.data, q_state, ee_frame_id, pin.LOCAL_WORLD_ALIGNED
+        )
+        @ _dq_dqmot
     )
     LJ = []
     for cm, cd in zip(robot.constraint_models, robot.constraint_data):
