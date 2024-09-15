@@ -260,16 +260,16 @@ def pseudo_static_step(robot: Robot, q_state: np.ndarray,
     pin.computeJointJacobians(robot.model, robot.data, q_state)
     pin.centerOfMass(robot.model, robot.data, q_state)
 
-    vq, _J_closed = inverseConstraintKinematicsSpeed(
-        robot.model,
-        robot.data,
-        robot.constraint_models,
-        robot.constraint_data,
-        robot.actuation_model,
-        q_state,
-        ee_frame_id,
-        robot.data.oMf[ee_frame_id].action @ np.zeros(6),
-    )
+    # vq, J_closed = inverseConstraintKinematicsSpeed(
+    #     robot.model,
+    #     robot.data,
+    #     robot.constraint_models,
+    #     robot.constraint_data,
+    #     robot.actuation_model,
+    #     q_state,
+    #     ee_frame_id,
+    #     robot.data.oMf[ee_frame_id].action @ np.zeros(6),
+    # )
     _dq_dqmot, __ = constraint_jacobian_active_to_passive(
         robot.model,
         robot.data,
@@ -285,6 +285,7 @@ def pseudo_static_step(robot: Robot, q_state: np.ndarray,
         )
         @ _dq_dqmot
     )
+    #[[0,2]]
     LJ = []
     for cm, cd in zip(robot.constraint_models, robot.constraint_data):
         Jc = pin.getConstraintJacobian(robot.model, robot.data, cm, cd)
@@ -292,8 +293,8 @@ def pseudo_static_step(robot: Robot, q_state: np.ndarray,
 
     M = pin.crba(robot.model, robot.data, q_state)
     # TODO: force Kirill to explain what is this and why we need it
-    dq = dq_dqmot(robot.model, robot.actuation_model, LJ)
-
+    #dq = dq_dqmot(robot.model, robot.actuation_model, LJ)
+    dq =_dq_dqmot
     return PsedoStepResault(J_closed, M, dq)
 
 
