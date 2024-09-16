@@ -11,8 +11,8 @@ from auto_robot_design.pinokla.closed_loop_jacobian import (
     constraint_jacobian_active_to_passive,
 )
 from auto_robot_design.pinokla.closed_loop_jacobian import (
-    closedLoopInverseKinematicsProximal, dq_dqmot,
-    inverseConstraintKinematicsSpeed)
+    closedLoopInverseKinematicsProximal,
+    ConstraintFrameJacobian)
 from auto_robot_design.pinokla.closed_loop_kinematics import (
     ForwardK, closedLoopProximalMount)
 from auto_robot_design.pinokla.criterion_math import (calc_manipulability,
@@ -20,7 +20,6 @@ from auto_robot_design.pinokla.criterion_math import (calc_manipulability,
                                                       calc_force_ell_projection_along_trj, calc_IMF, calculate_mass,
                                                       convert_full_J_to_planar_xz)
 from auto_robot_design.pinokla.loader_tools import Robot
-from auto_robot_design.motion_planning.trajectory_ik_manager import IK_METHODS, open_loop_ik, closed_loop_ik_pseudo_inverse
 
 
 class MovmentSurface(IntFlag):
@@ -260,7 +259,7 @@ def pseudo_static_step(robot: Robot, q_state: np.ndarray,
     pin.computeJointJacobians(robot.model, robot.data, q_state)
     pin.centerOfMass(robot.model, robot.data, q_state)
 
-    # vq, J_closed = inverseConstraintKinematicsSpeed(
+    # J_closed = ConstraintFrameJacobian(
     #     robot.model,
     #     robot.data,
     #     robot.constraint_models,

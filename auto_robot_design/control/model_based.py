@@ -4,7 +4,7 @@ from scipy.spatial.transform import Rotation as R
 
 from auto_robot_design.pinokla.closed_loop_jacobian import (
     constraint_jacobian_active_to_passive,
-    inverseConstraintKinematicsSpeed,
+    ConstraintFrameJacobian,
     jacobian_constraint,
 )
 
@@ -181,7 +181,7 @@ class OperationSpacePDControl:
             np.ndarray: The computed control input for the robot.
 
         """
-        vq_cstr, J_closed = inverseConstraintKinematicsSpeed(
+        J_closed = ConstraintFrameJacobian(
             self.robot.model,
             self.robot.data,
             self.robot.constraint_models,
@@ -197,19 +197,20 @@ class OperationSpacePDControl:
                 R.from_matrix(self.robot.data.oMf[self.id_frame].rotation).as_rotvec(),
             )
         )
-
-        g = pin.computeGeneralizedGravity(self.robot.model, self.robot.data, q)
-
-        vq_a = vq[self.ids_vmot]
         # vq_a_ref = vq_cstr[self.ids_vmot]
-        Jda, E_tau = constraint_jacobian_active_to_passive(
+        Jda, __ = constraint_jacobian_active_to_passive(
             self.robot.model,
             self.robot.data,
             self.robot.constraint_models,
             self.robot.constraint_data,
             self.robot.actuation_model,
             q,
+            
         )
+
+        g = pin.computeGeneralizedGravity(self.robot.model, self.robot.data, q)
+
+        vq_a = vq[self.ids_vmot]
 
         # first = self.Kp @ (x_ref - x_body_curr)
         # second = self.Kd @ (dx_ref - J_closed @ vq_a)
@@ -218,7 +219,7 @@ class OperationSpacePDControl:
         tau_a = (
             J_closed.T
             @ (self.Kp @ (x_ref - x_body_curr) + self.Kd @ (dx_ref - J_closed @ vq_a))
-            + Jda.T @ E_tau.T @ g
+            + Jda.T @ g
         )
 
         self.tauq[self.ids_mot] = tau_a
