@@ -7,17 +7,20 @@ from typing import NamedTuple, Optional
 import numpy as np
 import pinocchio as pin
 from numpy.linalg import norm
-
+from auto_robot_design.pinokla.closed_loop_jacobian import (
+    constraint_jacobian_active_to_passive,
+)
 from auto_robot_design.pinokla.closed_loop_jacobian import (
     closedLoopInverseKinematicsProximal, dq_dqmot,
     inverseConstraintKinematicsSpeed)
 from auto_robot_design.pinokla.closed_loop_kinematics import (
-    ForwardK, closedLoopProximalMount, closed_loop_ik_grad, closed_loop_ik_pseudo_inverse)
+    ForwardK, closedLoopProximalMount)
 from auto_robot_design.pinokla.criterion_math import (calc_manipulability,
                                                       ImfProjections, calc_actuated_mass, calc_effective_inertia,
                                                       calc_force_ell_projection_along_trj, calc_IMF, calculate_mass,
                                                       convert_full_J_to_planar_xz)
 from auto_robot_design.pinokla.loader_tools import Robot
+from auto_robot_design.motion_planning.trajectory_ik_manager import IK_METHODS, open_loop_ik, closed_loop_ik_pseudo_inverse
 
 
 class MovmentSurface(IntFlag):
@@ -249,75 +252,6 @@ def folow_traj_by_proximal_inv_k_2(
     return poses, q_array, constraint_errors, reach_array
 
 
-def closed_loop_pseudo_inverse_follow(
-    model,
-    data,
-    constraint_models,
-    constraint_data,
-    end_effector_frame: str,
-    traj_6d: np.ndarray,
-    viz=None,
-    q_start: np.ndarray = None,
-):
-    """Solve the inverse kinematic problem
-
-    Args:
-        model (_type_): _description_
-        data (_type_): _description_
-        constraint_models (_type_): _description_
-        constraint_data (_type_): _description_
-        end_effector_frame (str): _description_
-        traj_6d (np.ndarray): _description_
-        viz (_type_, optional): _description_. Defaults to None.
-        q_start (np.ndarray, optional): _description_. Defaults to None.
-
-    Returns:
-        np.array: end-effector positions in final state
-        np.array: joint coordinates in final state
-        np.array: deviations from the desired position
-
-    """
-    if q_start is None:
-        q = pin.neutral(model)
-    else:
-        q = q_start
-
-    ee_frame_id = model.getFrameId(end_effector_frame)
-    poses = np.zeros((len(traj_6d), 3))
-    reach_array = np.zeros(len(traj_6d))
-    q_array = np.zeros((len(traj_6d), len(q)))
-    constraint_errors = np.zeros((len(traj_6d), 1))
-
-    for num, i_pos in enumerate(traj_6d):
-
-        q, min_feas, is_reach = closed_loop_ik_pseudo_inverse(
-            model,
-            data,
-            constraint_models,
-            constraint_data,
-            i_pos,
-            ee_frame_id,
-            onlytranslation=True,
-            q_start=q,
-        )
-        if not is_reach:
-            q = closedLoopProximalMount(
-                model, data, constraint_models, constraint_data, q
-            )
-        if viz:
-            viz.display(q)
-            time.sleep(0.1)
-
-        pin.framesForwardKinematics(model, data, q)
-        poses[num] = data.oMf[ee_frame_id].translation
-        q_array[num] = q
-        constraint_errors[num] = min_feas
-        reach_array[num] = is_reach
-        if not is_reach:
-            break
-    return poses, q_array, constraint_errors, reach_array
-
-
 def pseudo_static_step(robot: Robot, q_state: np.ndarray,
                        ee_frame_name: str) -> PsedoStepResault:
 
@@ -326,16 +260,32 @@ def pseudo_static_step(robot: Robot, q_state: np.ndarray,
     pin.computeJointJacobians(robot.model, robot.data, q_state)
     pin.centerOfMass(robot.model, robot.data, q_state)
 
-    vq, J_closed = inverseConstraintKinematicsSpeed(
+    # vq, J_closed = inverseConstraintKinematicsSpeed(
+    #     robot.model,
+    #     robot.data,
+    #     robot.constraint_models,
+    #     robot.constraint_data,
+    #     robot.actuation_model,
+    #     q_state,
+    #     ee_frame_id,
+    #     robot.data.oMf[ee_frame_id].action @ np.zeros(6),
+    # )
+    _dq_dqmot, __ = constraint_jacobian_active_to_passive(
         robot.model,
         robot.data,
         robot.constraint_models,
         robot.constraint_data,
         robot.actuation_model,
         q_state,
-        ee_frame_id,
-        robot.data.oMf[ee_frame_id].action @ np.zeros(6),
     )
+
+    J_closed = (
+        pin.computeFrameJacobian(
+            robot.model, robot.data, q_state, ee_frame_id, pin.LOCAL_WORLD_ALIGNED
+        )
+        @ _dq_dqmot
+    )
+    #[[0,2]]
     LJ = []
     for cm, cd in zip(robot.constraint_models, robot.constraint_data):
         Jc = pin.getConstraintJacobian(robot.model, robot.data, cm, cd)
@@ -343,8 +293,8 @@ def pseudo_static_step(robot: Robot, q_state: np.ndarray,
 
     M = pin.crba(robot.model, robot.data, q_state)
     # TODO: force Kirill to explain what is this and why we need it
-    dq = dq_dqmot(robot.model, robot.actuation_model, LJ)
-
+    #dq = dq_dqmot(robot.model, robot.actuation_model, LJ)
+    dq =_dq_dqmot
     return PsedoStepResault(J_closed, M, dq)
 
 

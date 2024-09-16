@@ -1,5 +1,6 @@
 from operator import le
 from exceptiongroup import catch
+from matplotlib import pyplot as plt
 import numpy as np
 import pinocchio as pin
 from scipy import optimize
@@ -9,8 +10,10 @@ from pinocchio.visualize import MeshcatVisualizer
 
 from auto_robot_design.control.model_based import OperationSpacePDControl
 from auto_robot_design.control.trajectory_planning import trajectory_planning
+from auto_robot_design.generator.topologies.bounds_preset import get_preset_by_index_with_bounds
+from auto_robot_design.motion_planning.trajectory_ik_manager import IK_METHODS, TrajectoryIKManager
 from auto_robot_design.pinokla.closed_loop_kinematics import closedLoopInverseKinematicsProximal, closedLoopProximalMount
-from auto_robot_design.pinokla.default_traj import convert_x_y_to_6d_traj_xz
+from auto_robot_design.pinokla.default_traj import add_auxilary_points_to_trajectory, convert_x_y_to_6d_traj_xz, create_simple_step_trajectory
 
 class TrajectoryMovements:
     def __init__(self, trajectory, final_time, time_step, name_ee_frame) -> None:
@@ -34,11 +37,11 @@ class TrajectoryMovements:
         """
 
         Kp = np.zeros((6,6))
-        Kp[0,0] = 7000
-        Kp[2,2] = 4200
+        Kp[0,0] = 3000
+        Kp[2,2] = 3000
         
         Kd = np.zeros((6,6))
-        Kd[0,0] = 74
+        Kd[0,0] = 90
         Kd[2,2] = 90
         
         self.Kp = Kp
@@ -74,8 +77,14 @@ class TrajectoryMovements:
         """
         des_trajectories = np.zeros((self.num_sim_steps, 2))
         des_trajectories[:,0] = np.linspace(self.traj[0,0], self.traj[-1,0], self.num_sim_steps)
-        cs_z_by_x = np.polyfit(self.traj[:,0], self.traj[:,1], 3)
-        des_trajectories[:,1] = np.polyval(cs_z_by_x, des_trajectories[:,0])
+        # cs_z_by_x = np.polyfit(self.traj[:,0], self.traj[:,1], 3)
+        # des_trajectories[:,1] = np.polyval(cs_z_by_x, des_trajectories[:,0])
+
+        if self.traj[:,0].max() - self.traj[:,0].min() < 1e-3:
+            des_trajectories[:,1] = np.linspace(self.traj[0,1], self.traj[-1,1], self.num_sim_steps)
+        else:
+            cs_z_by_x = np.polyfit(self.traj[:,0], self.traj[:,1], 3)
+            des_trajectories[:,1] = np.polyval(cs_z_by_x, des_trajectories[:,0])
         time_arr = np.linspace(0, self.time, self.num_sim_steps)
         
         des_traj_6d = convert_x_y_to_6d_traj_xz(des_trajectories[:,0], des_trajectories[:,1])
@@ -124,7 +133,7 @@ class TrajectoryMovements:
         # }
         return time_arr, des_traj_6d, des_d_traj_6d
 
-    def simulate(self, robot, is_vis=False):
+    def simulate(self, robot, q_start, is_vis=False):
         """
         Simulates the trajectory movements of a robot.
 
@@ -143,23 +152,9 @@ class TrajectoryMovements:
         """
         self.setup_dynamic()
         frame_id = robot.model.getFrameId(self.name_ee_frame)
-        q = np.zeros(robot.model.nq)
 
         __, des_traj_6d, des_d_traj_6d = self.prepare_trajectory(robot)
-        q, __, is_reach = closedLoopInverseKinematicsProximal(
-            robot.model,
-            robot.data,
-            robot.constraint_models,
-            robot.constraint_data,
-            des_traj_6d[0],
-            frame_id,
-            onlytranslation=True,
-            q_start=q,
-        )
-        if not is_reach:
-            q = closedLoopProximalMount(
-                robot.model, robot.data, robot.constraint_models, robot.constraint_data, q
-            )
+        q = q_start
 
         control = OperationSpacePDControl(robot, self.Kp, self.Kd, frame_id)
 
@@ -274,6 +269,25 @@ class TrajectoryMovements:
         return Kp, Kd
     
 
+def go_to_point(robot, point):
+
+    to_start_from_init = add_auxilary_points_to_trajectory(np.array([point]).T)
+    traj_6d = convert_x_y_to_6d_traj_xz(to_start_from_init[0], to_start_from_init[1])
+    
+    traj_manager = TrajectoryIKManager()
+    traj_manager.register_model(robot.model, robot.constraint_models)
+    traj_manager.set_solver(traj_manager.default_name)
+    pos, q_arrs, __, reach_array = traj_manager.follow_trajectory(traj_6d, np.zeros(robot.model.nq))
+    
+    result_q = np.zeros(robot.model.nq)
+    if reach_array[-1]:
+        result_q = q_arrs[-1]
+    else:
+        raise Exception("Point is not reachable")
+    
+    return result_q
+
+
 if __name__ == "__main__":
     from auto_robot_design.generator.restricted_generator.two_link_generator import (
     TwoLinkGenerator,
@@ -283,29 +297,45 @@ if __name__ == "__main__":
     URDFLinkCreator,
     jps_graph2pinocchio_robot,
 )   
-    gen = TwoLinkGenerator()
     builder = ParametrizedBuilder(URDFLinkCreator)
-    graphs_and_cons = gen.get_standard_set()
-    np.set_printoptions(precision=3, linewidth=300, suppress=True, threshold=10000)
 
-    graph_jp, constrain = graphs_and_cons[2]
+    gm = get_preset_by_index_with_bounds(5)
+    x_centre = gm.generate_central_from_mutation_range()
+    graph_jp = gm.get_graph(x_centre)
 
     robo, __ = jps_graph2pinocchio_robot(graph_jp, builder)
     
     name_ee = "EE"
     
-    x_point = np.array([-0.5, 0, 0.25]) * 0.5
-    y_point = np.array([-0.4, -0.1, -0.4]) * 0.5
-    y_point = y_point - 0.7
     
-    trajectory = np.array([x_point, y_point]).T
+    ground_symmetric_step1 = create_simple_step_trajectory(
+            starting_point=[-0.11, -0.32], step_height=0.07, step_width=0.22, n_points=4)
     
-    test = TrajectoryMovements(trajectory, 1, 0.01, name_ee)
+    start_q = go_to_point(robo, np.array(ground_symmetric_step1)[:,0])
     
-    # test.prepare_trajectory(robo)
-    # Kp, Kd = test.optimize_control(robo)
     
-    # test.Kp = Kp
-    # test.Kd = Kd
+    test = TrajectoryMovements(np.array(ground_symmetric_step1).T, 1, 0.01, name_ee)
+    pin.framesForwardKinematics(robo.model, robo.data, start_q)
     
-    test.simulate(robo, True)
+    Kp = np.zeros((6,6))
+    Kd = np.zeros((6,6))
+    
+    Kp[0,0] = 3000
+    Kd[0,0] = 100
+    
+    Kp[2,2] = 3000
+    Kd[2,2] = 100
+    
+    test.Kp = Kp
+    test.Kd = Kd
+
+        
+    # # q, vq, acc, tau, pos_ee, power
+    __, __, __, tau_arr, pos_ee, __ = test.simulate(robo, start_q, True)
+    
+    
+    des_traj = np.array(ground_symmetric_step1).T
+    plt.plot(pos_ee[:,0], pos_ee[:,2])
+    plt.plot(des_traj[:,0], des_traj[:,1], ".")
+    
+    plt.show()

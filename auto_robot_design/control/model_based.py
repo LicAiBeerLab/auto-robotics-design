@@ -210,6 +210,11 @@ class OperationSpacePDControl:
             self.robot.actuation_model,
             q,
         )
+
+        # first = self.Kp @ (x_ref - x_body_curr)
+        # second = self.Kd @ (dx_ref - J_closed @ vq_a)
+        # third = J_closed.T@(first + second)
+        # tau_a = third + Jda.T @ E_tau.T @ g
         tau_a = (
             J_closed.T
             @ (self.Kp @ (x_ref - x_body_curr) + self.Kd @ (dx_ref - J_closed @ vq_a))
