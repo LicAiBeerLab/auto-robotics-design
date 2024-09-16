@@ -1268,6 +1268,7 @@ class ParametrizedBuilder(Builder):
 
         return super().create_kinematic_graph(kinematic_graph, name)
 
+
     def _set_joint_attributes(self, joint):
         if joint.jp.active:
             joint.actuator = self.actuator[joint.jp.name] if joint.jp.name in self.actuator else self.actuator["default"]
