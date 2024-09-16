@@ -118,6 +118,31 @@ def add_branch_with_attrib(
             G.add_edge(ed[0], ed[1], **ed[2])
 
 
+def calculate_transform_with_2points(p1: np.ndarray, 
+                                     p2: np.ndarray,
+                                     vec: np.ndarray = np.array([0, 0, 1])):
+    """Calculate transformation from `vec` to vector build with points `p1` and `p2`
+
+    Args:
+        p1 (np.ndarray): point of vector's start
+        p2 (np.ndarray): point of vector's end
+        vec (np.ndarray, optional): Vector tansform from. Defaults to np.array([0, 0, 1]).
+
+    Returns:
+        tuple: position: np.ndarray, rotation: scipy.spatial.rotation, length: float
+    """
+    v_l = p2 - p1
+    angle = np.arccos(np.inner(vec, v_l) / la.norm(v_l) / la.norm(vec))
+    axis = mr.VecToso3(vec[:3]) @ v_l[:3]
+    if not np.isclose(np.sum(axis), 0):
+        axis /= la.norm(axis)
+
+    rot = R.from_rotvec(axis * angle)
+    pos = (p2 + p1) / 2
+    length = la.norm(v_l)
+    
+    return pos, rot, length
+
 class URDFLinkCreator:
     """
     Class responsible for creating URDF links and joints.
@@ -144,21 +169,13 @@ class URDFLinkCreator:
                 pos_joint_in_local.append(H_l_w @ np.r_[j.jp.r, 1])
 
             joint_pos_pairs = combinations(pos_joint_in_local, 2)
-            ez = np.array([0, 0, 1, 0])
             body_origins = []
             for j_p in joint_pos_pairs:
-                v_l = j_p[1] - j_p[0]
-                angle = np.arccos(np.inner(ez, v_l) / la.norm(v_l) / la.norm(ez))
-                axis = mr.VecToso3(ez[:3]) @ v_l[:3]
-                if not np.isclose(np.sum(axis), 0):
-                    axis /= la.norm(axis)
-
-                rot = R.from_rotvec(axis * angle)
-                pos = (j_p[1][:3] + j_p[0][:3]) / 2
-                if la.norm(v_l) > link.geometry.get_thickness():
-                    length = la.norm(v_l) - link.geometry.get_thickness()
+                pos, rot, vec_len = calculate_transform_with_2points(j_p[0][:3], j_p[1][:3])
+                if vec_len > link.geometry.get_thickness():
+                    length = vec_len - link.geometry.get_thickness()
                 else:
-                    length = la.norm(v_l)
+                    length = vec_len
                 body_origins.append(
                     (pos.tolist(), rot.as_euler("xyz").tolist(), length)
                 )
@@ -167,13 +184,15 @@ class URDFLinkCreator:
                 link.geometry.size.moment_inertia_frame(link.inertial_frame),
             )
             urdf_link = cls._create_mesh(
-                link.geometry, link.name, inertia, body_origins
+                link.geometry, link.name, inertia, body_origins, cls.trans_matrix2xyz_rpy(link.inertial_frame)
             )
         elif link.geometry.shape == "box":
             origin = cls.trans_matrix2xyz_rpy(link.inertial_frame)
+            # link_origin = cls.trans_matrix2xyz_rpy(link.frame)
             urdf_link = cls._create_box(link.geometry, link.name, origin, origin)
         elif link.geometry.shape == "sphere":
             origin = cls.trans_matrix2xyz_rpy(link.inertial_frame)
+            # link_origin = cls.trans_matrix2xyz_rpy(link.frame)
             urdf_link = cls._create_sphere(link.geometry, link.name, origin, origin)
         else:
             pass
@@ -476,7 +495,9 @@ class URDFLinkCreator:
         urdf_material = urdf.Material(urdf.Color(rgba=geometry.color), name=name_m)
         name_c = name + "_" + "Collision"
         name_v = name + "_" + "Visual"
-        urdf_geometry = urdf.Geometry(urdf.Box(geometry.size))
+        # urdf_geometry = urdf.Geometry(urdf.Box(geometry.size))
+        to_mesh = "D:\\Files\\Working\\auto-robotics-design\\testing_ground\\mesh\\" + name + ".obj"
+        urdf_geometry = urdf.Geometry(urdf.Mesh(to_mesh, 1))
         urdf_inertia_origin = urdf.Origin(
             xyz=inertia_origin[0],
             rpy=inertia_origin[1],
@@ -520,7 +541,9 @@ class URDFLinkCreator:
 
         name_c = name + "_" + "Collision"
         name_v = name + "_" + "Visual"
-        urdf_geometry = urdf.Geometry(urdf.Sphere(geometry.size[0]))
+        # urdf_geometry = urdf.Geometry(urdf.Sphere(geometry.size[0]))
+        to_mesh = "D:\\Files\\Working\\auto-robotics-design\\testing_ground\\mesh\\" + name + ".obj"
+        urdf_geometry = urdf.Geometry(urdf.Mesh(to_mesh, 1))
         urdf_inertia_origin = urdf.Origin(
             xyz=inertia_origin[0],
             rpy=inertia_origin[1],
@@ -546,7 +569,7 @@ class URDFLinkCreator:
         return urdf.Link(visual, collision, inertial, name=name)
 
     @classmethod
-    def _create_mesh(cls, geometry: Mesh, name, inertia, body_origins):
+    def _create_mesh(cls, geometry: Mesh, name, inertia, body_origins, link_origin=None):
         """
         Create a URDF mesh based on the given Mesh geometry.
 
@@ -564,24 +587,40 @@ class URDFLinkCreator:
         origin_I = cls.trans_matrix2xyz_rpy(inertia[0])
         urdf_inertia_origin = urdf.Origin(xyz=origin_I[0], rpy=origin_I[1])
         visual_n_collision = []
+        to_mesh = "D:\\Files\\Working\\auto-robotics-design\\testing_ground\\mesh\\" + name + ".obj"
+        urdf_geometry = urdf.Geometry(urdf.Mesh(to_mesh, 1))
+        urdf_origin = urdf.Origin(
+            xyz=link_origin[0],
+            rpy=link_origin[1],
+        )
+        visual = urdf.Visual(
+            urdf_origin,
+            urdf_geometry,
+            urdf_material,
+            # name = name_v
+        )
         for id, origin in enumerate(body_origins):
             name_c = name + "_" + str(id) + "_Collision"
             name_v = name + "_" + str(id) + "_Visual"
             thickness = geometry.get_thickness()
             urdf_geometry = urdf.Geometry(urdf.Box([thickness, thickness, origin[2]]))
+            # to_mesh = "D:\\Files\\Working\\auto-robotics-design\\testing_ground\\mesh\\" + name + ".obj"
+            # urdf_geometry = urdf.Geometry(urdf.Mesh(to_mesh, 1))
             urdf_origin = urdf.Origin(
                 xyz=origin[0],
                 rpy=origin[1],
             )
-            visual = urdf.Visual(
-                urdf_origin,
-                urdf_geometry,
-                urdf_material,
-                # name = name_v
-            )
+            # visual = urdf.Visual(
+            #     urdf_origin,
+            #     urdf_geometry,
+            #     urdf_material,
+            #     # name = name_v
+            # )
 
             collision = urdf.Collision(urdf_origin, urdf_geometry, name=name_c)
-            visual_n_collision += [visual, collision]
+            # visual_n_collision += [visual, collision]
+            visual_n_collision += [collision]
+        visual_n_collision += [visual]
         inertial = urdf.Inertial(
             urdf_inertia_origin,
             urdf.Mass(float(geometry.size.mass)),
