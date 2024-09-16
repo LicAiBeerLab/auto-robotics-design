@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import IntFlag, auto
 from typing import Callable
-from auto_robot_design.pinokla.closed_loop_jacobian import inverseConstraintKinematicsSpeed
+from auto_robot_design.pinokla.closed_loop_jacobian import ConstraintFrameJacobian
 from auto_robot_design.pinokla.loader_tools import build_model_with_extensions
 import pinocchio as pin
 import numpy as np
@@ -424,16 +424,6 @@ class SimulateSquatHop:
             self.squat_hop_parameters.ground_link_name)
         ee_id = self.trans_base_robo.model.getFrameId(
             self.squat_hop_parameters.ground_link_name)
-        vq, J_closed = inverseConstraintKinematicsSpeed(
-            self.hop_robo.model,
-            self.hop_robo.data,
-            self.hop_robo.constraint_models,
-            self.hop_robo.constraint_data,
-            self.hop_robo.actuation_model,
-            current_q,
-            ground_as_ee_id,
-            self.hop_robo.data.oMf[ground_as_ee_id].action @ np.zeros(6),
-        )
 
         qushka = np.concatenate(
             [np.array([0, 0, current_q[0]]), current_q[1:]])
@@ -445,7 +435,7 @@ class SimulateSquatHop:
                               self.trans_base_robo.data, qushka)
         pin.computeJointJacobians(self.trans_base_robo.model,
                                   self.trans_base_robo.data, qushka)
-        vq2, J_closed2 = inverseConstraintKinematicsSpeed(
+        J_closed2 = ConstraintFrameJacobian(
             self.trans_base_robo.model,
             self.trans_base_robo.data,
             self.trans_base_robo.constraint_models,

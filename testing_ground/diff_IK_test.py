@@ -3,9 +3,7 @@ from matplotlib import pyplot as plt
 from scipy.interpolate import CubicSpline
 from auto_robot_design.control.trajectory_planning import trajectory_planning
 from auto_robot_design.pinokla.closed_loop_jacobian import (
-    inverseConstraintKinematicsSpeed,
-    inverseConstraintPlaneKinematicsSpeed,
-    inverseConstraintPlaneDIK
+    ConstraintFrameJacobian,
 )
 from auto_robot_design.pinokla.default_traj import (
     convert_x_y_to_6d_traj_xz,
