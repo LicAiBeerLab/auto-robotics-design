@@ -24,20 +24,23 @@ from auto_robot_design.description.utils import tensor_inertia_sphere_by_mass
 from auto_robot_design.pino_adapter.pino_adapter import get_pino_description, get_pino_description_3d_constraints
 from auto_robot_design.pinokla.loader_tools import build_model_with_extensions
 
-BLUE_COLOR = np.array([[39, 105, 205, 0.3],
-                    [40, 109, 204, 0.3],
-                    [95, 128, 213, 0.3],
-                    [132, 149, 222, 0.3],
-                    [164, 170, 231, 0.3],
-                    [193, 193, 240, 0.3]], dtype=np.float64)
+RED_COLOR = np.array([[245/ 255, 84/ 255, 84/ 255, 1]])
+
+BLUE_COLOR = np.array([[39, 105, 205, 1],
+                    [40, 109, 204, 1],
+                    [95, 128, 213, 1],
+                    [132, 149, 222, 1],
+                    [164, 170, 231, 1],
+                    [193, 193, 240, 1]], dtype=np.float64)
 BLUE_COLOR[:,:3] = BLUE_COLOR[:,:3] / 255
 
-GREEN_COLOR = np.array([[17, 90, 57, 0.8],
-                        [4, 129, 75, 0.8],
-                        [0, 169, 92, 0.8],
-                        [0, 211, 107, 0.8],
-                        [0, 255, 119, 0.8]], dtype=np.float64)
+GREEN_COLOR = np.array([[17, 90, 57, 1],
+                        [4, 129, 75, 1],
+                        [0, 169, 92, 1],
+                        [0, 211, 107, 1],
+                        [0, 255, 119, 1]], dtype=np.float64)
 GREEN_COLOR[:,:3] = GREEN_COLOR[:,:3] / 255
+
 
 
 DEFAULT_DENSITY = 2700 / 2.8
@@ -495,9 +498,7 @@ class URDFLinkCreator:
         urdf_material = urdf.Material(urdf.Color(rgba=geometry.color), name=name_m)
         name_c = name + "_" + "Collision"
         name_v = name + "_" + "Visual"
-        # urdf_geometry = urdf.Geometry(urdf.Box(geometry.size))
-        to_mesh = "D:\\Files\\Working\\auto-robotics-design\\testing_ground\\mesh\\" + name + ".obj"
-        urdf_geometry = urdf.Geometry(urdf.Mesh(to_mesh, 1))
+        urdf_geometry = urdf.Geometry(urdf.Box(geometry.size))
         urdf_inertia_origin = urdf.Origin(
             xyz=inertia_origin[0],
             rpy=inertia_origin[1],
@@ -541,9 +542,7 @@ class URDFLinkCreator:
 
         name_c = name + "_" + "Collision"
         name_v = name + "_" + "Visual"
-        # urdf_geometry = urdf.Geometry(urdf.Sphere(geometry.size[0]))
-        to_mesh = "D:\\Files\\Working\\auto-robotics-design\\testing_ground\\mesh\\" + name + ".obj"
-        urdf_geometry = urdf.Geometry(urdf.Mesh(to_mesh, 1))
+        urdf_geometry = urdf.Geometry(urdf.Sphere(geometry.size[0]))
         urdf_inertia_origin = urdf.Origin(
             xyz=inertia_origin[0],
             rpy=inertia_origin[1],
@@ -593,34 +592,25 @@ class URDFLinkCreator:
             xyz=link_origin[0],
             rpy=link_origin[1],
         )
-        visual = urdf.Visual(
-            urdf_origin,
-            urdf_geometry,
-            urdf_material,
-            # name = name_v
-        )
         for id, origin in enumerate(body_origins):
             name_c = name + "_" + str(id) + "_Collision"
             name_v = name + "_" + str(id) + "_Visual"
             thickness = geometry.get_thickness()
             urdf_geometry = urdf.Geometry(urdf.Box([thickness, thickness, origin[2]]))
-            # to_mesh = "D:\\Files\\Working\\auto-robotics-design\\testing_ground\\mesh\\" + name + ".obj"
-            # urdf_geometry = urdf.Geometry(urdf.Mesh(to_mesh, 1))
             urdf_origin = urdf.Origin(
                 xyz=origin[0],
                 rpy=origin[1],
             )
-            # visual = urdf.Visual(
-            #     urdf_origin,
-            #     urdf_geometry,
-            #     urdf_material,
-            #     # name = name_v
-            # )
+            visual = urdf.Visual(
+                urdf_origin,
+                urdf_geometry,
+                urdf_material,
+                # name = name_v
+            )
 
             collision = urdf.Collision(urdf_origin, urdf_geometry, name=name_c)
-            # visual_n_collision += [visual, collision]
+            visual_n_collision += [visual, collision]
             visual_n_collision += [collision]
-        visual_n_collision += [visual]
         inertial = urdf.Inertial(
             urdf_inertia_origin,
             urdf.Mass(float(geometry.size.mass)),

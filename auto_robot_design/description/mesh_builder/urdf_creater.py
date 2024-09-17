@@ -1,5 +1,6 @@
 
 from itertools import combinations
+from attr import dataclass
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
@@ -53,39 +54,66 @@ class MeshCreator:
         joint_bodies = []
         substract_bodies = []
         frame = mr.TransInv(link.frame @ link.inertial_frame)
-        for j in in_joints:
-            pos = (frame @ np.hstack((j.jp.r, [1])))[:3]
-            ort_move = frame[:3,:3] @ j.jp.w
-            rot = calculate_rot_vec2_to_vec1(ort_move)
-            size = j.actuator.size
-            if len(size) == 0:
-                size = [0.02, 0.05]
-            tranform = mr.RpToTrans(rot.as_matrix(), pos)
-            joint_bodies.append(
-                m3d.Manifold.
-                cylinder(size[1], size[0], circular_segments=32, center=True).
-                transform(tranform[:3,:])
-            )
-            substract_bodies.append(
-                m3d.Manifold.
-                cylinder(size[1]-0.03, size[0]+0.01, circular_segments=32, center=True).
-                transform(tranform[:3,:])
-            )
         for j in out_joints:
             pos = (frame @ np.hstack((j.jp.r, [1])))[:3]
             ort_move = frame[:3,:3] @ j.jp.w
             rot = calculate_rot_vec2_to_vec1(ort_move)
-            size = j.actuator.size
-            if len(size) == 0:
-                size = [0.02, 0.02]
             tranform = mr.RpToTrans(rot.as_matrix(), pos)
+            size = j.actuator.size
+            if "G" in [l.name for l in j.links]:
+                joint_bodies.append(
+                    m3d.Manifold.
+                    cylinder(size[1], size[0], circular_segments=32, center=True).
+                    transform(tranform[:3,:])
+                )
+                substract_bodies.append(
+                    m3d.Manifold()
+                )
+            else:
+                if isinstance(j.actuator, RevoluteUnit):
+                    r_scale = 1
+                    height_scale = 1.5
+                    # joint_bodies.append(
+                    #     m3d.Manifold.
+                    #     cylinder(size[1]*height_scale, size[0]*r_scale, circular_segments=32, center=True).
+                    #     transform(tranform[:3,:])
+                    # )
+                    subtract_size = [0.001, 0]
+                else:
+                    r_scale = 0.4
+                    height_scale = 1.5
+                    subtract_size = [0.001, 0]
+                joint_bodies.append(
+                    m3d.Manifold.
+                    cylinder(size[1]*height_scale, size[0]*r_scale, circular_segments=32, center=True).
+                    transform(tranform[:3,:])
+                )
+                substract_bodies.append(
+                    m3d.Manifold.
+                    cylinder(size[1]+subtract_size[1], size[0]+subtract_size[0], circular_segments=32, center=True).
+                    transform(tranform[:3,:])
+                )
+        for j in in_joints:
+            pos = (frame @ np.hstack((j.jp.r, [1])))[:3]
+            ort_move = frame[:3,:3] @ j.jp.w
+            rot = calculate_rot_vec2_to_vec1(ort_move)
+            tranform = mr.RpToTrans(rot.as_matrix(), pos)
+            size = j.actuator.size
+            
+            if isinstance(j.actuator, RevoluteUnit):
+                r_scale = 1
+                height_scale = 0.6
+            else:
+                r_scale = 1
+                height_scale = 1
+            if "EE" in [l.name for l in j.links]:
+                r_scale = 1.7
+                height_scale = 1.4
             joint_bodies.append(
                 m3d.Manifold.
-                cylinder(size[1], size[0], circular_segments=32, center=True).
+                cylinder(size[1]*height_scale, size[0]*r_scale, circular_segments=32, center=True).
                 transform(tranform[:3,:])
             )
-            
-            
 
         js = in_joints + out_joints
         num_joint = len(in_joints + out_joints)
@@ -99,7 +127,10 @@ class MeshCreator:
             body_link = joint_bodies[0]
         elif num_joint == 2:
             pos, rot, vec_len = calculate_transform_with_2points(j_points[1], j_points[0])
-            thickness = link.geometry.get_thickness()
+            if link.name == "G":
+                thickness = 0.02
+            else:
+                thickness = link.geometry.get_thickness()/2
             if vec_len > thickness:
                 length = vec_len - thickness
             else:
@@ -120,7 +151,7 @@ class MeshCreator:
             for k, m in joint_pos_pairs:
                 oth_point = (set(range(3)) - set([k,m])).pop()
                 pos, rot, vec_len = calculate_transform_with_2points(j_points[k], j_points[m])
-                thickness = link.geometry.get_thickness()
+                thickness = link.geometry.get_thickness()/2
                 if vec_len > thickness:
                     length = vec_len - thickness
                 else:
@@ -148,8 +179,53 @@ class URDFMeshCreator(URDFLinkCreator):
     def set_prefix_name_mesh(self, prefix):
         self.prefix_name = prefix
 
-    @classmethod
-    def create_joint(cls, joint: Joint):
+    def create_link(self, link: Link):
+        """
+        Create a URDF link based on the given Link object.
+
+        Args:
+            link (Link): The Link object containing the link information.
+
+        Returns:
+            urdf_link: The created URDF link.
+        """
+        if link.geometry.shape == "mesh":
+            pos_joint_in_local = []
+            H_l_w = mr.TransInv(link.frame)
+            for j in link.joints:
+                pos_joint_in_local.append(H_l_w @ np.r_[j.jp.r, 1])
+
+            joint_pos_pairs = combinations(pos_joint_in_local, 2)
+            body_origins = []
+            for j_p in joint_pos_pairs:
+                pos, rot, vec_len = calculate_transform_with_2points(j_p[0][:3], j_p[1][:3])
+                if vec_len > link.geometry.get_thickness():
+                    length = vec_len - link.geometry.get_thickness()
+                else:
+                    length = vec_len
+                body_origins.append(
+                    (pos.tolist(), rot.as_euler("xyz").tolist(), length)
+                )
+            inertia = (
+                link.inertial_frame,
+                link.geometry.size.moment_inertia_frame(link.inertial_frame),
+            )
+            urdf_link = self._create_mesh(
+                link.geometry, link.name, inertia, body_origins, self.trans_matrix2xyz_rpy(link.inertial_frame)
+            )
+        elif link.geometry.shape == "box":
+            origin = self.trans_matrix2xyz_rpy(link.inertial_frame)
+            # link_origin = self.trans_matrix2xyz_rpy(link.frame)
+            urdf_link = self._create_box(link.geometry, link.name, origin, origin)
+        elif link.geometry.shape == "sphere":
+            origin = self.trans_matrix2xyz_rpy(link.inertial_frame)
+            # link_origin = self.trans_matrix2xyz_rpy(link.frame)
+            urdf_link = self._create_sphere(link.geometry, link.name, origin, origin)
+        else:
+            pass
+        return urdf_link
+
+    def create_joint(self, joint: Joint):
         """
         Create a URDF joint based on the given Joint object.
 
@@ -161,7 +237,7 @@ class URDFMeshCreator(URDFLinkCreator):
         """
         if joint.link_in is None or joint.link_out is None:
             return {"joint": []}
-        origin = cls.trans_matrix2xyz_rpy(joint.frame)
+        origin = self.trans_matrix2xyz_rpy(joint.frame)
         if joint.is_constraint:
             color1 = joint.link_in.geometry.color
             color1[3] = 0.5
@@ -171,17 +247,17 @@ class URDFMeshCreator(URDFLinkCreator):
             name_link_in = joint.jp.name + "_" + joint.link_in.name + "Pseudo"
             rad_in = joint.link_in.geometry.get_thickness() / 1.4
             urdf_pseudo_link_in = urdf.Link(
-                urdf.Visual(
-                    urdf.Geometry(urdf.Sphere(float(rad_in))),
-                    urdf.Material(
-                        urdf.Color(rgba=color1), name=name_link_in + "_Material"
-                    ),
-                    # name=name_link_in + "_Visual",
-                ),
+                # urdf.Visual(
+                #     urdf.Geometry(urdf.Sphere(float(rad_in))),
+                #     urdf.Material(
+                #         urdf.Color(rgba=color1), name=name_link_in + "_Material"
+                #     ),
+                #     # name=name_link_in + "_Visual",
+                # ),
                 urdf.Inertial(
                     urdf.Mass(float(joint.actuator.mass / 2)),
                     urdf.Inertia(
-                        **cls.convert_inertia(
+                        **self.convert_inertia(
                             tensor_inertia_sphere_by_mass(
                                 joint.actuator.mass / 2, rad_in
                             )
@@ -215,17 +291,17 @@ class URDFMeshCreator(URDFLinkCreator):
             name_link_out = joint.jp.name + "_" + joint.link_out.name + "Pseudo"
             rad_out = joint.link_out.geometry.get_thickness() / 1.4
             urdf_pseudo_link_out = urdf.Link(
-                urdf.Visual(
-                    urdf.Geometry(urdf.Sphere(float(rad_out))),
-                    urdf.Material(
-                        urdf.Color(rgba=color2), name=name_link_out + "_Material"
-                    ),
-                    # name=name_link_out + "_Visual",
-                ),
+                # urdf.Visual(
+                #     urdf.Geometry(urdf.Sphere(float(rad_out))),
+                #     urdf.Material(
+                #         urdf.Color(rgba=color2), name=name_link_out + "_Material"
+                #     ),
+                #     # name=name_link_out + "_Visual",
+                # ),
                 urdf.Inertial(
                     urdf.Mass(float(joint.actuator.mass / 2)),
                     urdf.Inertia(
-                        **cls.convert_inertia(
+                        **self.convert_inertia(
                             tensor_inertia_sphere_by_mass(
                                 joint.actuator.mass / 2, rad_out
                             )
@@ -242,7 +318,7 @@ class URDFMeshCreator(URDFLinkCreator):
 
             H_out_j = mr.TransInv(H_w_out) @ H_w_in @ H_in_j
 
-            out_origin = cls.trans_matrix2xyz_rpy(H_out_j)
+            out_origin = self.trans_matrix2xyz_rpy(H_out_j)
 
             urdf_joint_out = urdf.Joint(
                 urdf.Parent(link=joint.link_out.name),
@@ -298,27 +374,27 @@ class URDFMeshCreator(URDFLinkCreator):
                     name=joint.jp.name,
                     type="revolute",
                 )
-            # urdf_joint = urdf.Joint(
-            #     urdf.Parent(link=joint.link_in.name),
-            #     urdf.Child(link=joint.link_out.name),
-            #     urdf.Origin(
-            #         xyz=origin[0],
-            #         rpy=origin[1],
-            #     ),
-            #     urdf.Axis(joint.jp.w.tolist()),
-            #     urdf.Limit(
-            #         lower=joint.pos_limits[0],
-            #         upper=joint.pos_limits[1],
-            #         effort=joint.actuator.get_max_effort(),
-            #         velocity=joint.actuator.get_max_vel(),
-            #     ),
-            #     urdf.Dynamics(
-            #         damping=joint.damphing_friction[0],
-            #         friction=joint.damphing_friction[1],
-            #     ),
-            #     name=joint.jp.name,
-            #     type="revolute",
-            # )
+            urdf_joint = urdf.Joint(
+                urdf.Parent(link=joint.link_in.name),
+                urdf.Child(link=joint.link_out.name),
+                urdf.Origin(
+                    xyz=origin[0],
+                    rpy=origin[1],
+                ),
+                urdf.Axis(joint.jp.w.tolist()),
+                urdf.Limit(
+                    lower=joint.pos_limits[0],
+                    upper=joint.pos_limits[1],
+                    effort=joint.actuator.get_max_effort(),
+                    velocity=joint.actuator.get_max_vel(),
+                ),
+                urdf.Dynamics(
+                    damping=joint.damphing_friction[0],
+                    friction=joint.damphing_friction[1],
+                ),
+                name=joint.jp.name,
+                type="revolute",
+            )
             out = {"joint": [urdf_joint]}
             if joint.jp.active:
                 connected_unit = RevoluteUnit()
@@ -355,20 +431,20 @@ class URDFMeshCreator(URDFLinkCreator):
                 type="fixed",
             )
             urdf_unit_link = urdf.Link(
-                urdf.Visual(
-                    urdf.Geometry(
-                        urdf.Cylinder(
-                            length=connected_unit.size[1], radius=connected_unit.size[0]
-                        )
-                    ),
-                    urdf.Material(
-                        urdf.Color(rgba=color), name=name_joint_link + "_Material"
-                    ),
-                    # name=name_joint_link + "_Visual",
-                ),
+                # urdf.Visual(
+                #     urdf.Geometry(
+                #         urdf.Cylinder(
+                #             length=connected_unit.size[1], radius=connected_unit.size[0]
+                #         )
+                #     ),
+                #     urdf.Material(
+                #         urdf.Color(rgba=color), name=name_joint_link + "_Material"
+                #     ),
+                #     # name=name_joint_link + "_Visual",
+                # ),
                 urdf.Inertial(
                     urdf.Inertia(
-                        **cls.convert_inertia(connected_unit.calculate_inertia())
+                        **self.convert_inertia(connected_unit.calculate_inertia())
                     ),
                     urdf.Mass(float(connected_unit.mass)),
                 ),
@@ -397,22 +473,22 @@ class URDFMeshCreator(URDFLinkCreator):
                     type="fixed",
                 )
                 urdf_actuator_link = urdf.Link(
-                    urdf.Visual(
-                        urdf.Geometry(
-                            urdf.Cylinder(
-                                length=joint.actuator.size[1],
-                                radius=joint.actuator.size[0],
-                            )
-                        ),
-                        urdf.Material(
-                            urdf.Color(rgba=color),
-                            name=name_actuator_link + "_Material",
-                        ),
-                        # name=name_actuator_link + "_Visual",
-                    ),
+                    # urdf.Visual(
+                    #     urdf.Geometry(
+                    #         urdf.Cylinder(
+                    #             length=joint.actuator.size[1],
+                    #             radius=joint.actuator.size[0],
+                    #         )
+                    #     ),
+                    #     urdf.Material(
+                    #         urdf.Color(rgba=color),
+                    #         name=name_actuator_link + "_Material",
+                    #     ),
+                    #     # name=name_actuator_link + "_Visual",
+                    # ),
                     urdf.Inertial(
                         urdf.Inertia(
-                            **cls.convert_inertia(joint.actuator.calculate_inertia())
+                            **self.convert_inertia(joint.actuator.calculate_inertia())
                         ),
                         urdf.Mass(float(joint.actuator.mass)),
                     ),
@@ -425,8 +501,7 @@ class URDFMeshCreator(URDFLinkCreator):
             out["joint"].append(urdf_joint_weld)
         return out
 
-    @classmethod
-    def _create_box(cls, geometry: Box, name, origin, inertia_origin):
+    def _create_box(self, geometry: Box, name, origin, inertia_origin):
         """
         Create a URDF box based on the given Box geometry.
 
@@ -444,8 +519,8 @@ class URDFMeshCreator(URDFLinkCreator):
         name_c = name + "_" + "Collision"
         name_v = name + "_" + "Visual"
         # urdf_geometry = urdf.Geometry(urdf.Box(geometry.size))
-        to_mesh = cls.mesh_path + cls.prefix_name + name + ".obj"
-        urdf_geometry = urdf.Geometry(urdf.Mesh(to_mesh, 1))
+        to_mesh = str(self.mesh_path.joinpath(self.prefix_name + name + ".stl"))
+        urdf_geometry = urdf.Geometry(urdf.Mesh(to_mesh, [1,1,1]))
         urdf_inertia_origin = urdf.Origin(
             xyz=inertia_origin[0],
             rpy=inertia_origin[1],
@@ -465,13 +540,12 @@ class URDFMeshCreator(URDFLinkCreator):
         inertial = urdf.Inertial(
             urdf_inertia_origin,
             urdf.Mass(float(geometry.mass)),
-            urdf.Inertia(**cls.convert_inertia(geometry.inertia)),
+            urdf.Inertia(**self.convert_inertia(geometry.inertia)),
         )
 
         return urdf.Link(visual, collision, inertial, name=name)
 
-    @classmethod
-    def _create_sphere(cls, geometry: Sphere, name, origin, inertia_origin):
+    def _create_sphere(self, geometry: Sphere, name, origin, inertia_origin):
         """
         Create a URDF sphere based on the given Sphere geometry.
 
@@ -490,8 +564,8 @@ class URDFMeshCreator(URDFLinkCreator):
         name_c = name + "_" + "Collision"
         name_v = name + "_" + "Visual"
         # urdf_geometry = urdf.Geometry(urdf.Sphere(geometry.size[0]))
-        to_mesh = cls.mesh_path + cls.prefix_name + name + ".obj"
-        urdf_geometry = urdf.Geometry(urdf.Mesh(to_mesh, 1))
+        to_mesh = str(self.mesh_path.joinpath(self.prefix_name + name + ".stl"))
+        urdf_geometry = urdf.Geometry(urdf.Mesh(to_mesh, [1,1,1]))
         urdf_inertia_origin = urdf.Origin(
             xyz=inertia_origin[0],
             rpy=inertia_origin[1],
@@ -511,13 +585,12 @@ class URDFMeshCreator(URDFLinkCreator):
         inertial = urdf.Inertial(
             urdf_inertia_origin,
             urdf.Mass(geometry.mass),
-            urdf.Inertia(**cls.convert_inertia(geometry.inertia)),
+            urdf.Inertia(**self.convert_inertia(geometry.inertia)),
         )
 
         return urdf.Link(visual, collision, inertial, name=name)
-
-    @classmethod
-    def _create_mesh(cls, geometry: Mesh, name, inertia, body_origins, link_origin=None):
+    
+    def _create_mesh(self, geometry: Mesh, name, inertia, body_origins, link_origin=None):
         """
         Create a URDF mesh based on the given Mesh geometry.
 
@@ -532,11 +605,11 @@ class URDFMeshCreator(URDFLinkCreator):
         """
         name_m = name + "_" + "Material"
         urdf_material = urdf.Material(urdf.Color(rgba=geometry.color), name=name_m)
-        origin_I = cls.trans_matrix2xyz_rpy(inertia[0])
+        origin_I = self.trans_matrix2xyz_rpy(inertia[0])
         urdf_inertia_origin = urdf.Origin(xyz=origin_I[0], rpy=origin_I[1])
         visual_n_collision = []
-        to_mesh = cls.mesh_path + cls.prefix_name + name + ".obj"
-        urdf_geometry = urdf.Geometry(urdf.Mesh(to_mesh, 1))
+        to_mesh = str(self.mesh_path.joinpath(self.prefix_name + name + ".stl"))
+        urdf_geometry = urdf.Geometry(urdf.Mesh(to_mesh, [1,1,1]))
         urdf_origin = urdf.Origin(
             xyz=link_origin[0],
             rpy=link_origin[1],
@@ -564,6 +637,6 @@ class URDFMeshCreator(URDFLinkCreator):
         inertial = urdf.Inertial(
             urdf_inertia_origin,
             urdf.Mass(float(geometry.size.mass)),
-            urdf.Inertia(**cls.convert_inertia(inertia[1])),
+            urdf.Inertia(**self.convert_inertia(inertia[1])),
         )
         return urdf.Link(*visual_n_collision, inertial, name=name)

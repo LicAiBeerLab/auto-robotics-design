@@ -4,7 +4,9 @@ from collections import deque
 import numpy as np
 import pinocchio as pin
 import matplotlib.pyplot as plt
-
+import meshcat
+from pinocchio.visualize import MeshcatVisualizer
+    
 from auto_robot_design.pinokla.closed_loop_jacobian import (
     constraint_jacobian_active_to_passive,
 )
@@ -353,11 +355,6 @@ if __name__ == "__main__":
         ParametrizedBuilder,
         URDFLinkCreater3DConstraints,
         jps_graph2pinocchio_robot_3d_constraints,
-    )
-    import meshcat
-    from pinocchio.visualize import MeshcatVisualizer
-    from auto_robot_design.pinokla.closed_loop_kinematics import (
-        closedLoopProximalMount,
     )
 
     builder = ParametrizedBuilder(URDFLinkCreater3DConstraints)
