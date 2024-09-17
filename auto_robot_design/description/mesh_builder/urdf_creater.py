@@ -350,7 +350,7 @@ class URDFMeshCreator(URDFLinkCreator):
                         rpy=origin[1],
                     ),
                     name=joint.jp.name,
-                    type="fixed",
+                    type="revolute",
                 )
             else:
                 urdf_joint = urdf.Joint(
@@ -398,15 +398,27 @@ class URDFMeshCreator(URDFLinkCreator):
             out = {"joint": [urdf_joint]}
             if joint.jp.active:
                 connected_unit = RevoluteUnit()
-                connected_unit.size = [
-                    joint.link_in.geometry.get_thickness() / 2,
-                    joint.link_in.geometry.get_thickness(),
-                ]
+                if joint.link_in.name == "G":
+                    connected_unit.size = [
+                        joint.link_out.geometry.get_thickness() / 2,
+                        joint.link_out.geometry.get_thickness(),
+                    ]
+                else:
+                    connected_unit.size = [
+                        joint.link_in.geometry.get_thickness() / 2,
+                        joint.link_in.geometry.get_thickness(),
+                    ]
             elif not joint.actuator.size:
-                unit_size = [
-                    joint.link_in.geometry.get_thickness() / 2,
-                    joint.link_in.geometry.get_thickness(),
-                ]
+                if joint.link_in.name == "G":
+                    unit_size = [
+                        joint.link_out.geometry.get_thickness() / 2,
+                        joint.link_out.geometry.get_thickness(),
+                    ]
+                else:
+                    unit_size = [
+                        joint.link_in.geometry.get_thickness() / 2,
+                        joint.link_in.geometry.get_thickness(),
+                    ]
                 joint.actuator.size = unit_size
                 connected_unit = joint.actuator
             else:
