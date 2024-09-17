@@ -40,14 +40,14 @@ class MeshCreator:
     
     def build_link_mesh(self, link: Link):
         if link.name in self.predefind_mesh:
-            body_link = trimesh.
-        body = self.build_link_m3d(link)
-        mesh = manifold2trimesh(body)
+            mesh = trimesh.load_mesh(self.predefind_mesh[link.name])
+        else:
+            body = self.build_link_m3d(link)
+            mesh = manifold2trimesh(body)
         
         return mesh
     
     def build_link_m3d(self, link: Link):
-        
         in_joints = [j for j in link.joints if j.link_in == link]
         out_joints = [j for j in link.joints if j.link_out == link]
         joint_bodies = []
@@ -59,7 +59,7 @@ class MeshCreator:
             rot = calculate_rot_vec2_to_vec1(ort_move)
             size = j.actuator.size
             if len(size) == 0:
-                size = [0.03, 0.05]
+                size = [0.02, 0.05]
             tranform = mr.RpToTrans(rot.as_matrix(), pos)
             joint_bodies.append(
                 m3d.Manifold.
@@ -77,7 +77,7 @@ class MeshCreator:
             rot = calculate_rot_vec2_to_vec1(ort_move)
             size = j.actuator.size
             if len(size) == 0:
-                size = [0.03, 0.02]
+                size = [0.02, 0.02]
             tranform = mr.RpToTrans(rot.as_matrix(), pos)
             joint_bodies.append(
                 m3d.Manifold.
@@ -95,8 +95,9 @@ class MeshCreator:
             j_points.append(
                 (frame @ np.hstack((j.jp.r, [1])))[:3]
             ) 
-        
-        if num_joint == 2:
+        if num_joint == 1:
+            body_link = joint_bodies[0]
+        elif num_joint == 2:
             pos, rot, vec_len = calculate_transform_with_2points(j_points[1], j_points[0])
             thickness = link.geometry.get_thickness()
             if vec_len > thickness:

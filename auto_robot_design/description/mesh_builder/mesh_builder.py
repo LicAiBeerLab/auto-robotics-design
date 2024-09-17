@@ -7,7 +7,7 @@ import networkx as nx
 import numpy as np
 import modern_robotics as mr
 from auto_robot_design.description.actuators import Actuator, TMotor_AK80_9
-from auto_robot_design.description.builder import BLUE_COLOR, DEFAULT_PARAMS_DICT, GREEN_COLOR, ParametrizedBuilder
+from auto_robot_design.description.builder import BLUE_COLOR, DEFAULT_PARAMS_DICT, GREEN_COLOR, Builder, ParametrizedBuilder
 from auto_robot_design.description.mechanism import JointPoint2KinematicGraph, KinematicGraph
 from auto_robot_design.description.mesh_builder.urdf_creater import MeshCreator, URDFMeshCreator
 from auto_robot_design.pino_adapter.pino_adapter import get_pino_description_3d_constraints
@@ -50,24 +50,24 @@ class MeshBuilder(ParametrizedBuilder):
         offset_ground: np.ndarray = np.zeros(3),
         actuator: Union[Actuator, dict]=TMotor_AK80_9(),
     ) -> None:
-        super().__init__(creator, density, thickness, joint_damping, joint_damping, joint_friction, joint_limits, size_ground, offset_ground, actuator)
+        super().__init__(creator, density, thickness, joint_damping, joint_friction, joint_limits, size_ground, offset_ground, actuator)
         self.mesh_creator: MeshCreator = mesh_creator
         self.mesh_path = mesh_path
 
-    def create_kinematic_graph(self, kinematic_graph: KinematicGraph, name="Robot"):
-        # kinematic_graph = deepcopy(kinematic_graph)
-        # kinematic_graph.G = list(filter(lambda n: n.name == "G", kinematic_graph.nodes()))[0]
-        # kinematic_graph.EE = list(filter(lambda n: n.name == "EE", kinematic_graph.nodes()))[0]
-        for attr in self.attributes:
-            self.check_default(getattr(self, attr), attr)
-        joints = kinematic_graph.joint_graph.nodes()
-        for joint in joints:
-            self._set_joint_attributes(joint)
-        links = kinematic_graph.nodes()
-        for link in links:
-            self._set_link_attributes(link)
+    # def create_kinematic_graph(self, kinematic_graph: KinematicGraph, name="Robot"):
+    #     # kinematic_graph = deepcopy(kinematic_graph)
+    #     # kinematic_graph.G = list(filter(lambda n: n.name == "G", kinematic_graph.nodes()))[0]
+    #     # kinematic_graph.EE = list(filter(lambda n: n.name == "EE", kinematic_graph.nodes()))[0]
+    #     for attr in self.attributes:
+    #         self.check_default(getattr(self, attr), attr)
+    #     joints = kinematic_graph.joint_graph.nodes()
+    #     for joint in joints:
+    #         self._set_joint_attributes(joint)
+    #     links = kinematic_graph.nodes()
+    #     for link in links:
+    #         self._set_link_attributes(link)
 
-        return super().create_kinematic_graph(kinematic_graph, name)
+    #     return Builder(self.creater).create_kinematic_graph(kinematic_graph, name)
 
     def create_meshes(self, kinematic_graph, prefix=""):
         if self.mesh_path is None:
@@ -90,8 +90,8 @@ class MeshBuilder(ParametrizedBuilder):
 
 def jps_graph2pinocchio_meshes_robot(
     graph: nx.Graph,
-    builder: ParametrizedBuilder
-):
+    builder: MeshBuilder
+    ):
     """
     Converts a Joint Point Structure (JPS) graph to a Pinocchio robot model.
 
@@ -124,7 +124,8 @@ def jps_graph2pinocchio_meshes_robot(
     # builder.thickness = {link: thickness_aux_branch for link in name_link_in_aux_branch}
 
     kinematic_graph.define_link_frames()
-
+    
+    builder.create_meshes(kinematic_graph)
     robot, ative_joints, constraints = builder.create_kinematic_graph(kinematic_graph)
 
     act_description, constraints_descriptions = get_pino_description_3d_constraints(
@@ -144,3 +145,34 @@ def jps_graph2pinocchio_meshes_robot(
                                 fixed=False)
 
     return fixed_robot, free_robot
+
+
+if __name__ == "__main__":
+    from auto_robot_design.description.mesh_builder.urdf_creater import URDFMeshCreator, MeshCreator
+    from auto_robot_design.description.builder import MIT_CHEETAH_PARAMS_DICT
+    from auto_robot_design.generator.topologies.bounds_preset import get_preset_by_index_with_bounds
+    
+    thickness = MIT_CHEETAH_PARAMS_DICT["thickness"]
+    actuator = MIT_CHEETAH_PARAMS_DICT["actuator"]
+    density = MIT_CHEETAH_PARAMS_DICT["density"]
+    body_density = MIT_CHEETAH_PARAMS_DICT["body_density"]
+    
+    
+    mesh_creator = MeshCreator()
+    urdf_creator = URDFMeshCreator()
+    
+    builder = MeshBuilder(urdf_creator,
+                        mesh_creator,
+                        density={"default": density, "G": body_density},
+                        thickness={"default": thickness},
+                        actuator={"default": actuator},
+                        size_ground=np.array(
+                            MIT_CHEETAH_PARAMS_DICT["size_ground"]),
+                        offset_ground=MIT_CHEETAH_PARAMS_DICT["offset_ground_rl"]
+                        )
+    
+    gm = get_preset_by_index_with_bounds(5)
+    x_centre = gm.generate_central_from_mutation_range()
+    graph_jp = gm.get_graph(x_centre)
+    
+    robot, __ = jps_graph2pinocchio_meshes_robot(graph_jp, builder)
