@@ -57,7 +57,7 @@ class RevoluteUnit(RevoluteActuator):
         self.mass = 0.1
         self.peak_effort = 1000
         self.peak_velocity = 100
-        self.size = []
+        self.size = [0.016, 0.03]
 
 
 @dataclass
