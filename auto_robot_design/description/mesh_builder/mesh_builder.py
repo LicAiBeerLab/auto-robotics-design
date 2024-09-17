@@ -68,7 +68,7 @@ class MeshBuilder(ParametrizedBuilder):
         links = kinematic_graph.nodes()
         for link in links:
             self._set_link_attributes(link)
-        builder.create_meshes(kinematic_graph)
+        self.create_meshes(kinematic_graph)
         
         links = kinematic_graph.nodes()
         joints = dict(
