@@ -12,14 +12,12 @@ from auto_robot_design.pinokla.closed_loop_jacobian import (
 )
 from auto_robot_design.pinokla.closed_loop_kinematics import (
     closedLoopProximalMount,
-    closed_loop_ik_pseudo_inverse,
 )
-
+from auto_robot_design.motion_planning.ik_calculator import closed_loop_ik_pseudo_inverse
 from auto_robot_design.pinokla.default_traj import add_auxilary_points_to_trajectory
 
-from auto_robot_design.pinokla.calc_criterion import (
-    closed_loop_pseudo_inverse_follow,
-)
+from auto_robot_design.motion_planning.trajectory_ik_manager import (
+    IK_METHODS, TrajectoryIKManager)
 
 from auto_robot_design.motion_planning.utils import (
     Workspace
@@ -275,9 +273,7 @@ class BreadthFirstSearchPlanner:
         robot_ms = robot.motion_space
         q, min_feas, is_reach = closed_loop_ik_pseudo_inverse(
             robot.model,
-            robot.data,
             robot.constraint_models,
-            robot.constraint_data,
             robot_ms.get_6d_point(to_node.pos),
             ee_id,
             onlytranslation=True,
@@ -359,7 +355,7 @@ if __name__ == "__main__":
 
     builder = ParametrizedBuilder(URDFLinkCreater3DConstraints)
 
-    gm = get_preset_by_index_with_bounds(5)
+    gm = get_preset_by_index_with_bounds(1)
     x_centre = gm.generate_central_from_mutation_range()
     graph_jp = gm.get_graph(x_centre)
 
@@ -383,18 +379,23 @@ if __name__ == "__main__":
     )
 
     point_6d = robo.motion_space.get_6d_traj(np.array(traj_init_to_center).T)
-    poses_6d, q_fixed, constraint_errors, reach_array = (
-        closed_loop_pseudo_inverse_follow(
-            robo.model,
-            robo.data,
-            robo.constraint_models,
-            robo.constraint_data,
-            robo.ee_name,
-            point_6d,
-        )
-    )
-    start_pos = init_pos
-    pos_6d = np.zeros(6)
+    ik_manager = TrajectoryIKManager()
+    ik_manager.register_model(robo.model, robo.constraint_models)
+    ik_manager.set_solver("Closed_Loop_PI")
+    poses_6d, q_fixed, constraint_errors,reach_array = ik_manager.follow_trajectory(point_6d)
+
+    # poses_6d, q_fixed, constraint_errors, reach_array = (
+    #     closed_loop_pseudo_inverse_follow(
+    #         robo.model,
+    #         robo.data,
+    #         robo.constraint_models,
+    #         robo.constraint_data,
+    #         robo.ee_name,
+    #         point_6d,
+    #     )
+    # )
+    # start_pos = init_pos
+    # pos_6d = np.zeros(6)
 
     # q = np.zeros(robo.model.nq)
     q = q_fixed[-1]
