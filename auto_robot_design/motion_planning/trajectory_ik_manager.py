@@ -102,7 +102,7 @@ class TrajectoryIKManager():
                 break
             if viz:
                 viz.display(q)
-                time.sleep(0.1)
+                time.sleep(0.03)
 
             # if the point is reachable, we store the values in corresponding arrays
             pin.framesForwardKinematics(model, data, q)
