@@ -23,3 +23,7 @@ RUN conda env create -f environment_jmoves.yml
 COPY . ./jmoves_env
 RUN conda run -n j_moves pip install -e ./jmoves_env
 
+
+# Install jupiter stuff
+RUN conda run -n j_moves pip install jupyter notebook voila
+RUN conda run -n j_moves jupyter server extension enable voila --sys-prefix --enable_nbextensions=True
