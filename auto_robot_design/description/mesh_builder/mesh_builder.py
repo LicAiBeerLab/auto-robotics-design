@@ -160,8 +160,8 @@ def jps_graph2pinocchio_meshes_robot(
     
     robot, ative_joints, constraints = builder.create_kinematic_graph(kinematic_graph)
 
-    with open("robot.urdf", "w") as f:
-        f.write(robot.urdf())
+    # with open("robot.urdf", "w") as f:
+    #     f.write(robot.urdf())
 
     act_description, constraints_descriptions = get_pino_description_3d_constraints(
         ative_joints, constraints

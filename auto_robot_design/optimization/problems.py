@@ -5,7 +5,7 @@ import dill
 import numpy as np
 from pymoo.core.problem import ElementwiseProblem
 
-from auto_robot_design.description.builder import jps_graph2pinocchio_robot
+from auto_robot_design.description.builder import jps_graph2pinocchio_robot, jps_graph2pinocchio_robot_3d_constraints
 from auto_robot_design.generator.topologies.graph_manager_2l import GraphManager2L
 from auto_robot_design.optimization.rewards.reward_base import (Reward, RewardManager)
 from auto_robot_design.pinokla.criterion_agregator import CriteriaAggregator
@@ -217,7 +217,7 @@ class SingleCriterionProblem(ElementwiseProblem):
         """
         x = np.round(x, 4)
         graph = self.graph_manager.get_graph(x)
-        fixed_robot, free_robot = jps_graph2pinocchio_robot(graph, self.builder)
+        fixed_robot, free_robot = jps_graph2pinocchio_robot_3d_constraints(graph, self.builder)
         # position constrain
         self.rewards_and_trajectories.precalculated_trajectories = None
         constrain_error, results = self.soft_constrain.calculate_constrain_error(
