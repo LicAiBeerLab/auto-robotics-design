@@ -79,6 +79,7 @@ class MeshBuilder(ParametrizedBuilder):
         urdf_joints = []
         for link in links:
             urdf_links.append(self.creater.create_link(link))
+            # print(link.name, link.geometry.mass)
 
         active_joints = []
         constraints = []
@@ -159,6 +160,9 @@ def jps_graph2pinocchio_meshes_robot(
     
     robot, ative_joints, constraints = builder.create_kinematic_graph(kinematic_graph)
 
+    with open("robot.urdf", "w") as f:
+        f.write(robot.urdf())
+
     act_description, constraints_descriptions = get_pino_description_3d_constraints(
         ative_joints, constraints
     )
@@ -200,7 +204,7 @@ if __name__ == "__main__":
     builder = MeshBuilder(urdf_creator,
                         mesh_creator,
                         density={"default": density, "G": body_density},
-                        thickness={"default": thickness, "EE":0.5},
+                        thickness={"default": thickness},
                         actuator={"default": actuator},
                         size_ground=np.array(
                             MIT_CHEETAH_PARAMS_DICT["size_ground"]),
@@ -216,6 +220,7 @@ if __name__ == "__main__":
     viz = MeshcatVisualizer(
     robot.model, robot.visual_model, robot.visual_model)
     viz.viewer = meshcat.Visualizer().open()
+    time.sleep(2)
     viz.viewer["/Background"].set_property("visible", False)
     viz.viewer["/Grid"].set_property("visible", False)
     viz.viewer["/Axes"].set_property("visible", False)
@@ -225,5 +230,4 @@ if __name__ == "__main__":
     viz.loadViewerModel()
     q = pin.neutral(robot.model)
     pin.framesForwardKinematics(robot.model, robot.data, q)
-    time.sleep(1)
     viz.display(q)
