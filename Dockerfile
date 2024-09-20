@@ -21,6 +21,7 @@ RUN useradd -m jovyan
 ENV PATH=$CONDA_DIR/bin:$PATH
 COPY environment_jmoves.yml .
 
+# RUN rm -rf /jmoves_env/apps/widjetdemo/results && mkdir /jmoves_env/apps/widjetdemo/results
 # RUN conda env create -f environment_jmoves.yml
 RUN conda env update -n base --file environment_jmoves.yml
 RUN conda init
@@ -45,7 +46,8 @@ RUN conda init
 
 # Copy precompute stuff
 
-RUN unzip -o ./jmoves_env/widget.zip -d ./jmoves_env/apps/widjetdemo/results
+# RUN unzip -o ./jmoves_env/widget.zip -d ./jmoves_env/apps/widjetdemo/results
 
+ 
 
 CMD ["/bin/bash", "-c", "if [ -d /usr/local/bin/before-notebook.d ]; then for file in /usr/local/bin/before-notebook.d/*; do $file ; done; fi && jupyter notebook --no-browser --NotebookApp.allow_origin='*' --NotebookApp.token='' --ip=0.0.0.0 --NotebookApp.allow_remote_access=True"]
