@@ -4,9 +4,10 @@ RUN apt-get update
 
 # Install base utilities
 RUN apt-get update && \
-    apt-get install -y wget git && \
+    apt-get install -y wget git unzip && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
 
 # Install miniconda
 ENV CONDA_DIR /opt/conda
@@ -41,5 +42,10 @@ RUN conda run -n base pip install ./jmoves_env/meshcat-0.3.2.tar.gz
 USER jovyan
 ENV PATH=$CONDA_DIR/bin:$PATH
 RUN conda init
+
+# Copy precompute stuff
+
+RUN unzip -o ./jmoves_env/widget.zip -d ./jmoves_env/apps/widjetdemo/results
+
 
 CMD ["/bin/bash", "-c", "if [ -d /usr/local/bin/before-notebook.d ]; then for file in /usr/local/bin/before-notebook.d/*; do $file ; done; fi && jupyter notebook --no-browser --NotebookApp.allow_origin='*' --NotebookApp.token='' --ip=0.0.0.0 --NotebookApp.allow_remote_access=True"]
