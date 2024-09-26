@@ -47,9 +47,9 @@ def check_points_in_ellips(points: np.ndarray, ellipse: Ellipse, tolerance = 0.2
         check = np.zeros(1, dtype="bool")
         check[0] = True if ellps_impct_func(points) < 0 else False
     else:
-        check = np.zeros(points.shape[1], dtype="bool")
-        for i in range(points.shape[1]):
-            check[i] = True if ellps_impct_func(points[:,i]) < 0 else False
+        check = np.zeros(points.shape[0], dtype="bool")
+        for i in range(points.shape[0]):
+            check[i] = True if ellps_impct_func(points[i,:]) < 0 else False
     return check
 
 if __name__=="__main__":
@@ -60,12 +60,12 @@ if __name__=="__main__":
     points_x = np.linspace(-5, 5, 50)
     points_y = np.linspace(-5, 5, 50)
     xv, yv = np.meshgrid(points_x, points_y)
-    points = np.vstack([xv.flatten(), yv.flatten()])
+    points = np.vstack([xv.flatten(), yv.flatten()]).T
     mask = check_points_in_ellips(points, ellipse, 0.2)
     rev_mask = np.array(1-mask, dtype="bool")
     plt.figure(figsize=(10,10))
     plt.plot(point_ellipse[0,:], point_ellipse[1,:], "g", linewidth=3)
-    plt.scatter(points[:,rev_mask][0],points[:,rev_mask][1])
-    plt.scatter(points[:,mask][0],points[:,mask][1])
+    plt.scatter(points[rev_mask,:][:,0],points[rev_mask,:][:,1])
+    plt.scatter(points[mask,:][:,0],points[mask,:][:,1])
     plt.show()
     

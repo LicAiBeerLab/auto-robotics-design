@@ -1,4 +1,10 @@
+    
 import numpy as np
+import matplotlib.pyplot as plt
+from auto_robot_design.user_interface.check_in_ellips import (
+    Ellipse,
+    check_points_in_ellips
+)
 
 
 def create_bounded_box(center: np.ndarray, bound_range: np.ndarray):
@@ -52,6 +58,7 @@ class Workspace:
         self.mask_shape = np.asarray(self.mask_shape.round(4), dtype=int) + 1
         self.bounds = self.bounds.round(4)
         self.set_nodes = {}
+        self.reachable_index = {}
         # self.grid_nodes = np.zeros(tuple(self.mask_shape), dtype=object)
 
     def updated_by_bfs(self, set_expl_nodes):
@@ -67,13 +74,90 @@ class Workspace:
     def calc_index(self, pos):
         return np.round((pos - self.bounds[:, 0]) / self.resolution).astype(int)
 
+    def calc_grid_index(self, pos):
+        idx = self.calc_index(pos)
+        grid_index = 0
+        for k, ind in enumerate(idx):
+            grid_index += ind * np.prod(self.mask_shape[:k])
+
+        return grid_index
+
+    def point_in_bound(self, point: np.ndarray):
+        return np.all(point >= self.bounds[:, 0] - self.resolution*0.9) and np.all(point <= self.bounds[:, 1] + self.resolution*0.9)
+
+    def check_points_in_ws(self, points: np.ndarray):
+
+        check_array = np.zeros(points.shape[0], dtype=int)
+        grid_indexes = np.zeros(points.shape[0], dtype=int)
+        for idx, point in enumerate(points):
+            check_array[idx] = 1 if self.point_in_bound(point) else 0
+            grid_indexes[idx] = self.calc_grid_index(point)
+        check_in_bound_points = np.all(check_array == 1)
+        check_reachable_points = set(grid_indexes.tolist()) <= set(self.reachable_index)
+        check_points_in_ws = False
+        if check_in_bound_points and check_reachable_points:
+            check_points_in_ws = True
+        return check_points_in_ws
+
     @property
     def reachabilty_mask(self):
+        mask = np.zeros(tuple(self.mask_shape), dtype=int)
 
-        mask = np.zeros(tuple(self.mask_shape), dtype=float)
-
-        for node in self.set_nodes.values():
-            index = self.calc_index(node.pos)
-            mask[tuple(index)] = node.is_reach
+        for index in self.reachable_index.values():
+            mask[tuple(index)] = 1
 
         return mask
+
+    @property
+    def points(self):
+        points = []
+        point = self.bounds[:, 0]
+        k, m = 0, 0
+        while point[1] <= self.bounds[1, 1]:
+
+            while point[0] <= self.bounds[0, 1]:
+                points.append(point)
+                m += 1
+                point = self.bounds[:, 0] + np.array(
+                    self.resolution) * np.array([m, k])
+            k += 1
+            m = 0
+            point = self.bounds[:, 0] + np.array(
+                self.resolution) * np.array([m, k])
+
+        points = np.array(points)
+        return points
+    
+    @property
+    def reachable_points(self):
+        points = np.zeros((len(self.reachable_index), self.mask_shape.size), dtype=float)
+        for k, reach_index in enumerate(self.reachable_index.values()):
+            points[k,:] = self.calc_grid_position(reach_index)
+        return points
+    
+
+def ellipse_in_workspace(ellips: Ellipse, workspace: Workspace, strong_check = True, verbose=0):
+    
+    if verbose > 0:
+        grid_points = workspace.points
+        plt.plot(grid_points[:,0],grid_points[:,1], "rx")
+        reach_grid_points = workspace.reachable_points
+        plt.plot(reach_grid_points[:,0],reach_grid_points[:,1], "gx")
+    
+    ellips_in_ws = False
+    points_on_ellps = ellips.get_points(np.min(workspace.resolution)).T
+    
+    ellips_in_ws = workspace.check_points_in_ws(points_on_ellps)
+    
+    if verbose > 0:
+        plt.plot(points_on_ellps[:,0], points_on_ellps[:,1], "c")    
+    
+    if ellips_in_ws and strong_check:
+        reach_ws_points = workspace.points
+        mask_ws_n_ellps = check_points_in_ellips(reach_ws_points, ellips, np.max(workspace.resolution)*15)
+        ellips_in_ws = ellips_in_ws and workspace.check_points_in_ws(reach_ws_points[mask_ws_n_ellps,:])
+
+        if verbose > 0:
+            plt.plot(reach_ws_points[mask_ws_n_ellps,:][:,0], reach_ws_points[mask_ws_n_ellps,:][:,1], "xc")
+    
+    return ellips_in_ws
