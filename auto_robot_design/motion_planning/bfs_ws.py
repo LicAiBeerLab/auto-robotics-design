@@ -1,5 +1,6 @@
 from itertools import product
 from collections import deque
+from typing import Optional
 
 import numpy as np
 import pinocchio as pin
@@ -57,11 +58,13 @@ class BreadthFirstSearchPlanner:
     def __init__(
         self,
         workspace: Workspace,
-        verbose: int = 0
+        verbose: int = 0,
+        dexterous_tolerance: Optional[np.ndarray] = None
     ) -> None:
 
         self.workspace = workspace
         self.verbose = verbose
+        self.dext_tolerance = dexterous_tolerance
         self.num_indexes = self.workspace.mask_shape
 
         # Варианты движения при обходе сетки (8-связности)
@@ -292,9 +295,18 @@ class BreadthFirstSearchPlanner:
             )
 
             dext_index = np.abs(S).max() / np.abs(S).min()
+            
+            if self.dext_tolerance is not None:
+                
+                lower_check = dext_index >= self.dext_tolerance[0]
+                upper_check = dext_index <= self.dext_tolerance[1]
+                
+                is_reach = lower_check and upper_check
+
             to_node.transit_to_node(
-                from_node, q, 1 / dext_index, bool(is_reach)
-            )
+                    from_node, q, 1 / dext_index, bool(is_reach)
+                )
+            print(dext_index)
         else:
             dext_index = np.inf
 
@@ -395,7 +407,7 @@ if __name__ == "__main__":
     bounds[1, :] += center_bound[1]
 
     workspace = Workspace(robo, bounds, np.array([0.01, 0.01]))
-    ws_bfs = BreadthFirstSearchPlanner(workspace, 1)
+    ws_bfs = BreadthFirstSearchPlanner(workspace, 1, np.array([2, 7]))
     workspace = ws_bfs.find_workspace(start_pos, q)
 
     # dext_index = [1 / n.cost for n in viewed_nodes.values()]
@@ -405,19 +417,20 @@ if __name__ == "__main__":
     # workspace.updated_by_bfs(viewed_nodes)
     # ax = plt.gca()
     ellipse = Ellipse(np.array([0.04,-0.31]), 0, np.array([0.04, 0.01]))
-    # points_on_ellps = ellipse.get_points(0.1).T
+    points_on_ellps = ellipse.get_points(0.1).T
     
-    # ax.plot(points_on_ellps[:,0], points_on_ellps[:,1], "g")
+    ax.plot(points_on_ellps[:,0], points_on_ellps[:,1], "g")
     
-    # print(workspace.check_points_in_ws(points_on_ellps))
+    print(workspace.check_points_in_ws(points_on_ellps))
     
-    # reach_ws_points = workspace.points
-    # mask_ws_n_ellps = check_points_in_ellips(reach_ws_points, ellipse, 0.02)
-    # ax.plot(reach_ws_points[mask_ws_n_ellps,:][:,0],reach_ws_points[mask_ws_n_ellps,:][:,1], "gx")
+    reach_ws_points = workspace.points
+    mask_ws_n_ellps = check_points_in_ellips(reach_ws_points, ellipse, 0.02)
+    ax.plot(reach_ws_points[mask_ws_n_ellps,:][:,0],reach_ws_points[mask_ws_n_ellps,:][:,1], "gx")
     
-    # print(workspace.check_points_in_ws(reach_ws_points[mask_ws_n_ellps,:]))
-    # plt.show()
+    print(workspace.check_points_in_ws(reach_ws_points[mask_ws_n_ellps,:]))
+    plt.show()
     plt.figure()
     print(ellipse_in_workspace(ellipse, workspace, verbose=1))
     plt.show()
+    
     print(workspace.reachabilty_mask)
