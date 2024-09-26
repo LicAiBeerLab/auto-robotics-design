@@ -1,6 +1,8 @@
     
+import os, pathlib
 import numpy as np
 import matplotlib.pyplot as plt
+import pickle
 from auto_robot_design.user_interface.check_in_ellips import (
     Ellipse,
     check_points_in_ellips
@@ -61,10 +63,6 @@ class Workspace:
         self.reachable_index = {}
         # self.grid_nodes = np.zeros(tuple(self.mask_shape), dtype=object)
 
-    def updated_by_bfs(self, set_expl_nodes):
-
-        self.set_nodes = set_expl_nodes
-
     def calc_grid_position(self, indexes):
 
         pos = indexes * self.resolution + self.bounds[:, 0]
@@ -80,6 +78,12 @@ class Workspace:
         for k, ind in enumerate(idx):
             grid_index += ind * np.prod(self.mask_shape[:k])
 
+        return grid_index
+    
+    def calc_grid_index_with_index(self, index):
+        grid_index = 0
+        for k, ind in enumerate(index):
+            grid_index += ind * np.prod(self.mask_shape[:k])
         return grid_index
 
     def point_in_bound(self, point: np.ndarray):
@@ -135,6 +139,47 @@ class Workspace:
             points[k,:] = self.calc_grid_position(reach_index)
         return points
     
+
+# def save_workspace(workspace: Workspace, path):
+#     init_points = workspace.bounds[:,0]
+#     resolution = workspace.resolution
+#     reachable_mask = workspace.reachabilty_mask
+    
+#     path = pathlib.Path(path)
+#     if not path.exists():
+#         path.mkdir(parents=True, exist_ok=True)
+    
+#     name_file = 'workspace_data.npz'
+#     np.savez_compressed(path / name_file, init_points=init_points, resolution=resolution, reachable_mask=reachable_mask)
+#     with open(path / "robot.pkl", "wb") as f:
+#         pickle.dump(workspace.robot, f)
+
+
+# def load_workspace(path):
+#     path = pathlib.Path(path)
+#     file_data = np.load(path / 'workspace_data.npz')
+    
+#     with open(path / "robot.pkl", "rb") as f:
+#         robot = pickle.load(f)
+    
+#     init_points = file_data["init_points"]
+#     resolution =  file_data["resolution"]
+#     reachable_mask =  file_data["reachabilty_mask"]
+    
+#     bounds = np.zeros((init_points.size, 2), dtype=float)
+#     bounds[:,0] = init_points
+#     bounds[:,1] = init_points + resolution * np.array(reachable_mask.shape)
+    
+#     workspace = Workspace(robot, bounds, resolution)
+    
+#     reachable_indexes = np.argwhere(reachable_mask == 1)
+    
+#     workspace.mask_shape = reachable_mask.shape
+#     for index in reachable_indexes:
+#         workspace.reachable_index[workspace.calc_grid_index_with_index(index)] = index
+    
+#     return workspace
+
 
 def ellipse_in_workspace(ellips: Ellipse, workspace: Workspace, strong_check = True, verbose=0):
     

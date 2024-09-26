@@ -20,7 +20,9 @@ from auto_robot_design.motion_planning.trajectory_ik_manager import (
 
 from auto_robot_design.motion_planning.utils import (
     Workspace,
-    ellipse_in_workspace
+    ellipse_in_workspace,
+    save_workspace,
+    load_workspace
 )
 
 
@@ -59,7 +61,7 @@ class BreadthFirstSearchPlanner:
         self,
         workspace: Workspace,
         verbose: int = 0,
-        dexterous_tolerance: Optional[np.ndarray] = None
+        dexterous_tolerance: np.ndarray = np.array([0, np.inf])
     ) -> None:
 
         self.workspace = workspace
@@ -253,6 +255,8 @@ class BreadthFirstSearchPlanner:
             index = ws.calc_index(node.pos)
             reach_index[idx] = index
         self.workspace.reachable_index.update(reach_index)
+        dext_index = [1 / n.cost for n in closed_set.values()]
+        print(np.nanmax(dext_index), np.nanmin(dext_index))
         return self.workspace
 
     def transition_function(self, from_node: Node, to_node: Node):
@@ -296,7 +300,7 @@ class BreadthFirstSearchPlanner:
 
             dext_index = np.abs(S).max() / np.abs(S).min()
             
-            if self.dext_tolerance is not None:
+            if self.dext_tolerance[1] != np.inf:
                 
                 lower_check = dext_index >= self.dext_tolerance[0]
                 upper_check = dext_index <= self.dext_tolerance[1]
@@ -306,7 +310,6 @@ class BreadthFirstSearchPlanner:
             to_node.transit_to_node(
                     from_node, q, 1 / dext_index, bool(is_reach)
                 )
-            print(dext_index)
         else:
             dext_index = np.inf
 
@@ -352,7 +355,7 @@ if __name__ == "__main__":
 
     builder = ParametrizedBuilder(URDFLinkCreater3DConstraints)
 
-    gm = get_preset_by_index_with_bounds(1)
+    gm = get_preset_by_index_with_bounds(0)
     x_centre = gm.generate_central_from_mutation_range()
     graph_jp = gm.get_graph(x_centre)
 
@@ -399,7 +402,7 @@ if __name__ == "__main__":
 
     bounds = np.array(
         [
-            [-size_box_bound[0] / 2 - 0.001, size_box_bound[0] / 2],
+            [-size_box_bound[0] / 2, size_box_bound[0] / 2],
             [-size_box_bound[1] / 2, size_box_bound[1] / 2],
         ]
     )
@@ -407,15 +410,10 @@ if __name__ == "__main__":
     bounds[1, :] += center_bound[1]
 
     workspace = Workspace(robo, bounds, np.array([0.01, 0.01]))
-    ws_bfs = BreadthFirstSearchPlanner(workspace, 1, np.array([2, 7]))
+    ws_bfs = BreadthFirstSearchPlanner(workspace, 1, np.array([1, 40]))
     workspace = ws_bfs.find_workspace(start_pos, q)
 
-    # dext_index = [1 / n.cost for n in viewed_nodes.values()]
-
-    # print(np.nanmax(dext_index), np.nanmin(dext_index))
-
-    # workspace.updated_by_bfs(viewed_nodes)
-    # ax = plt.gca()
+    ax = plt.gca()
     ellipse = Ellipse(np.array([0.04,-0.31]), 0, np.array([0.04, 0.01]))
     points_on_ellps = ellipse.get_points(0.1).T
     
@@ -432,5 +430,5 @@ if __name__ == "__main__":
     plt.figure()
     print(ellipse_in_workspace(ellipse, workspace, verbose=1))
     plt.show()
-    
+    save_workspace(workspace, "test")
     print(workspace.reachabilty_mask)
