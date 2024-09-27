@@ -32,7 +32,6 @@ class Workspace:
         self.resolution = resolution
         self.bounds = bounds
 
-        # TODO: Need to change pattern. For example first create a workspace and BFS work and update with it.
         num_indexes = (np.max(bounds, 1) - np.min(bounds, 1)) / self.resolution
         self.mask_shape = np.zeros_like(num_indexes)
         self.bounds = np.zeros_like(bounds)
@@ -88,7 +87,9 @@ class Workspace:
 
     def point_in_bound(self, point: np.ndarray):
         return np.all(point >= self.bounds[:, 0] - self.resolution*0.9) and np.all(point <= self.bounds[:, 1] + self.resolution*0.9)
-
+    # def update_by_reach_mask(reachable_mask): 
+    
+    
     def check_points_in_ws(self, points: np.ndarray):
 
         check_array = np.zeros(points.shape[0], dtype=int)

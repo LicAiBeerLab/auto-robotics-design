@@ -21,8 +21,6 @@ from auto_robot_design.motion_planning.trajectory_ik_manager import (
 from auto_robot_design.motion_planning.utils import (
     Workspace,
     ellipse_in_workspace,
-    save_workspace,
-    load_workspace
 )
 
 
@@ -255,8 +253,8 @@ class BreadthFirstSearchPlanner:
             index = ws.calc_index(node.pos)
             reach_index[idx] = index
         self.workspace.reachable_index.update(reach_index)
-        dext_index = [1 / n.cost for n in closed_set.values()]
-        print(np.nanmax(dext_index), np.nanmin(dext_index))
+        # dext_index = [1 / n.cost for n in closed_set.values()]
+        # print(np.nanmax(dext_index), np.nanmin(dext_index))
         return self.workspace
 
     def transition_function(self, from_node: Node, to_node: Node):
@@ -410,7 +408,7 @@ if __name__ == "__main__":
     bounds[1, :] += center_bound[1]
 
     workspace = Workspace(robo, bounds, np.array([0.01, 0.01]))
-    ws_bfs = BreadthFirstSearchPlanner(workspace, 1, np.array([1, 40]))
+    ws_bfs = BreadthFirstSearchPlanner(workspace, 1)#, np.array([1, 40]))
     workspace = ws_bfs.find_workspace(start_pos, q)
 
     ax = plt.gca()
@@ -430,5 +428,5 @@ if __name__ == "__main__":
     plt.figure()
     print(ellipse_in_workspace(ellipse, workspace, verbose=1))
     plt.show()
-    save_workspace(workspace, "test")
+    
     print(workspace.reachabilty_mask)
