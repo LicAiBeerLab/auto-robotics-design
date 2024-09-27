@@ -106,10 +106,10 @@ class Workspace:
 
     @property
     def reachabilty_mask(self):
-        mask = np.zeros(tuple(self.mask_shape), dtype=int)
+        mask = np.zeros(tuple(self.mask_shape), dtype=bool)
 
         for index in self.reachable_index.values():
-            mask[tuple(index)] = 1
+            mask[tuple(index)] = True
 
         return mask
 
