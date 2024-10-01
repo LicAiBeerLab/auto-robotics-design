@@ -1,0 +1,95 @@
+import time
+import streamlit as st
+import numpy as np
+import streamlit.components.v1 as components
+import matplotlib.pyplot as plt
+from forward_init import add_trajectory_to_vis, build_constant_objects, set_criteria_and_crag
+from auto_robot_design.generator.topologies.bounds_preset import get_preset_by_index_with_bounds
+from auto_robot_design.description.utils import draw_joint_point
+import pinocchio as pin
+import meshcat
+from auto_robot_design.description.mesh_builder.mesh_builder import (
+    MeshBuilder,
+    jps_graph2pinocchio_meshes_robot,
+)
+from auto_robot_design.motion_planning.trajectory_ik_manager import TrajectoryIKManager
+from auto_robot_design.pinokla.default_traj import (
+    add_auxilary_points_to_trajectory,
+    convert_x_y_to_6d_traj_xz,
+    get_vertical_trajectory,
+    create_simple_step_trajectory,
+    get_workspace_trajectory,
+)
+from pinocchio.visualize import MeshcatVisualizer
+from auto_robot_design.motion_planning.bfs_ws import Workspace, BreadthFirstSearchPlanner
+from auto_robot_design.description.builder import (
+    ParametrizedBuilder,
+    URDFLinkCreater3DConstraints,
+    jps_graph2pinocchio_robot_3d_constraints,
+)
+
+from streamlit_widget_auxiliary import get_visualizer, send_graph_to_visualizer
+
+full_crag, rewards, motor = set_criteria_and_crag()
+# build and cache constant objects
+graph_managers, optimization_builder, visualization_builder, crag, workspace_trajectory, ground_symmetric_step1, ground_symmetric_step2, ground_symmetric_step3, central_vertical, left_vertical, right_vertical = build_constant_objects()
+trajectories = {"ground_symmetric_step1": ground_symmetric_step1,
+                "ground_symmetric_step2": ground_symmetric_step2,
+                "ground_symmetric_step3": ground_symmetric_step3,
+                "central_vertical": central_vertical,
+                "left_vertical": left_vertical,
+                "right_vertical": right_vertical}
+
+
+st.title("mechanical linkage mechanism optimization")
+
+if 'gm' not in st.session_state:
+    st.session_state.gm = get_preset_by_index_with_bounds(-1)
+    st.session_state.topology = None
+
+
+def confirm_topology():
+    st.session_state.topology = graph_managers[st.session_state.topology_choice]
+
+
+col_1, col_2 = st.columns(2, gap="medium")
+# the radio button and confirm button are only visible until the topology is selected
+if st.session_state.topology is None:
+    with st.sidebar:
+        st.radio(label="Select topology:", options=graph_managers.keys(),
+                 index=None, key='topology_choice')
+        st.button(label='Confirm topology', key='confirm_topology',
+                  on_click=confirm_topology)
+
+    if st.session_state.topology_choice:
+        st.session_state.gm = graph_managers[st.session_state.topology_choice]
+
+    gm = st.session_state.gm
+    values = gm.generate_central_from_mutation_range()
+    graph = st.session_state.gm.get_graph(values)
+    send_graph_to_visualizer(graph, visualization_builder)
+    with col_1:
+        st.header("Graph representation")
+        draw_joint_point(graph)
+        plt.gcf().set_size_inches(4, 4)
+        st.pyplot(plt.gcf(), clear_figure=True)
+    with col_2:
+        st.header("Robot visualization")
+        components.iframe(get_visualizer(visualization_builder).viewer.url(), width=400,
+                          height=400, scrolling=True)
+        
+
+# second stage
+if st.session_state.topology:
+    # form for optimization ranges
+    gm = st.session_state.gm
+    mut_ranges = gm.mutation_ranges
+    current_values = []
+
+    for key, value in mut_ranges.items():
+        current_on = st.toggle(f"Activate feature {key}", value = True)
+        if current_on:
+            current_value = st.slider(label=key, min_value=value[0], max_value=value[1],value = (value[0], value[1]))
+        else:
+            current_value = st.number_input("Insert a value")
+            
