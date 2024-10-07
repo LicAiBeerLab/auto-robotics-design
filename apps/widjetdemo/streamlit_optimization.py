@@ -1,3 +1,4 @@
+from copy import deepcopy
 import time
 import streamlit as st
 import numpy as np
@@ -27,7 +28,7 @@ from auto_robot_design.description.builder import (
     URDFLinkCreater3DConstraints,
     jps_graph2pinocchio_robot_3d_constraints,
 )
-
+from auto_robot_design.optimization.rewards.reward_base import PositioningConstrain, PositioningErrorCalculator, RewardManager
 from streamlit_widget_auxiliary import get_visualizer, send_graph_to_visualizer
 
 full_crag, rewards, motor = set_criteria_and_crag()
@@ -45,7 +46,10 @@ st.title("mechanical linkage mechanism optimization")
 
 if 'gm' not in st.session_state:
     st.session_state.gm = get_preset_by_index_with_bounds(-1)
+    st.session_state.reward_manager = RewardManager(crag=full_crag)
+    st.session_state.trajectory_idx = 0
     st.session_state.topology = None
+    st.session_state.ranges = False
 
 
 def confirm_topology():
@@ -77,19 +81,122 @@ if st.session_state.topology is None:
         st.header("Robot visualization")
         components.iframe(get_visualizer(visualization_builder).viewer.url(), width=400,
                           height=400, scrolling=True)
-        
+
+
+def confirm_ranges():
+    st.session_state.topology = False
+    st.session_state.ranges = True
+
 
 # second stage
-if st.session_state.topology:
+if st.session_state.topology and not st.session_state.ranges:
     # form for optimization ranges
     gm = st.session_state.gm
     mut_ranges = gm.mutation_ranges
     current_values = []
+    gm_clone = deepcopy(gm.mutation_ranges)
+    with st.sidebar:
+        for key, value in mut_ranges.items():
+            current_on = st.toggle(f"Activate feature {key}", value=True)
+            if current_on:
+                current_value = st.slider(
+                    label=key, min_value=value[0], max_value=value[1], value=(value[0], value[1]))
+                current_values.append(current_value)
+            else:
+                current_value = st.number_input("Insert a value")
+                current_values.append(current_value)
 
-    for key, value in mut_ranges.items():
-        current_on = st.toggle(f"Activate feature {key}", value = True)
-        if current_on:
-            current_value = st.slider(label=key, min_value=value[0], max_value=value[1],value = (value[0], value[1]))
-        else:
-            current_value = st.number_input("Insert a value")
-            
+        for idx, value in enumerate(current_values):
+            if isinstance(value, tuple):
+                gm_clone[list(gm.mutation_ranges.keys())[idx]] = value
+            else:
+                gm_clone[list(gm.mutation_ranges.keys())[idx]] = (value, value)
+        st.button(label="Confirm optimization ranges",
+                  key='ranges_confirm', on_click=confirm_ranges)
+    # here should be some kind of visualization for ranges
+    st.write(gm_clone)
+
+
+def add_trajectory(trajectory, idx):
+    st.session_state.reward_manager.add_trajectory(trajectory, idx)
+    st.session_state.trajectory_idx += 1
+
+
+def start_optimization(trajectories):
+    for reward_idx, trajectory_list in enumerate(trajectories):
+        for trajectory_idx, trajectory in enumerate(trajectory_list):
+            if trajectory:
+                st.session_state.reward_manager.add_reward(rewards[reward_idx], trajectory_idx,1)
+        #st.session_state.reward_manager.
+                
+
+
+    # when ranges are set we start to choose the reward+trajectory
+    # each trajectory should be added to the manager
+if st.session_state.ranges:
+    graph = st.session_state.gm.graph
+    trajectory = None
+    with st.sidebar:
+        trajectory_type = st.radio(label='Select trajectory type', options=[
+            "vertical", "step"], index=1, key="trajectory_type")
+        if trajectory_type == "vertical":
+            height = st.slider(
+                label="height", min_value=0.02, max_value=0.3, value=0.1)
+            x = st.slider(label="x", min_value=-0.3,
+                          max_value=0.3, value=0.0)
+            z = st.slider(label="z", min_value=-0.4,
+                          max_value=-0.2, value=-0.3)
+            trajectory = convert_x_y_to_6d_traj_xz(
+                *add_auxilary_points_to_trajectory(get_vertical_trajectory(z, height, x, 100)))
+
+        if trajectory_type == "step":
+            start_x = st.slider(
+                label="start_x", min_value=-0.3, max_value=0.3, value=-0.14)
+            start_z = st.slider(
+                label="start_z", min_value=-0.4, max_value=-0.2, value=-0.34)
+            height = st.slider(
+                label="height", min_value=0.02, max_value=0.3, value=0.1)
+            width = st.slider(label="width", min_value=0.1,
+                              max_value=0.6, value=0.2)
+            trajectory = convert_x_y_to_6d_traj_xz(
+                *add_auxilary_points_to_trajectory(
+                    create_simple_step_trajectory(
+                        starting_point=[start_x, start_z],
+                        step_height=height,
+                        step_width=width,
+                        n_points=100,
+                    )
+                )
+            )
+        st.button(label="Add trajectory", key="add_trajectory", args=(
+            trajectory, st.session_state.trajectory_idx), on_click=add_trajectory)
+        # for each reward trajectories should be assigned
+        reward_idxs = [0]*len(rewards)
+        trajectories = [[0]*st.session_state.trajectory_idx]*len(rewards)
+        for reward_idx, reward in enumerate(rewards):
+            current_checkbox = st.checkbox(
+                label=reward.reward_name, value=False, key=reward.reward_name)
+            reward_idxs[reward_idx]=current_checkbox
+            if current_checkbox and st.session_state.trajectory_idx > 0:
+                cols = st.columns(st.session_state.trajectory_idx)
+                for i in range(st.session_state.trajectory_idx):
+                    with cols[i]:
+                        trajectories[reward_idx][i] = st.checkbox(label=f"{i}", value=False,
+                                    key=f"{i}_{reward.reward_name}")
+                         
+
+        st.button(label="Start optimization",
+                  key="start_optimization", on_click=start_optimization, args=(trajectories))
+
+    with col_1:
+        st.header("Graph representation")
+        draw_joint_point(graph)
+        plt.gcf().set_size_inches(4, 4)
+        plt.plot(trajectory[:, 0], trajectory[:, 2])
+        st.pyplot(plt.gcf(), clear_figure=True)
+    with col_2:
+        st.header("Robot visualization")
+        add_trajectory_to_vis(get_visualizer(
+            visualization_builder), trajectory)
+        components.iframe(get_visualizer(visualization_builder).viewer.url(), width=400,
+                          height=400, scrolling=True)
