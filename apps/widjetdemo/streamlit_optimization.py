@@ -29,7 +29,7 @@ from auto_robot_design.description.builder import (
     jps_graph2pinocchio_robot_3d_constraints,
 )
 from auto_robot_design.optimization.rewards.reward_base import PositioningConstrain, PositioningErrorCalculator, RewardManager
-from streamlit_widget_auxiliary import get_visualizer, send_graph_to_visualizer
+from streamlit_widget_auxiliary import get_visualizer, send_graph_to_visualizer, run_simulation
 
 full_crag, rewards, motor = set_criteria_and_crag()
 # build and cache constant objects
@@ -50,6 +50,9 @@ if 'gm' not in st.session_state:
     st.session_state.trajectory_idx = 0
     st.session_state.topology = None
     st.session_state.ranges = False
+    st.session_state.trajectory_groups = []
+    error_calculator = PositioningErrorCalculator(error_key='error', jacobian_key="Manip_Jacobian")
+    st.session_state.soft_constraint = PositioningConstrain(error_calculator=error_calculator, points = [])
 
 
 def confirm_topology():
@@ -119,16 +122,37 @@ if st.session_state.topology and not st.session_state.ranges:
 
 def add_trajectory(trajectory, idx):
     st.session_state.reward_manager.add_trajectory(trajectory, idx)
+    st.session_state.trajectory_groups.append([idx])
+    st.session_state.soft_constraint.add_points_set(trajectory) 
+    st.session_state.trajectory_idx += 1
+
+    # st.session_state.reward_manager.
+
+# def create_new_group(trajectory, idx):
+#     st.session_state.reward_manager.add_trajectory(trajectory, idx)
+#     st.session_state.trajectory_groups.append([idx])
+#     st.session_state.trajectory_idx += 1
+
+
+def add_to_group(trajectory, idx):
+    st.session_state.reward_manager.add_trajectory(trajectory, idx)
+    st.session_state.trajectory_groups[-1].append(idx)
+    st.session_state.soft_constraint.add_points_set(trajectory) 
     st.session_state.trajectory_idx += 1
 
 
-def start_optimization(trajectories):
-    for reward_idx, trajectory_list in enumerate(trajectories):
-        for trajectory_idx, trajectory in enumerate(trajectory_list):
-            if trajectory:
-                st.session_state.reward_manager.add_reward(rewards[reward_idx], trajectory_idx,1)
-        #st.session_state.reward_manager.
-                
+def start_optimization(rewards_tf):
+    print(st.session_state.trajectory_groups)
+    for trj_list_idx, trajectory_list in enumerate(st.session_state.trajectory_groups):
+        for trj in trajectory_list:
+            for reward_idx, reward in enumerate(rewards_tf[trj_list_idx]):
+                if reward:
+                    st.session_state.reward_manager.add_reward(
+                        rewards[reward_idx], trj, 1)
+        st.session_state.reward_manager.add_trajectory_aggregator(
+            trajectory_list, 'mean')
+    
+    run_simulation(st.session_state.gm, optimization_builder, st.session_state.soft_constraint, motor)
 
 
     # when ranges are set we start to choose the reward+trajectory
@@ -170,23 +194,11 @@ if st.session_state.ranges:
             )
         st.button(label="Add trajectory", key="add_trajectory", args=(
             trajectory, st.session_state.trajectory_idx), on_click=add_trajectory)
+        # st.button(label="Create new group",key="create_new_group", args=[trajectory,st.session_state.trajectory_idx],on_click=create_new_group)
+        if st.session_state.trajectory_idx:
+            st.button(label="Add to group", key="add_to_group", args=[
+                trajectory, st.session_state.trajectory_idx], on_click=add_to_group)
         # for each reward trajectories should be assigned
-        reward_idxs = [0]*len(rewards)
-        trajectories = [[0]*st.session_state.trajectory_idx]*len(rewards)
-        for reward_idx, reward in enumerate(rewards):
-            current_checkbox = st.checkbox(
-                label=reward.reward_name, value=False, key=reward.reward_name)
-            reward_idxs[reward_idx]=current_checkbox
-            if current_checkbox and st.session_state.trajectory_idx > 0:
-                cols = st.columns(st.session_state.trajectory_idx)
-                for i in range(st.session_state.trajectory_idx):
-                    with cols[i]:
-                        trajectories[reward_idx][i] = st.checkbox(label=f"{i}", value=False,
-                                    key=f"{i}_{reward.reward_name}")
-                         
-
-        st.button(label="Start optimization",
-                  key="start_optimization", on_click=start_optimization, args=(trajectories))
 
     with col_1:
         st.header("Graph representation")
@@ -200,3 +212,18 @@ if st.session_state.ranges:
             visualization_builder), trajectory)
         components.iframe(get_visualizer(visualization_builder).viewer.url(), width=400,
                           height=400, scrolling=True)
+
+    if st.session_state.trajectory_idx:
+        cols = st.columns(len(st.session_state.trajectory_groups))
+    trajectories = [[0]*len(rewards)]*len(st.session_state.trajectory_groups)
+    for i in range(len(st.session_state.trajectory_groups)):
+        with cols[i]:
+            reward_idxs = [0]*len(rewards)
+            for reward_idx, reward in enumerate(rewards):
+                current_checkbox = st.checkbox(
+                    label=reward.reward_name, value=False, key=reward.reward_name+str(i))
+                reward_idxs[reward_idx] = current_checkbox
+            trajectories[i] = reward_idxs
+    if st.session_state.trajectory_idx:
+        st.button(label="Start optimization",
+                  key="start_optimization", on_click=start_optimization, args=[trajectories])
