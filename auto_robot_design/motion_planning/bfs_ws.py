@@ -115,7 +115,7 @@ class BreadthFirstSearchPlanner:
             pin.framesForwardKinematics(robot.model, robot.data, q)
             viz.display(q)
 
-            bound_pos = product(bounds[0, :], bounds[1, :])
+            bound_pos = product(self.workspace.bounds[0, :], self.workspace.bounds[1, :])
 
             for k, pos in enumerate(bound_pos):
                 ballID = "world/ball" + "_bound_" + str(k)
@@ -148,7 +148,7 @@ class BreadthFirstSearchPlanner:
             raise Exception("Start position of workspace is not reachable")
 
         del pseudo_start_node, start_index_on_grid, start_pos_on_grid
-        # Словари для обхis_reachода bfs
+        # Словари для обхода bfs
         open_set, closed_set, bad_nodes = dict(), dict(), dict()
         queue = deque()
         open_set[self.calc_grid_index(start_n)] = start_n

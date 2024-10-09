@@ -139,8 +139,37 @@ def evaluate_construction():
     start_pos = center_bound
     q = np.zeros(robo.model.nq)
     workspace = Workspace(robo, bounds, np.array([0.01, 0.01]))
-    ws_bfs = BreadthFirstSearchPlanner(workspace, 1)
+    ws_bfs = BreadthFirstSearchPlanner(workspace, 0)
     workspace = ws_bfs.find_workspace(start_pos, q)
+    points = []
+    point = workspace.bounds[:, 0]
+    k, m = 0, 0
+    while point[1] <= workspace.bounds[1, 1]:
+
+        while point[0] <= workspace.bounds[0, 1]:
+            points.append(point)
+            m += 1
+            point = workspace.bounds[:, 0] + np.array(
+                workspace.resolution) * np.array([m, k])
+        k += 1
+        m = 0
+        point = workspace.bounds[:, 0] + np.array(
+            workspace.resolution) * np.array([m, k])
+
+    points = np.array(points)
+    x = points[:, 0]
+    y = points[:, 1]
+    values = workspace.reachabilty_mask.T.flatten()
+    x_0 = x[values == 0]
+    y_0 = y[values == 0]
+    x_1 = x[values == 1]
+    y_1 = y[values == 1]
+    # # Plot the points
+    # plt.plot(x_0, y_0, "xr")
+    # plt.plot(x_1, y_1, "xb")
+    plt.scatter(x_0, y_0, color='blue')
+    plt.scatter(x_1, y_1, color='red')
+    #plt.plot(points[:, 0], points[:, 1], "xy")
     st.session_state.workspace = workspace
 
 
