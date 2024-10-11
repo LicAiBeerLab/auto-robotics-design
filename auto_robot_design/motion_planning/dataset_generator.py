@@ -9,7 +9,9 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from joblib import Parallel, cpu_count, delayed
+# from joblib import Parallel, cpu_count, delayed
+from joblib import cpu_count
+import concurrent.futures
 
 import pinocchio as pin
 from tqdm import tqdm
@@ -102,21 +104,30 @@ class DatasetGenerator:
         for k, el in enumerate(batch):
             joints_pos_batch[k, :] = el[0]
             ws_grid_batch[k, :] = el[1]
-        sorted_batch = np.hstack((joints_pos_batch, ws_grid_batch))
+        sorted_batch = np.hstack((joints_pos_batch, ws_grid_batch)).round(3)
 
         with open(self.path / "dataset.csv", "a", newline="") as f_object:
             # Pass the file object and a list of column names to DictWriter()
             writer = csv.writer(f_object)
             writer.writerows(sorted_batch)
 
-    def _calculate_batch(self, joint_poses_batch: np.ndarray):
-        batch_results = []
-        cpus = cpu_count() - 1
-        batch_results = Parallel(
-            cpus, backend="multiprocessing", verbose=100, timeout=60 * 1000
-        )(delayed(self._find_workspace)(i) for i in joint_poses_batch)
+    # def _calculate_batch(self, joint_poses_batch: np.ndarray):
+    #     batch_results = []
+    #     cpus = cpu_count() - 1
+    #     batch_results = Parallel(
+    #         cpus, backend="multiprocessing", verbose=100, timeout=60 * 1000
+    #     )(delayed(self._find_workspace)(i) for i in joint_poses_batch)
 
-        return batch_results
+    #     return batch_results
+
+    def _calculate_batch(self, joint_poses_batch: np.ndarray):
+        bathch_result = []
+        cpus = cpu_count() - 1
+        with concurrent.futures.ProcessPoolExecutor(max_workers=cpus) as executor:
+            futures = [executor.submit(self._find_workspace, i) for i in joint_poses_batch]
+            for future in concurrent.futures.as_completed(futures):
+                bathch_result.append(future.result())
+        return bathch_result
 
     def start(self, num_points, size_batch):
         central_jp = self.graph_manager.generate_central_from_mutation_range()
@@ -181,13 +192,13 @@ if __name__ == "__main__":
         get_preset_by_index_with_bounds,
     )
 
-    # gm = get_preset_by_index_with_bounds(0)
-    # ws_agrs = (
-    #     np.array([[-0.1, 0.1], [-0.4, -0.2]]),
-    #     np.array([0.01, 0.01]),
-    #     np.array([0, np.inf]),
-    # )
-    # dataset_generator = DatasetGenerator(gm, "test", ws_agrs)
+    gm = get_preset_by_index_with_bounds(0)
+    ws_agrs = (
+        np.array([[-0.05, 0.05], [-0.4, -0.3]]),
+        np.array([0.01, 0.01]),
+        np.array([0, np.inf]),
+    )
+    dataset_generator = DatasetGenerator(gm, "test", ws_agrs)
 
     # jp_batch = []
     # for __ in range(10):
@@ -195,6 +206,6 @@ if __name__ == "__main__":
     # res = dataset_generator._calculate_batch(jp_batch)
     # dataset_generator.save_batch_to_dataset(res)
 
-    # dataset_generator.start(5, 23)
+    dataset_generator.start(5, 23)
     # print(res)
 
