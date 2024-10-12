@@ -27,8 +27,8 @@ center = gm.generate_central_from_mutation_range()
 graph = gm.get_graph(center)
 
 for jp, gen_info in gm.generator_dict.items():
-    if gen_info.mutation_type == MutationType.UNMOVABLE:
-        continue
+    # if gen_info.mutation_type == MutationType.UNMOVABLE:
+    #     continue
     print(f"{jp.name:-^50}")
     print(gen_info.mutation_type)
     if isinstance(gen_info.relative_to, list):

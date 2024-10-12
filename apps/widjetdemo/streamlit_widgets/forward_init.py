@@ -67,8 +67,18 @@ from pinocchio.visualize import MeshcatVisualizer
 
 from auto_robot_design.motion_planning.trajectory_ik_manager import TrajectoryIKManager
 from auto_robot_design.simulation.trajectory_movments import TrajectoryMovements
+from dataclasses import dataclass, field
 
 pin.seed(1)
+
+@dataclass
+class OptimizationData:
+    graph_manager: GraphManager2L
+    optimization_builder: ParametrizedBuilder
+    crag: CriteriaAggregator
+    reward_manager: RewardManager
+    soft_constraint: PositioningConstrain
+    actuator: str
 
 
 @st.cache_resource
@@ -194,6 +204,7 @@ from auto_robot_design.optimization.rewards.pure_jacobian_rewards import EndPoin
 from auto_robot_design.optimization.rewards.inertia_rewards import MassReward, EndPointIMFReward,ActuatedMassReward, TrajectoryIMFReward
 from auto_robot_design.pinokla.calc_criterion import ActuatedMass, EffectiveInertiaCompute, ImfCompute, ManipCompute, MovmentSurface, NeutralPoseMass, TranslationErrorMSE, ManipJacobian
 from auto_robot_design.pinokla.criterion_math import ImfProjections
+
 @st.cache_resource 
 def set_criteria_and_crag():
     # we should create a crag that calculates all possible data
@@ -224,7 +235,21 @@ def set_criteria_and_crag():
                                                     trajectory_key="traj_6d", error_key="error"))
     reward_list.append(ForceEllipsoidReward(manipulability_key='Manip_Jacobian',
                                                     trajectory_key="traj_6d", error_key="error"))
+    reward_list.append(ZRRReward(manipulability_key='Manip_Jacobian',
+                                                    trajectory_key="traj_6d", error_key="error"))
+    reward_list.append(EndPointZRRReward(manipulability_key='Manip_Jacobian',
+                                                    trajectory_key="traj_6d", error_key="error"))
     reward_list.append(MinForceReward(manipulability_key='Manip_Jacobian',
                                                     trajectory_key="traj_6d", error_key="error"))
+    reward_list.append(DexterityIndexReward(manipulability_key='Manip_Jacobian',
+                                                    trajectory_key="traj_6d", error_key="error"))
+    reward_list.append(AccelerationCapability(manipulability_key='Manip_Jacobian',
+                                                        trajectory_key="traj_6d", error_key="error", actuated_mass_key="Actuated_Mass"))
+    reward_list.append(MinAccelerationCapability(manipulability_key='Manip_Jacobian',
+                                                        trajectory_key="traj_6d", error_key="error", actuated_mass_key="Actuated_Mass"))
+    reward_list.append(HeavyLiftingReward(manipulability_key='Manip_Jacobian',mass_key='MASS',
+                                                        trajectory_key="traj_6d", error_key="error"))
+    reward_list.append(MeanHeavyLiftingReward(manipulability_key='Manip_Jacobian',mass_key='MASS',
+                                                        trajectory_key="traj_6d", error_key="error"))
     motor = MIT_CHEETAH_PARAMS_DICT["actuator"]
     return crag, reward_list,  motor
