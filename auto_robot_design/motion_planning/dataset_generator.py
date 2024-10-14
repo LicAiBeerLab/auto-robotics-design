@@ -21,6 +21,8 @@ from auto_robot_design.description.builder import (
     ParametrizedBuilder,
     URDFLinkCreater3DConstraints,
 )
+
+from auto_robot_design.user_interface.check_in_ellips import Ellipse, check_points_in_ellips
 from auto_robot_design.motion_planning.utils import Workspace
 from auto_robot_design.motion_planning.bfs_ws import BreadthFirstSearchPlanner
 from auto_robot_design.utils.bruteforce import get_n_dim_linspace
@@ -67,7 +69,6 @@ class DatasetGenerator:
 
         self.params_size = len(self.graph_manager.generate_random_from_mutation_range())
         self.ws_grid_size = np.prod(workspace.mask_shape)
-        
 
         dataset_fields_names = ["jp_" + str(i) for i in range(self.params_size)]
         dataset_fields_names += ["ws_" + str(i) for i in range(self.ws_grid_size)]
@@ -157,7 +158,6 @@ class Dataset:
         
         self.builder = ParametrizedBuilder(URDFLinkCreater3DConstraints)
 
-
     def get_workspace_by_sample(self, sample):
         
         joint_poses = sample[:self.params_size].to_numpy()
@@ -173,7 +173,30 @@ class Dataset:
         ws_out.reachable_index = reach_indexes
         
         return ws_out
+    
+    def get_all_design_indexes_cover_ellipse(self, ellipse: Ellipse):
+        points_on_ellps = ellipse.get_points(0.1).T
+        
+        for pt in points_on_ellps:
+            if not self.workspace.point_in_bound(pt):
+                raise Exception("Input ellipse out of workspace bounds")
+        
+        ws_points = self.workspace.points
+        mask_ws_n_ellps = check_points_in_ellips(ws_points, ellipse, 0.1)
+        ellips_mask = np.zeros(self.workspace.mask_shape, dtype=bool)
+        for point in ws_points[mask_ws_n_ellps, :]:
+            index = self.workspace.calc_index(point)
+            ellips_mask[tuple(index)] = True
+        ws_bool_flatten = np.asarray(self.df.values[:,self.params_size:], dtype=bool)
+        ell_mask_2d = ellips_mask.flatten()[np.newaxis :]
+        indexes = np.argwhere(np.sum(ell_mask_2d * ws_bool_flatten, axis=1) ==np.sum(ell_mask_2d))
+        return indexes
+    
+    def get_df_calc_reward_manager(self, indexes, reward_manager):
 
+        graph = gm.get_graph(gm.generate_random_from_mutation_range())
+        robot, free_robot = jps_graph2pinocchio_robot(graph, builder)
+        reward_manager.calculate_total(robot, free_robot, builder.actuator["default"])
 
 if __name__ == "__main__":
 
@@ -181,20 +204,20 @@ if __name__ == "__main__":
         get_preset_by_index_with_bounds,
     )
 
-    # gm = get_preset_by_index_with_bounds(0)
-    # ws_agrs = (
-    #     np.array([[-0.1, 0.1], [-0.4, -0.2]]),
-    #     np.array([0.01, 0.01]),
-    #     np.array([0, np.inf]),
-    # )
-    # dataset_generator = DatasetGenerator(gm, "test", ws_agrs)
+    gm = get_preset_by_index_with_bounds(8)
+    ws_agrs = (
+        np.array([[-0.4, 0.4], [-0.42, -0.1]]),
+        np.array([0.01, 0.01]),
+        np.array([0, np.inf]),
+    )
+    dataset_generator = DatasetGenerator(gm, "test_top_8", ws_agrs)
 
     # jp_batch = []
     # for __ in range(10):
     #     jp_batch.append(gm.generate_random_from_mutation_range())
     # res = dataset_generator._calculate_batch(jp_batch)
     # dataset_generator.save_batch_to_dataset(res)
-
-    # dataset_generator.start(5, 23)
     # print(res)
 
+    dataset_generator.start(3, 230)
+    

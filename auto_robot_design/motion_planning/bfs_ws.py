@@ -6,6 +6,9 @@ import numpy as np
 import pinocchio as pin
 import matplotlib.pyplot as plt
 
+import meshcat
+from pinocchio.visualize import MeshcatVisualizer
+
 from auto_robot_design.pinokla.closed_loop_jacobian import (
     constraint_jacobian_active_to_passive,
 )

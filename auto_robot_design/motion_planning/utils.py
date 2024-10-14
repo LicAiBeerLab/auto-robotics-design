@@ -117,18 +117,22 @@ class Workspace:
     def points(self):
         points = []
         point = self.bounds[:, 0]
-        k, m = 0, 0
-        while point[1] <= self.bounds[1, 1]:
-
-            while point[0] <= self.bounds[0, 1]:
-                points.append(point)
-                m += 1
+        for m in range(self.mask_shape[0]):
+            for k in range(self.mask_shape[1]):
                 point = self.bounds[:, 0] + np.array(
                     self.resolution) * np.array([m, k])
-            k += 1
-            m = 0
-            point = self.bounds[:, 0] + np.array(
-                self.resolution) * np.array([m, k])
+                points.append(point)
+        # while point[1] <= self.bounds[1, 1]:
+
+        #     while point[0] <= self.bounds[0, 1]:
+        #         points.append(point)
+        #         m += 1
+        #         point = self.bounds[:, 0] + np.array(
+        #             self.resolution) * np.array([m, k])
+        #     k += 1
+        #     m = 0
+        #     point = self.bounds[:, 0] + np.array(
+        #         self.resolution) * np.array([m, k])
 
         points = np.array(points)
         return points
