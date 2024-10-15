@@ -225,8 +225,8 @@ def set_criteria_and_crag():
     crag = CriteriaAggregator(dict_point_criteria, dict_trajectory_criteria)
 
     reward_list=[]
-    reward_list.append(EndPointIMFReward(imf_key='IMF', trajectory_key="traj_6d", error_key="error"))
-    reward_list.append(ActuatedMassReward(mass_key='Actuated_Mass'))
+    # reward_list.append(EndPointIMFReward(imf_key='IMF', trajectory_key="traj_6d", error_key="error"))
+    # reward_list.append(ActuatedMassReward(mass_key='Actuated_Mass'))
     reward_list.append(TrajectoryIMFReward(imf_key='IMF',trajectory_key="traj_6d", error_key="error"))
     reward_list.append(VelocityReward(manipulability_key='Manip_Jacobian', trajectory_key="traj_6d", error_key="error"))
     reward_list.append(ManipulabilityReward(manipulability_key='MANIP',
@@ -237,8 +237,8 @@ def set_criteria_and_crag():
                                                     trajectory_key="traj_6d", error_key="error"))
     reward_list.append(ZRRReward(manipulability_key='Manip_Jacobian',
                                                     trajectory_key="traj_6d", error_key="error"))
-    reward_list.append(EndPointZRRReward(manipulability_key='Manip_Jacobian',
-                                                    trajectory_key="traj_6d", error_key="error"))
+    # reward_list.append(EndPointZRRReward(manipulability_key='Manip_Jacobian',
+    #                                                 trajectory_key="traj_6d", error_key="error"))
     reward_list.append(MinForceReward(manipulability_key='Manip_Jacobian',
                                                     trajectory_key="traj_6d", error_key="error"))
     reward_list.append(DexterityIndexReward(manipulability_key='Manip_Jacobian',

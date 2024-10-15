@@ -1,3 +1,4 @@
+import subprocess
 from pymoo.decomposition.asf import ASF
 from auto_robot_design.optimization.optimizer import PymooOptimizer
 from auto_robot_design.optimization.saver import load_checkpoint
@@ -54,6 +55,7 @@ st.title("Mechanical linkage mechanism optimization")
 if 'gm' not in st.session_state:
     st.session_state.gm = get_preset_by_index_with_bounds(-1)
     st.session_state.gm_clone = None
+    st.session_state.run_simulation_flag = False
     st.session_state.reward_manager = RewardManager(crag=full_crag)
     st.session_state.trajectory_idx = 0
     st.session_state.stage = "topology_choice"
@@ -66,7 +68,6 @@ if 'gm' not in st.session_state:
     st.session_state.opt_rewards_dict = {}
 
 # top columns that usually show the chosen topology in both graph and mesh forms
-col_1, col_2 = st.columns(2, gap="medium")
 
 
 def confirm_topology():
@@ -93,6 +94,7 @@ if st.session_state.stage == "topology_choice":
     values = gm.generate_central_from_mutation_range()
     graph = st.session_state.gm.get_graph(values)
     send_graph_to_visualizer(graph, visualization_builder)
+    col_1, col_2 = st.columns(2, gap="medium")
     with col_1:
         st.header("Graph representation")
         draw_joint_point(graph)
@@ -120,7 +122,7 @@ def confirm_ranges():
     for key, value in gm.generator_dict.items():
         print(gm.generator_dict[key].freeze_pos)
     gm_clone.set_mutation_ranges()
-    print(gm.mutation_ranges)
+    # print(gm.mutation_ranges)
 
 
 def return_to_topology():
@@ -173,13 +175,15 @@ if st.session_state.stage == "ranges_choice":
         st.button(label="Confirm optimization ranges",
                   key='ranges_confirm', on_click=confirm_ranges)
     # here should be some kind of visualization for ranges
-    graph = st.session_state.gm.graph
+    gm.set_mutation_ranges()
+    center = gm.generate_central_from_mutation_range()
+    graph = gm.get_graph(center)
     draw_joint_point(graph)
     # here gm is a clone
     plot_2d_bounds(gm)
     st.pyplot(plt.gcf(), clear_figure=True)
     # this way we set ranges after each step, but without freezing joints
-    gm.set_mutation_ranges()
+    
     st.write(gm.mutation_ranges)
 
 
@@ -205,11 +209,18 @@ def add_to_group(trajectory, idx):
     st.session_state.trajectory_groups[-1].append(idx)
     st.session_state.trajectory_idx += 1
 
+# def start_optimization(rewards_tf):
+#     """Start the optimization process."""
+#     st.session_state.stage = "optimization"
+
+#     st.session_state.rerun = True
+
 
 def start_optimization(rewards_tf):
     """Start the optimization process."""
     # print(st.session_state.trajectory_groups)
     st.session_state.stage = "optimization"
+    st.session_state.rerun = True
     # rewards_tf = trajectories
     # add all trajectories to the reward manager and soft constraint
     for idx_trj, trj in st.session_state.trajectory_buffer.items():
@@ -244,7 +255,6 @@ def return_to_ranges(reset=False):
         st.session_state.trajectory_buffer = {}
         st.session_state.trajectory_idx = 0
         st.session_state.reward_manager = RewardManager(crag=full_crag)
-
 
     # when ranges are set we start to choose the reward+trajectory
     # each trajectory should be added to the manager
@@ -350,7 +360,13 @@ def show_results():
 
 
 if st.session_state.stage == "optimization":
+    # I have to rerun to clear the screen
+    if st.session_state.rerun:
+        st.session_state.rerun = False
+        st.rerun()
+
     graph = st.session_state.gm.graph
+    col_1, col_2 = st.columns(2, gap="medium")
     with col_1:
         st.header("Graph representation")
         draw_joint_point(graph)
@@ -358,33 +374,26 @@ if st.session_state.stage == "optimization":
         st.pyplot(plt.gcf(), clear_figure=True)
     with col_2:
         st.header("Robot visualization")
+        send_graph_to_visualizer(graph, visualization_builder)
         components.iframe(get_visualizer(visualization_builder).viewer.url(), width=400,
                           height=400, scrolling=True)
     # this is a long process that will block the streamlit app
-    with st.status("Optimization..."):
-        os.system("python apps/widjetdemo/streamlit_widgets/run.py")
+    # st.button(label='click')
+    # time.sleep(10)
+    # with st.status("Optimization..."):
+    #     st.write("start the optimization")
+    #     os.system("python apps/widjetdemo/streamlit_widgets/run.py")
+    file = open(
+        f".\\results\\optimization_widget\\current_results\\out.txt", 'w')
+    subprocess.run(
+        ['python', "apps/widjetdemo/streamlit_widgets/run.py"], stdout=file)
+    file.close()
     # the button should appear after the optimization is done
     st.button(label="Show results", key="show_results", on_click=show_results)
 
 
 def run_simulation(**kwargs):
-    trajectory = kwargs["trajectory"]
-    graph = kwargs['graph']
-    ik_manager = TrajectoryIKManager()
-    # fixed_robot, free_robot = jps_graph2pinocchio_robot(gm.graph, builder)
-    fixed_robot, _ = jps_graph2pinocchio_meshes_robot(
-        graph, visualization_builder)
-    ik_manager.register_model(
-        fixed_robot.model, fixed_robot.constraint_models, fixed_robot.visual_model
-    )
-    ik_manager.set_solver("Closed_Loop_PI")
-    with st.status("simulation..."):
-        _ = ik_manager.follow_trajectory(
-            trajectory, viz=get_visualizer(visualization_builder)
-        )
-    time.sleep(1)
-    get_visualizer(visualization_builder).display(
-        pin.neutral(fixed_robot.model))
+    st.session_state.run_simulation_flag = True
 
 
 def calculate_and_display_rewards(graph, trajectory, reward_mask):
@@ -411,8 +420,9 @@ if st.session_state.stage == "results":
         res = optimizer.run()
         ten_best = np.argsort(np.array(optimizer.history["F"]).flatten())[:11]
         print(ten_best)
-        
-        idx = st.select_slider(label="best results",options=[1,2,3,4,5,6,7,8,9,10], value=1, help='10 best mechanisms with 1 being the best')
+
+        idx = st.select_slider(label="best results", options=[
+                               1, 2, 3, 4, 5, 6, 7, 8, 9, 10], value=1, help='10 best mechanisms with 1 being the best')
         best_id = ten_best[idx]
         best_x = optimizer.history["X"][best_id]
         print(best_x)
@@ -432,7 +442,7 @@ if st.session_state.stage == "results":
                 current_checkbox = st.checkbox(
                     label=reward.reward_name, value=False, key=reward.reward_name+str(reward_idx), help=reward.__doc__)
                 reward_idxs[reward_idx] = current_checkbox
-        
+        col_1, col_2 = st.columns(2, gap="medium")
         with col_1:
             st.header("Graph representation")
             draw_joint_point(graph)
@@ -447,11 +457,12 @@ if st.session_state.stage == "results":
                               height=400, scrolling=True)
 
         with st.sidebar:
-            st.button(label="calculate rewards", key="calculate_rewards",
+            bc = st.button(label="calculate rewards", key="calculate_rewards",
                       on_click=calculate_and_display_rewards, args=[graph, trajectory, reward_idxs])
 
-        for key, value in st.session_state.opt_rewards_dict.items():
-            st.text(f"{key}: {value}")
+        if bc:
+            for key, value in st.session_state.opt_rewards_dict.items():
+                st.text(f"{key}: {value}")
 
     if n_obj == 2:
         problem = MultiCriteriaProblem.load(selected_directory)
@@ -467,7 +478,6 @@ if st.session_state.stage == "results":
         w1 = st.slider(label="Select weight", min_value=0.0,
                        max_value=1.0, value=0.5)
         weights = np.array([w1, 1-w1])
-
         decomp = ASF()
         b = decomp.do(nF, 1/weights).argmin()
         best_x = res.X[b]
@@ -477,7 +487,6 @@ if st.session_state.stage == "results":
             trj_idx = st.radio(label="Select trajectory", options=trajectories.keys(
             ), index=0, key='opt_trajectory_choice')
             trajectory = trajectories[trj_idx]
-
             st.button(label='run simulation', key='run_simulation', on_click=run_simulation, kwargs={
                       "graph": graph, "trajectory": trajectory})
             st.header("Rewards:")
@@ -487,6 +496,7 @@ if st.session_state.stage == "results":
                     label=reward.reward_name, value=False, key=reward.reward_name+str(reward_idx), help=reward.__doc__)
                 reward_idxs[reward_idx] = current_checkbox
         send_graph_to_visualizer(graph, visualization_builder)
+        col_1, col_2 = st.columns(2, gap="medium")
         with col_1:
             st.header("Graph representation")
             draw_joint_point(graph)
@@ -502,9 +512,11 @@ if st.session_state.stage == "results":
         # draw_joint_point(graph)
         # st.pyplot(plt.gcf(), clear_figure=True)
         with st.sidebar:
-            st.button(label="calculate rewards", key="calculate_rewards",
+            bc = st.button(label="calculate rewards", key="calculate_rewards",
                       on_click=calculate_and_display_rewards, args=[graph, trajectory, reward_idxs])
-
+        if bc:
+            for key, value in st.session_state.opt_rewards_dict.items():
+                st.text(f"{key}: {value}")
         plt.figure(figsize=(7, 5))
         plt.scatter(F[:, 0], F[:, 1], s=30,
                     facecolors='none', edgecolors='blue')
@@ -515,17 +527,24 @@ if st.session_state.stage == "results":
         plt.scatter(F[b, 0], F[b, 1], marker="x", color="red", s=200)
         plt.title("Objective Space")
         plt.legend()
-
-        # st.pyplot(plt.gcf(), clear_figure=True)
         for key, value in st.session_state.opt_rewards_dict.items():
             st.text(f"{key}: {value}")
 
-    # trajectory = problem.rewards_and_trajectories.trajectories[0]
-    # builder = problem.builder
-    # crag = problem.rewards_and_trajectories.crag
-    # fixed_robot, free_robot = jps_graph2pinocchio_robot_3d_constraints(graph, builder=builder)
-    # constrain_error, results = problem.soft_constrain.calculate_constrain_error(
-    #     crag, fixed_robot, free_robot)
-    # st.warning(constrain_error)
-    # plt.plot(np.sum(np.abs(np.diff(results[0][2]['q'], axis=0)),axis=1))
-    # st.pyplot(plt.gcf(), clear_figure=True)
+    # We need a flag to run the simulation in the frame that was just created
+    if st.session_state.run_simulation_flag:
+        ik_manager = TrajectoryIKManager()
+        # fixed_robot, free_robot = jps_graph2pinocchio_robot(gm.graph, builder)
+        fixed_robot, _ = jps_graph2pinocchio_meshes_robot(
+            graph, visualization_builder)
+        ik_manager.register_model(
+            fixed_robot.model, fixed_robot.constraint_models, fixed_robot.visual_model
+        )
+        ik_manager.set_solver("Closed_Loop_PI")
+        #with st.status("simulation..."):
+        _ = ik_manager.follow_trajectory(
+            trajectory, viz=get_visualizer(visualization_builder)
+        )
+        time.sleep(1)
+        get_visualizer(visualization_builder).display(
+            pin.neutral(fixed_robot.model))
+        st.session_state.run_simulation_flag = False
