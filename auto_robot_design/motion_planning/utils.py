@@ -211,3 +211,9 @@ def ellipse_in_workspace(ellips: Ellipse, workspace: Workspace, strong_check = T
             plt.plot(reach_ws_points[mask_ws_n_ellps,:][:,0], reach_ws_points[mask_ws_n_ellps,:][:,1], "xc")
     
     return ellips_in_ws
+
+
+def build_graphs(graphs, builder, func, *args, **kwargs):
+    for graph in graphs:
+        fixed_robot, free_robot = func(graph, builder, *args, **kwargs)
+        yield fixed_robot, free_robot
