@@ -27,6 +27,7 @@ from auto_robot_design.description.builder import (
     URDFLinkCreater3DConstraints,
     jps_graph2pinocchio_robot_3d_constraints,
 )
+from streamlit_widget_auxiliary import get_visualizer, send_graph_to_visualizer
 
 full_crag, rewards, motor = set_criteria_and_crag()
 # build and cache constant objects
@@ -38,64 +39,23 @@ trajectories = {"ground_symmetric_step1": ground_symmetric_step1,
                 "left_vertical": left_vertical,
                 "right_vertical": right_vertical}
 # set widget title
-st.title("robotic leg evaluation")
+st.title("Mechanical linkage mechanism evaluation")
 # create gm variable that will be used to store the current graph manager and set it to be update for a session
 if 'gm' not in st.session_state:
     st.session_state.gm = get_preset_by_index_with_bounds(-1)
     # the session variable for chosen topology, it gets a value after topology confirmation button is clicked
-    st.session_state.topology = None
-    st.session_state.workspace = None
+    st.session_state.stage = 'topology_choice'
     st.session_state.trajectory_choice = False
-
-
-# the function for getting visualizer. At first call it creates a visualizer object and caches it, at any further call it returns the cached object
-@st.cache_resource
-def get_visualizer():
-    builder = visualization_builder
-    gm = st.session_state.gm
-    values = gm.generate_central_from_mutation_range()
-    graph = gm.get_graph(values)
-    fixed_robot, free_robot = jps_graph2pinocchio_meshes_robot(graph, builder)
-    # create a pinocchio visualizer object with current value of a robot
-    visualizer = MeshcatVisualizer(
-        fixed_robot.model, fixed_robot.visual_model, fixed_robot.visual_model
-    )
-    # create and setup a meshcat visualizer
-    visualizer.viewer = meshcat.Visualizer()
-    # visualizer.viewer["/Background"].set_property("visible", False)
-    visualizer.viewer["/Grid"].set_property("visible", False)
-    visualizer.viewer["/Axes"].set_property("visible", False)
-    visualizer.viewer["/Cameras/default/rotated/<object>"].set_property(
-        "position", [0, 0.0, 0.8]
-    )
-    # load a model to the visualizer and set it into the neutral position
-    visualizer.clean()
-    visualizer.loadViewerModel()
-    visualizer.display(pin.neutral(fixed_robot.model))
-
-    return visualizer
-
-
-def send_graph_to_visualizer(graph):
-    fixed_robot, _ = jps_graph2pinocchio_meshes_robot(
-        graph, visualization_builder)
-    visualizer = get_visualizer()
-    visualizer.model = fixed_robot.model
-    visualizer.collision = fixed_robot.visual_model
-    visualizer.visual_model = fixed_robot.visual_model
-    visualizer.rebuildData()
-    visualizer.clean()
-    visualizer.loadViewerModel()
-    visualizer.display(pin.neutral(fixed_robot.model))
+    st.session_state.run_simulation_flag = False
 
 
 def confirm_topology():
+    st.session_state.stage = 'joint_point_choice'
     st.session_state.topology = graph_managers[st.session_state.topology_choice]
 
 
-col_1, col_2 = st.columns(2, gap="medium")
 # the radio button and confirm button are only visible until the topology is selected
-if st.session_state.topology is None:
+if st.session_state.stage == 'topology_choice':
     with st.sidebar:
         st.radio(label="Select topology:", options=graph_managers.keys(),
                  index=None, key='topology_choice')
@@ -108,26 +68,28 @@ if st.session_state.topology is None:
     gm = st.session_state.gm
     values = gm.generate_central_from_mutation_range()
     graph = st.session_state.gm.get_graph(values)
-    send_graph_to_visualizer(graph)
+    send_graph_to_visualizer(graph,visualization_builder)
+    col_1, col_2 = st.columns(2, gap="medium")
     with col_1:
         st.header("Graph representation")
-        draw_joint_point(graph)
+        draw_joint_point(graph,draw_labels=False)
         plt.gcf().set_size_inches(4, 4)
         st.pyplot(plt.gcf(), clear_figure=True)
     with col_2:
         st.header("Robot visualization")
-        components.iframe(get_visualizer().viewer.url(), width=400,
+        components.iframe(get_visualizer(visualization_builder).viewer.url(), width=400,
                           height=400, scrolling=True)
 
 
 def evaluate_construction():
-    st.session_state.workspace = None
+    """Calculate the workspace of the robot and display it"""
+    st.session_state.stage = 'workspace_visualization'
     gm = st.session_state.gm
     graph = gm.graph
     robo, __ = jps_graph2pinocchio_robot_3d_constraints(
         graph, builder=optimization_builder)
-    size_box_bound = np.array([0.5, 0.5])
-    center_bound = np.array([0, -0.4])
+    size_box_bound = np.array([0.5, 0.42])
+    center_bound = np.array([0, -0.21])
     bounds = np.array(
         [
             [-size_box_bound[0] / 2 - 0.001, size_box_bound[0] / 2],
@@ -136,10 +98,10 @@ def evaluate_construction():
     )
     bounds[0, :] += center_bound[0]
     bounds[1, :] += center_bound[1]
-    start_pos = center_bound
+    start_pos = np.array([0, -0.4])
     q = np.zeros(robo.model.nq)
-    workspace = Workspace(robo, bounds, np.array([0.01, 0.01]))
-    ws_bfs = BreadthFirstSearchPlanner(workspace, 0)
+    workspace_obj = Workspace(robo, bounds, np.array([0.01, 0.01]))
+    ws_bfs = BreadthFirstSearchPlanner(workspace_obj, 0)
     workspace = ws_bfs.find_workspace(start_pos, q)
     points = []
     point = workspace.bounds[:, 0]
@@ -157,46 +119,29 @@ def evaluate_construction():
             workspace.resolution) * np.array([m, k])
 
     points = np.array(points)
-    x = points[:, 0]
-    y = points[:, 1]
-    values = workspace.reachabilty_mask.T.flatten()
-    x_0 = x[values == 0]
-    y_0 = y[values == 0]
-    x_1 = x[values == 1]
-    y_1 = y[values == 1]
+    # x = points[:, 0]
+    # y = points[:, 1]
+    #values = workspace.reachabilty_mask.T.flatten()
+    # x_0 = x[values == 0]
+    # y_0 = y[values == 0]
+    # x_1 = x[values == 1]
+    # y_1 = y[values == 1]
     # # Plot the points
     # plt.plot(x_0, y_0, "xr")
     # plt.plot(x_1, y_1, "xb")
-    plt.scatter(x_0, y_0, color='blue')
-    plt.scatter(x_1, y_1, color='red')
+    # plt.scatter(x_0, y_0, color='blue')
+    # plt.scatter(x_1, y_1, color='red')
     #plt.plot(points[:, 0], points[:, 1], "xy")
     st.session_state.workspace = workspace
+    st.session_state.points = points
 
 
 def to_trajectory_choice():
-    st.session_state.trajectory_choice = True
+    st.session_state.stage = 'trajectory_choice'
 
 
 def run_simulation(**kwargs):
-    trajectory = kwargs["trajectory"]
-    gm = st.session_state.gm
-    ik_manager = TrajectoryIKManager()
-    # fixed_robot, free_robot = jps_graph2pinocchio_robot(gm.graph, builder)
-    fixed_robot, _ = jps_graph2pinocchio_meshes_robot(
-        gm.graph, visualization_builder)
-    ik_manager.register_model(
-        fixed_robot.model, fixed_robot.constraint_models, fixed_robot.visual_model
-    )
-    ik_manager.set_solver("Closed_Loop_PI")
-    _ = ik_manager.follow_trajectory(
-        trajectory, viz=get_visualizer()
-    )
-    time.sleep(1)
-    get_visualizer().display(pin.neutral(fixed_robot.model))
-    # st.session_state.trajectory_choice = False
-    # st.session_state.workspace = None
-    # st.session_state.topology = None
-
+    st.session_state.run_simulation_flag = True
 
 def calculate_and_display_rewards(trajectory, reward_mask):
     gm = st.session_state.gm
@@ -206,97 +151,146 @@ def calculate_and_display_rewards(trajectory, reward_mask):
         fixed_robot, free_robot, trajectory, viz=None)
     for i, reward in enumerate(rewards):
         if reward_mask[i]:
-            st.text_area(label=reward.reward_name, value=str(reward.calculate(
-                point_criteria_vector, trajectory_criteria, res_dict_fixed, Actuator=motor)[0]))
+            try:
+                # current_reward = reward.calculate(point_criteria_vector, trajectory_criteria, res_dict_fixed, Actuator=motor)[0]
 
+                st.text_area(label=reward.reward_name, value=str(reward.calculate(
+                    point_criteria_vector, trajectory_criteria, res_dict_fixed, Actuator=motor)[0]))
+            except ValueError:
+                st.text_area(label="", value="The trajectory is not feasible, please choose a trajectory within the workspace")
+                break
 
-if st.session_state.topology:
-    if not st.session_state.trajectory_choice:
-        gm = st.session_state.gm
-        mut_ranges = gm.mutation_ranges
-        gm = st.session_state.gm
-        mut_ranges = gm.mutation_ranges
-        current_values = []
-        with st.sidebar.form("jp_coordinates"):
-            for key, value in mut_ranges.items():
-                slider = st.slider(
-                    label=key, min_value=value[0], max_value=value[1], value=(value[1]+value[0])/2)
-                current_values.append(slider)
-            st.form_submit_button('Set joint points')
-        with st.sidebar:
-            st.button(label="Get workspace",
-                      on_click=evaluate_construction, key="get_workspace")
-        if st.session_state.workspace:
-            with st.sidebar:
-                st.button(label="to trajectory choice",
-                          key="to trajectory choice", on_click=to_trajectory_choice)
+if st.session_state.stage == 'joint_point_choice':
+    gm = st.session_state.gm
+    mut_ranges = gm.mutation_ranges
+    current_values = []
+    # sliders for joint position choice
+    with st.sidebar.form("jp_coordinates"):
+        for key, value in mut_ranges.items():
+            slider = st.slider(
+                label=key, min_value=value[0], max_value=value[1], value=(value[1]+value[0])/2)
+            current_values.append(slider)
+        st.form_submit_button('Set joint points')
+    with st.sidebar:
+        st.button(label="Get workspace",
+                    on_click=evaluate_construction, key="get_workspace")
+    # after getting workspace the trajectory choice button appears
+    # if st.session_state.workspace:
+    #     with st.sidebar:
+    #         st.button(label="to trajectory choice",
+    #                     key="to trajectory choice", on_click=to_trajectory_choice)
 
-        graph = gm.get_graph(current_values)
-        send_graph_to_visualizer(graph)
-        with col_1:
-            st.header("Graph representation")
-            draw_joint_point(graph)
-            plt.gcf().set_size_inches(4, 4)
-            st.pyplot(plt.gcf(), clear_figure=True)
-        with col_2:
-            st.header("Robot visualization")
-            components.iframe(get_visualizer().viewer.url(), width=400,
-                              height=400, scrolling=True)
-    else:
-        trajectory = None
-        with st.sidebar:
-            trajectory_type = st.radio(label='Select trajectory type', options=[
-                                       "vertical", "step"], index=1, key="trajectory_type")
-            if trajectory_type == "vertical":
-                height = st.slider(
-                    label="height", min_value=0.02, max_value=0.3, value=0.1)
-                x = st.slider(label="x", min_value=-0.3,
-                              max_value=0.3, value=0.0)
-                z = st.slider(label="z", min_value=-0.4,
-                              max_value=-0.2, value=-0.3)
-                trajectory = convert_x_y_to_6d_traj_xz(
-                    *add_auxilary_points_to_trajectory(get_vertical_trajectory(z, height, x, 100)))
-            if trajectory_type == "step":
-                start_x = st.slider(
-                    label="start_x", min_value=-0.3, max_value=0.3, value=-0.14)
-                start_z = st.slider(
-                    label="start_z", min_value=-0.4, max_value=-0.2, value=-0.34)
-                height = st.slider(
-                    label="height", min_value=0.02, max_value=0.3, value=0.1)
-                width = st.slider(label="width", min_value=0.1,
-                                  max_value=0.6, value=0.2)
-                trajectory = convert_x_y_to_6d_traj_xz(
-                    *add_auxilary_points_to_trajectory(
-                        create_simple_step_trajectory(
-                            starting_point=[start_x, start_z],
-                            step_height=height,
-                            step_width=width,
-                            n_points=100,
-                        )
+    graph = gm.get_graph(current_values)
+    send_graph_to_visualizer(graph,visualization_builder)
+    col_1, col_2 = st.columns(2, gap="medium")
+    with col_1:
+        st.header("Graph representation")
+        draw_joint_point(graph)
+        plt.gcf().set_size_inches(4, 4)
+        st.pyplot(plt.gcf(), clear_figure=True)
+    with col_2:
+        st.header("Robot visualization")
+        components.iframe(get_visualizer(visualization_builder).viewer.url(), width=400,
+                            height=400, scrolling=True)
+
+if st.session_state.stage == 'workspace_visualization':
+    gm = st.session_state.gm
+    graph = gm.graph
+    points = st.session_state.points
+    workspace= st.session_state.workspace
+    x = points[:, 0]
+    y = points[:, 1]
+    values = workspace.reachabilty_mask.T.flatten()
+    x_0 = x[values == 0]
+    y_0 = y[values == 0]
+    x_1 = x[values == 1]
+    y_1 = y[values == 1]
+    # # Plot the points
+    plt.plot(x_0, y_0, "xr")
+    plt.plot(x_1, y_1, "xb")
+
+    # trajectory setting script
+    trajectory = None
+    with st.sidebar:
+        trajectory_type = st.radio(label='Select trajectory type', options=[
+                                    "vertical", "step"], index=1, key="trajectory_type")
+        if trajectory_type == "vertical":
+            height = st.slider(
+                label="height", min_value=0.02, max_value=0.3, value=0.1)
+            x = st.slider(label="x", min_value=-0.3,
+                            max_value=0.3, value=0.0)
+            z = st.slider(label="z", min_value=-0.4,
+                            max_value=-0.2, value=-0.3)
+            trajectory = convert_x_y_to_6d_traj_xz(
+                *add_auxilary_points_to_trajectory(get_vertical_trajectory(z, height, x, 100)))
+        if trajectory_type == "step":
+            start_x = st.slider(
+                label="start_x", min_value=-0.3, max_value=0.3, value=-0.14)
+            start_z = st.slider(
+                label="start_z", min_value=-0.4, max_value=-0.2, value=-0.34)
+            height = st.slider(
+                label="height", min_value=0.02, max_value=0.3, value=0.1)
+            width = st.slider(label="width", min_value=0.1,
+                                max_value=0.6, value=0.2)
+            trajectory = convert_x_y_to_6d_traj_xz(
+                *add_auxilary_points_to_trajectory(
+                    create_simple_step_trajectory(
+                        starting_point=[start_x, start_z],
+                        step_height=height,
+                        step_width=width,
+                        n_points=100,
                     )
                 )
-            st.button(label="run simulation", key="run_simulation",
-                      on_click=run_simulation, kwargs={'trajectory': trajectory})
-            with st.form(key="rewards"):
-                st.header("Rewards")
-                reward_mask = []
-                for reward in rewards:
-                    reward_mask.append(st.checkbox(
-                        label=reward.reward_name, value=False))
-                st.form_submit_button("Submit")
-        
-        graph = st.session_state.gm.graph
-        with col_1:
-            st.header("Graph representation")
-            draw_joint_point(graph)
-            plt.gcf().set_size_inches(4, 4)
-            plt.plot(trajectory[:, 0], trajectory[:, 2])
-            st.pyplot(plt.gcf(), clear_figure=True)
-        with col_2:
-            st.header("Robot visualization")
-            add_trajectory_to_vis(get_visualizer(), trajectory)
-            components.iframe(get_visualizer().viewer.url(), width=400,
-                              height=400, scrolling=True)
+            )
+        st.button(label="run simulation", key="run_simulation",
+                    on_click=run_simulation, kwargs={'trajectory': trajectory})
+        with st.form(key="rewards"):
+            st.header("Rewards")
+            reward_mask = []
+            for reward in rewards:
+                reward_mask.append(st.checkbox(
+                    label=reward.reward_name, value=False))
+            cr = st.form_submit_button("Calculate rewards")
+
+    col_1, col_2 = st.columns(2, gap="medium")
+    with col_1:
+        st.header("Graph representation")
+        draw_joint_point(graph,draw_labels=False)
+        plt.gcf().set_size_inches(4, 4)
+        plt.plot(trajectory[:, 0], trajectory[:, 2],'yo', markersize=5)
+        st.pyplot(plt.gcf(), clear_figure=True)
+    with col_2:
+        st.header("Robot visualization")
+        add_trajectory_to_vis(get_visualizer(visualization_builder), trajectory)
+        components.iframe(get_visualizer(visualization_builder).viewer.url(), width=400,
+                            height=400, scrolling=True)
+
+    if st.session_state.run_simulation_flag or cr:
         calculate_and_display_rewards(trajectory, reward_mask)
+
+    if st.session_state.run_simulation_flag:
+        ik_manager = TrajectoryIKManager()
+        # fixed_robot, free_robot = jps_graph2pinocchio_robot(gm.graph, builder)
+        fixed_robot, _ = jps_graph2pinocchio_meshes_robot(
+            graph, visualization_builder)
+        ik_manager.register_model(
+            fixed_robot.model, fixed_robot.constraint_models, fixed_robot.visual_model
+        )
+        ik_manager.set_solver("Closed_Loop_PI")
+        #with st.status("simulation..."):
+        _ = ik_manager.follow_trajectory(
+            trajectory, viz=get_visualizer(visualization_builder)
+        )
+        time.sleep(1)
+        get_visualizer(visualization_builder).display(
+            pin.neutral(fixed_robot.model))
+        st.session_state.run_simulation_flag = False
+
+
+
+
+
+
+
     # trajectory_choice = st.sidebar.radio(
     #     label='Select trajectory for criteria evaluation', options=trajectories.keys(), key="trajectory_choice")

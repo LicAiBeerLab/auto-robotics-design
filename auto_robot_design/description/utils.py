@@ -158,7 +158,7 @@ def draw_links(kinematic_graph, JP_graph: nx.Graph):
         nx.draw(sub_graph_l, pos, **options)
         plt.text(pos_name[0],pos_name[1], name_link, fontsize=15)
 
-def draw_joint_point(graph: nx.Graph):
+def draw_joint_point(graph: nx.Graph, draw_labels=True):
     pos = get_pos(graph)
     G_pos = np.array(
         list(
@@ -184,7 +184,10 @@ def draw_joint_point(graph: nx.Graph):
         )
         )
     )
-    labels = {n:n.name for n in graph.nodes()}
+    if draw_labels: 
+        labels = {n:n.name for n in graph.nodes()}
+    else:
+        labels = {n:str() for n in graph.nodes()}
     nx.draw(
         graph,
         pos,
@@ -233,7 +236,7 @@ def draw_joint_point(graph: nx.Graph):
     plt.plot(active_j_pos[:,0], active_j_pos[:,1], "og",
              markersize=20, 
              fillstyle="none", label="Active")
-    plt.legend()
+    if draw_labels: plt.legend()
     plt.axis("equal")
 
 

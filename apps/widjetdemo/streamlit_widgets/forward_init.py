@@ -244,12 +244,12 @@ def set_criteria_and_crag():
     reward_list.append(DexterityIndexReward(manipulability_key='Manip_Jacobian',
                                                     trajectory_key="traj_6d", error_key="error"))
     reward_list.append(AccelerationCapability(manipulability_key='Manip_Jacobian',
-                                                        trajectory_key="traj_6d", error_key="error", actuated_mass_key="Actuated_Mass"))
+                                                        trajectory_key="traj_6d", error_key="is_reach", actuated_mass_key="Actuated_Mass"))
     reward_list.append(MinAccelerationCapability(manipulability_key='Manip_Jacobian',
-                                                        trajectory_key="traj_6d", error_key="error", actuated_mass_key="Actuated_Mass"))
+                                                        trajectory_key="traj_6d", error_key="is_reach", actuated_mass_key="Actuated_Mass"))
     reward_list.append(HeavyLiftingReward(manipulability_key='Manip_Jacobian',mass_key='MASS',
-                                                        trajectory_key="traj_6d", error_key="error"))
+                                                        trajectory_key="traj_6d", error_key="is_reach"))
     reward_list.append(MeanHeavyLiftingReward(manipulability_key='Manip_Jacobian',mass_key='MASS',
-                                                        trajectory_key="traj_6d", error_key="error"))
+                                                        trajectory_key="traj_6d", error_key="is_reach"))
     motor = MIT_CHEETAH_PARAMS_DICT["actuator"]
     return crag, reward_list,  motor

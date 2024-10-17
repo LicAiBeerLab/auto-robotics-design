@@ -18,21 +18,21 @@ class Reward():
 
         raise NotImplementedError("A reward must implement calculate method!")
 
-    def check_reachability(self, errors, checked=True, warning=False):
+    def check_reachability(self, is_reach, checked=True, warning=False):
         """The function that checks the reachability of the mech for all points at trajectory
 
             The idea is that the trajectory at the moment of the reward calculation is 
             already checked for reachability by the workspace checker.
         """
-        if np.max(errors) > self.point_precision and checked:
+        if 0 in is_reach and checked:
             if warning:
                 print(
-                    f'Error exceeds threshold for reward {self.reward_name} at point {np.argmax(errors)} with value {np.max(errors)}')
+                    f'For the reward {self.reward_name} the trajectory has unreachable points with index{np.argmin(is_reach)}')
             else:
                 raise ValueError(
-                    f"All points should be reachable to calculate a reward {max(errors)}")
+                    f"All points should be reachable to calculate a reward {self.reward_name}")
 
-        elif np.max(errors) > self.point_precision:
+        elif 0 in is_reach:
             return False
 
         return True
