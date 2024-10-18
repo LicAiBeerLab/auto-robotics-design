@@ -475,8 +475,8 @@ if st.session_state.stage == "results":
         approx_nadir = F.max(axis=0)
         nF = (F - approx_ideal) / (approx_nadir - approx_ideal)
         st.header('Choose the solution weights:')
-        w1 = st.slider(label="Select weight", min_value=0.0,
-                       max_value=1.0, value=0.5)
+        w1 = st.slider(label="Select weight", min_value=0.1,
+                       max_value=0.9, value=0.5)
         weights = np.array([w1, 1-w1])
         decomp = ASF()
         b = decomp.do(nF, 1/weights).argmin()
