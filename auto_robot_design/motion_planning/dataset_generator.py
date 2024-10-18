@@ -192,6 +192,9 @@ class DatasetGenerator:
 
         with open(self.path / "info.txt", "a") as file:
             file.writelines("Number of points: " + str(num_points) + "\n")
+            file.writelines("Lower bounds mutation JPs: " + str(np.round(low_bnds,3)) + "\n")
+            file.writelines("Upper bounds mutation JPs: " + str(np.round(up_bnds,3)) + "\n")
+            
 
         cpus = cpu_count() - 1 if cpu_count() - 1 < len(batches) else len(batches)
         batches_chunks = list(chunk_list(batches, (len(batches) // cpus) + 1))
@@ -458,6 +461,9 @@ class ManyDatasetAPI:
 
         return sorted_indexes
 
+# from torch.utils.data import Dataset
+# class TorchDataset(Dataset):
+#     def __init__(self, )
 
 def set_up_reward_manager(traj_6d):
     from auto_robot_design.optimization.rewards.jacobian_and_inertia_rewards import (
@@ -504,7 +510,7 @@ def set_up_reward_manager(traj_6d):
         manipulability_key="Manip_Jacobian",
         trajectory_key="traj_6d",
         error_key="error",
-        mass_key="MASS",
+        mass_key="MASS",    
     )
 
     reward_manager = RewardManager(crag=crag)
