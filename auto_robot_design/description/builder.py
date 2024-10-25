@@ -121,7 +121,7 @@ def add_branch_with_attrib(
             G.add_edge(ed[0], ed[1], **ed[2])
 
 
-def calculate_transform_with_2points(p1: np.ndarray, 
+def calculate_transform_with_2points(p1: np.ndarray,
                                      p2: np.ndarray,
                                      vec: np.ndarray = np.array([0, 0, 1])):
     """Calculate transformation from `vec` to vector build with points `p1` and `p2`
@@ -143,7 +143,7 @@ def calculate_transform_with_2points(p1: np.ndarray,
     rot = R.from_rotvec(axis * angle)
     pos = (p2 + p1) / 2
     length = la.norm(v_l)
-    
+
     return pos, rot, length
 
 class URDFLinkCreator:

@@ -91,7 +91,7 @@ class ManipulabilityReward(Reward):
             return 0, []
 
         # get the manipulability for each point at the trajectory
-        manipulability: np.ndarray = np.linalg.det[point_criteria[self.manip_key]]
+        manipulability: np.ndarray = point_criteria[self.manip_key]
         result = np.mean(manipulability)
         reward_vector = list(manipulability)
 
@@ -279,7 +279,7 @@ class EndPointZRRReward(Reward):
             end_result = 1/np.linalg.norm(end_pose_matrix@np.array([0, 1]))
 
         return (starting_result + end_result)/2, [starting_result, end_result]
-    
+
 
 class ZRRReward(Reward):
     """Reduction ratio along the vertical (z) axis along the trajectory"""
