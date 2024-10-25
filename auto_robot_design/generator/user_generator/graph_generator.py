@@ -39,6 +39,7 @@ class ConnectionInfo:
     connection_base: Optional[List[JointPoint]]
     # this parameter is used to set the mutation range of the branch joints
     relative_mutation_range: List[Optional[Tuple]]
+    freeze_pos: List[Optional[Tuple]] = field(default_factory=lambda: [None, 0, None])
 
 
 class TopologyManager2D():
@@ -77,34 +78,56 @@ class TopologyManager2D():
             self.graph.add_node(jp)
         else:
             self.graph.add_edge(self.branch_ends[parent_branch_idx][1], jp)
-            self.branch_ends[parent_branch_idx][1] = jp
-            self.edges.append((self.branch_ends[parent_branch_idx], jp))
+            #self.edges.append((self.branch_ends[parent_branch_idx][1], jp))
             self.connection_buffer = [self.branch_ends[parent_branch_idx][1], jp]
+            self.branch_ends[parent_branch_idx][1] = jp
         self.generator_dict[jp] = GeneratorInfo(
             mutation_type=MutationType.ABSOLUTE, initial_coordinates=initial_coordinates, mutation_range=mutation_range, freeze_pos=freeze_pos)
 
-    def add_connection(self, self_mutation_range: np.ndarray,dependent_mutation_range, ground=True):
+    def add_connection(self, self_mutation_range: np.ndarray, dependent_mutation_range:np.ndarray, self_freeze_pos:list=[None, 0, None], dependent_freeze_pos:list=[None, 0, None], ground=True):
+        """Create a connection point on either ground or the last added link.
+            
+            A connection point has two mutation ranges: one for connection point on the link and another for the dependent joint on the branch.
+            The connection can be used to attach some independent branch, in that case dependent range is not used.
+
+        Args:
+            self_mutation_range (np.ndarray): mutation range for the connection point.
+            dependent_mutation_range (np.ndarray): 
+            ground (bool, optional): If true adds connection to ground, else to the last added link. Defaults to True.
+        """
+
         if ground:
             ground_connection_jp = JointPoint(
                 r=None,
                 w=np.array([0, 1, 0]),
                 attach_ground=True,
-                active=False,  # initial value is false, it should be changed in branch attachment process
+                active=True,  
                 name=f"Ground_connection_{self.ground_connection_counter}"
             )
             self.ground_connection_counter += 1
             self.connections.append(ConnectionInfo(
-                connection_jp=ground_connection_jp, connection_base=None, relative_mutation_range=dependent_mutation_range))
-            self.generator_dict[ground_connection_jp] = GeneratorInfo(mutation_type=MutationType.ABSOLUTE, initial_coordinates=np.zeros(3), mutation_range=self_mutation_range, freeze_pos=[None, 0, None])
+                connection_jp=ground_connection_jp, connection_base=None, relative_mutation_range=dependent_mutation_range, freeze_pos=dependent_freeze_pos))
+            self.generator_dict[ground_connection_jp] = GeneratorInfo(mutation_type=MutationType.ABSOLUTE, initial_coordinates=np.zeros(3), mutation_range=self_mutation_range, freeze_pos=self_freeze_pos)
         else:
             connection_jp = JointPoint(r=None, w=np.array(
                 [0, 1, 0]), attach_ground=False, active=False, name=f"Connection_{self.connection_counter}")
             self.connection_counter += 1
             self.connections.append(ConnectionInfo(
-                connection_jp=connection_jp, connection_base=self.connection_buffer, relative_mutation_range=dependent_mutation_range))
-            self.generator_dict[connection_jp] = GeneratorInfo(mutation_type=MutationType.RELATIVE_PERCENTAGE,relative_to=self.connection_buffer, initial_coordinates=None, mutation_range=self_mutation_range, freeze_pos=[None, 0, None])
+                connection_jp=connection_jp, connection_base=self.connection_buffer, relative_mutation_range=dependent_mutation_range, freeze_pos=dependent_freeze_pos))
+            self.generator_dict[connection_jp] = GeneratorInfo(mutation_type=MutationType.RELATIVE_PERCENTAGE,relative_to=self.connection_buffer, initial_coordinates=None, mutation_range=self_mutation_range, freeze_pos=self_freeze_pos)
 
     def add_relative_node(self, jp: JointPoint, mutation_range=None, parent_branch_idx=None, freeze_pos=[None, 0, None]):
+        """Add a joint that has position relative to another joint.
+
+        Args:
+            jp (JointPoint): joint to be added to the mechanism.
+            mutation_range (_type_, optional): mutation range. None value means the node is to be linked to a connection. Defaults to None.
+            parent_branch_idx (_type_, optional): If None the node starts a new branch, else connects to the corresponding branch. Defaults to None.
+            freeze_pos (list, optional): override mutation range if needed. Defaults to [None, 0, None].
+
+        Raises:
+            ValueError: JP names must be unique.
+        """
         if jp.name in self.mutation_ranges:
             raise ValueError(
                 f"Joint point {jp.name} already exists in the graph.")
@@ -126,6 +149,11 @@ class TopologyManager2D():
     def add_dependent_connection(self, connection_idx, branch_idx, connect_head=True):
         connection = self.connections[connection_idx]
         jp = connection.connection_jp
+        # if the connection is used in topology we add its edges to the graph
+        link_jp = connection.connection_base
+        if link_jp is not None:
+            for parent_jp in link_jp:
+                self.graph.add_edge(parent_jp, jp)
 
         if connect_head:
             connected_jp = self.branch_ends[branch_idx][0]
@@ -140,6 +168,14 @@ class TopologyManager2D():
         self.graph.add_edge(jp, connected_jp)
 
     def add_independent_connection(self, node_1, node_2):
+        for connection in self.connections:
+            if connection.connection_jp == node_1 and not connection.connection_base is None:
+                for parent_jp in connection.connection_base:
+                    self.graph.add_edge(parent_jp, node_1)
+            if connection.connection_jp == node_2 and not connection.connection_base is None:
+                for parent_jp in connection.connection_base:
+                    self.graph.add_edge(parent_jp, node_2)
+
         self.graph.add_edge(node_1, node_2)
 
     # def add_connection_node(self,jp,mutation_range, parent_pair, freeze_pos=[None,0,None]):
