@@ -247,7 +247,7 @@ class Dataset:
         """
         self.path = pathlib.Path(path_to_dir)
 
-        self.df = pd.read_csv(self.path / "dataset.csv")
+        self.df = pd.read_csv(self.path / "dataset.csv", nrows=1e5)
         self.dict_ws_args = np.load(self.path / "workspace_arguments.npz")
         self.ws_args = [self.dict_ws_args[name] for name in WORKSPACE_ARGS_NAMES[:-1]]
         self.workspace = Workspace(None, *self.ws_args[:-1])
@@ -446,24 +446,18 @@ class ManyDatasetAPI:
             list of pd.Index: A list of pandas Index objects, each containing sorted indexes based on rewards for the corresponding dataset.
         """
 
-        sorted_indexes = []
-
+        sampled_index_rewards = tuple([{} for __ in range(len(self.datasets))])
         for k, dataset in enumerate(self.datasets):
+            if len(indexes[k]) > 0:
+                sample_indexes = np.random.choice(indexes[k].flatten(), num_samples)
+                df = parallel_calculation_rew_manager(
+                    sample_indexes, dataset, reward_manager
+                )
 
-            sample_indexes = np.random.choice(indexes[k].flatten(), num_samples)
-            df = parallel_calculation_rew_manager(
-                sample_indexes, dataset, reward_manager
-            )
+                df.sort_values(["reward"], ascending=False, inplace=True)
 
-            df.sort_values(["reward"], ascending=False, inplace=True)
-
-            sorted_indexes.append(df.index)
-
-        return sorted_indexes
-
-# from torch.utils.data import Dataset
-# class TorchDataset(Dataset):
-#     def __init__(self, )
+                sampled_index_rewards[k].update(dict([(index, reward) for index, reward in zip(df.index, df["reward"].values)]))
+        return sampled_index_rewards
 
 def set_up_reward_manager(traj_6d):
     from auto_robot_design.optimization.rewards.jacobian_and_inertia_rewards import (
@@ -608,4 +602,7 @@ def test_many_dataset_api(list_paths):
 
 if __name__ == "__main__":
 
-    pass
+    paths = ["/var/home/yefim-work/Documents/auto-robotics-design/top_5",
+    "/var/home/yefim-work/Documents/auto-robotics-design/top_8"]
+
+    test_many_dataset_api(paths)
