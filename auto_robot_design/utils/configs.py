@@ -8,7 +8,35 @@ from auto_robot_design.optimization.rewards.reward_base import PositioningReward
 from auto_robot_design.optimization.rewards.jacobian_and_inertia_rewards import HeavyLiftingReward, AccelerationCapability, MeanHeavyLiftingReward, MinAccelerationCapability
 from auto_robot_design.optimization.rewards.pure_jacobian_rewards import EndPointZRRReward, VelocityReward, ForceEllipsoidReward, ZRRReward, MinForceReward, MinManipulabilityReward
 from auto_robot_design.optimization.rewards.inertia_rewards import MassReward
+from auto_robot_design.description.mesh_builder.urdf_creater import (
+    URDFMeshCreator,
+    MeshCreator,
+)
+from auto_robot_design.description.mesh_builder.mesh_builder import (
+    MeshBuilder,
+    jps_graph2pinocchio_meshes_robot,
+)
 
+def get_mesh_builder():
+    thickness = MIT_CHEETAH_PARAMS_DICT["thickness"]
+    actuator = MIT_CHEETAH_PARAMS_DICT["actuator"]
+    density = MIT_CHEETAH_PARAMS_DICT["density"]
+    body_density = MIT_CHEETAH_PARAMS_DICT["body_density"]
+    
+    predined_mesh = {"G": "../../../mesh/body.stl", "EE": "../../../mesh/wheel_small.stl"}
+    #predined_mesh = {"G": "./mesh/body.stl", "EE": "../../mesh/wheel_small.stl"}
+    mesh_creator = MeshCreator(predined_mesh)
+    urdf_creator = URDFMeshCreator()
+    builder = MeshBuilder(
+        urdf_creator,
+        mesh_creator,
+        density={"default": density, "G": body_density},
+        thickness={"default": thickness, "EE": 0.12},
+        actuator={"default": actuator},
+        size_ground=np.array(MIT_CHEETAH_PARAMS_DICT["size_ground"]),
+        offset_ground=MIT_CHEETAH_PARAMS_DICT["offset_ground_rl"],
+)
+    return builder
 
 def inertial_config_two_link_six_trajectories(workspace_based = False, open_loop = False):
     """Create objects for optimization of two link based robots
