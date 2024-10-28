@@ -28,6 +28,7 @@ class Reward():
             if warning:
                 print(
                     f'For the reward {self.reward_name} the trajectory has unreachable points with index{np.argmin(is_reach)}')
+                return False
             else:
                 raise ValueError(
                     f"All points should be reachable to calculate a reward {self.reward_name}")
@@ -93,8 +94,7 @@ class PositioningErrorCalculator():
     """Calculate the special error that that is used as self constrain during optimization
     """
 
-    def __init__(self, error_key, jacobian_key, calc_isotropic_thr=True, delta_q_threshold=1):
-        self.error_key = error_key
+    def __init__(self, jacobian_key, calc_isotropic_thr=True, delta_q_threshold=1):
         self.jacobian_key = jacobian_key
         self.calc_isotropic_thr = calc_isotropic_thr
         self.point_threshold = 1e-4
