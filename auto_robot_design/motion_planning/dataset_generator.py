@@ -32,6 +32,7 @@ from auto_robot_design.user_interface.check_in_ellips import (
 )
 from auto_robot_design.utils.append_saver import chunk_list
 from auto_robot_design.utils.bruteforce import get_n_dim_linspace
+from presets.MIT_preset import get_mit_builder
 
 
 WORKSPACE_ARGS_NAMES = ["bounds", "resolution", "dexterous_tolerance", "grid_shape"]
@@ -90,7 +91,7 @@ class DatasetGenerator:
 
         with open(self.path / "info.txt", "w") as file:
             file.writelines(wrt_lines)
-        self.builder = ParametrizedBuilder(URDFLinkCreater3DConstraints)
+        self.builder = get_mit_builder()
 
         self.params_size = len(self.graph_manager.generate_random_from_mutation_range())
         self.ws_grid_size = np.prod(workspace.mask_shape)
@@ -323,12 +324,12 @@ class Dataset:
         for point in ws_points[mask_ws_n_ellps, :]:
             index = self.workspace.calc_index(point)
             ellips_mask[tuple(index)] = True
-        ws_bool_flatten = np.asarray(self.df.values[:, self.params_size :], dtype=bool)
+        ws_bool_flatten = np.asarray(self.df.values[:, self.params_size:self.params_size+self.ws_grid_size], dtype=bool)
         ell_mask_2_d = ellips_mask.flatten()[np.newaxis :]
         indexes = np.argwhere(
             np.sum(ell_mask_2_d * ws_bool_flatten, axis=1) == np.sum(ell_mask_2_d)
         )
-        return indexes.flatten()
+        return self.df.index[indexes.flatten()].values
 
     def get_design_parameters_by_indexes(self, indexes):
         """
@@ -353,111 +354,6 @@ class Dataset:
             self.graph_manager.get_graph(des_param) for des_param in desigm_parameters
         ]
 
-
-def calc_criteria(id_design, joint_poses, graph_manager, builder, reward_manager):
-    """
-    Calculate the criteria for a given design based on joint poses and reward management.
-    Args:
-        id_design (int): Identifier for the design.
-        joint_poses (list): List of joint poses.
-        graph_manager (GraphManager): Instance of GraphManager to handle graph operations.
-        builder (Builder): Instance of Builder to construct robots.
-        reward_manager (RewardManager): Instance of RewardManager to calculate rewards.
-    Returns:
-        tuple: A tuple containing the design identifier and partial rewards.
-    """
-    graph = graph_manager.get_graph(joint_poses)
-    fixed_robot, free_robot = jps_graph2pinocchio_robot_3d_constraints(graph, builder)
-    reward_manager.precalculated_trajectories = None
-    _, partial_rewards, _ = reward_manager.calculate_total(
-        fixed_robot, free_robot, builder.actuator["default"]
-    )
-
-    return id_design, partial_rewards
-
-
-def parallel_calculation_rew_manager(indexes, dataset, reward_manager):
-    """
-    Perform parallel calculations on a subset of a dataset using a reward manager.
-    This function utilizes a process pool executor to parallelize the computation
-    of criteria for a subset of the dataset. The results are then aggregated into
-    a new DataFrame with updated reward values.
-    Args:
-        indexes (list): List of indexes to select the subset of the dataset.
-        dataset (object): The dataset object containing the data and associated parameters.
-        reward_manager (object): The reward manager object used for calculating rewards.
-    Returns:
-        pd.DataFrame: A new DataFrame containing the subset of the dataset with updated reward values.
-    """
-    rwd_mgrs = [reward_manager] * len(indexes)
-    sub_df = dataset.df.loc[indexes]
-    designs = sub_df.values[:, : dataset.params_size].round(4)
-    grph_mngrs = [dataset.graph_manager] * len(indexes)
-    bldrs = [dataset.builder] * len(indexes)
-
-    with concurrent.futures.ProcessPoolExecutor() as executor:
-        results = list(
-            executor.map(
-                calc_criteria, list(indexes), designs, grph_mngrs, bldrs, rwd_mgrs
-            )
-        )
-    new_df = pd.DataFrame(columns=dataset.df.columns)
-    for k, res in results:
-        new_df.loc[k] = sub_df.loc[k]
-        new_df.at[k, "reward"] = np.sum(res[1])
-    new_df = new_df.dropna()
-    return new_df
-
-
-class ManyDatasetAPI:
-
-    def __init__(self, path_to_dirs):
-        """
-        Initializes the DatasetGenerator with a list of directories.
-        Args:
-            path_to_dirs (list of str): A list of directory paths where datasets are located.
-        Attributes:
-            datasets (list of Dataset): A list of Dataset objects created from the provided directory paths.
-        """
-        self.datasets = [] + [Dataset(path) for path in path_to_dirs]
-
-    def get_indexes_cover_ellipse(self, ellipse: Ellipse):
-        """
-        Get the indexes of all designs that cover the given ellipse.
-        Args:
-            ellipse (Ellipse): The ellipse object for which to find covering design indexes.
-        Returns:
-            list: A list of indexes from all datasets that cover the given ellipse.
-        """
-
-        return [
-            dataset.get_all_design_indexes_cover_ellipse(ellipse)
-            for dataset in self.datasets
-        ]
-
-    def sorted_indexes_by_reward(self, indexes, num_samples, reward_manager):
-        """
-        Sorts and returns indexes based on rewards for each dataset.
-        Args:
-            indexes (list of np.ndarray): A list of numpy arrays where each array contains indexes for corresponding datasets.
-            num_samples (int): The number of samples to randomly choose from each dataset.
-            reward_manager (RewardManager): An instance of RewardManager to calculate rewards.
-        Returns:
-            list of pd.Index: A list of pandas Index objects, each containing sorted indexes based on rewards for the corresponding dataset.
-        """
-
-        sampled_index_rewards = tuple([{} for __ in range(len(self.datasets))])
-        for k, dataset in enumerate(self.datasets):
-            if len(indexes[k]) > 0:
-                sample_indexes = np.random.choice(indexes[k].flatten(), num_samples)
-                df = parallel_calculation_rew_manager(
-                    sample_indexes, dataset, reward_manager
-                )
-
-                df.sort_values(["reward"], ascending=False, inplace=True)
-
-                sampled_index_rewards[k].update(dict([(index, reward) for index, reward in zip(df.index, df["reward"].values)]))
-        return sampled_index_rewards
 
 def set_up_reward_manager(traj_6d):
     from auto_robot_design.optimization.rewards.jacobian_and_inertia_rewards import (
@@ -537,72 +433,5 @@ def test_dataset_generator(name_path):
 
     dataset_generator.start(3, 50)
 
-def test_dataset_functionality(path_to_dir):
-
-    dataset = Dataset(path_to_dir)
-
-    thickness = MIT_CHEETAH_PARAMS_DICT["thickness"]
-    actuator = MIT_CHEETAH_PARAMS_DICT["actuator"]
-    density = MIT_CHEETAH_PARAMS_DICT["density"]
-    body_density = MIT_CHEETAH_PARAMS_DICT["body_density"]
-
-    ParametrizedBuilder(
-        URDFLinkCreater3DConstraints,
-        density={"default": density, "G": body_density},
-        thickness={"default": thickness, "EE": 0.033},
-        actuator={"default": actuator},
-        size_ground=np.array(MIT_CHEETAH_PARAMS_DICT["size_ground"]),
-        offset_ground=MIT_CHEETAH_PARAMS_DICT["offset_ground_rl"],
-    )
-
-    df_upd = dataset.df.assign(
-        total_ws=lambda x: np.sum(x.values[:, dataset.params_size :], axis=1)
-        / dataset.ws_grid_size
-    )
-
-    df_upd = df_upd[df_upd["total_ws"] > 100 / dataset.ws_grid_size]
-    df_upd = df_upd.sort_values(["total_ws"], ascending=False)
-    from auto_robot_design.pinokla.default_traj import add_auxilary_points_to_trajectory
-
-    des_point = np.array([-0.1, -0.35])
-    traj = np.array(
-        add_auxilary_points_to_trajectory(([des_point[0]], [des_point[1]]))
-    ).T
-    test_ws = dataset.get_workspace_by_indexes([0])[0]
-    traj_6d = test_ws.robot.motion_space.get_6d_traj(traj)
-
-    reward_manager = set_up_reward_manager(traj_6d)
-    time_start = time.perf_counter()
-    parallel_calculation_rew_manager(df_upd.head(200).index, dataset, reward_manager)
-    time_end = time.perf_counter()
-
-    print(f"Time spent {time_end - time_start}")
-
-def test_many_dataset_api(list_paths):
-    
-    many_dataset = ManyDatasetAPI(
-            list_paths
-    )
-
-    cover_design_indexes = many_dataset.get_indexes_cover_ellipse(
-        Ellipse(np.array([0.04, -0.31]), 0, np.array([0.04, 0.01]))
-    )
-    from auto_robot_design.pinokla.default_traj import add_auxilary_points_to_trajectory
-
-    des_point = np.array([-0.1, -0.35])
-    traj = np.array(
-        add_auxilary_points_to_trajectory(([des_point[0]], [des_point[1]]))
-    ).T
-    test_ws = many_dataset.datasets[0].get_workspace_by_indexes([0])[0]
-    traj_6d = test_ws.robot.motion_space.get_6d_traj(traj)
-
-    reward_manager = set_up_reward_manager(traj_6d)
-
-    many_dataset.sorted_indexes_by_reward(cover_design_indexes, 10, reward_manager)
 
 if __name__ == "__main__":
-
-    paths = ["/var/home/yefim-work/Documents/auto-robotics-design/top_5",
-    "/var/home/yefim-work/Documents/auto-robotics-design/top_8"]
-
-    test_many_dataset_api(paths)
