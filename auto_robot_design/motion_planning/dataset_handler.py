@@ -4,12 +4,19 @@ import pandas as pd
 from auto_robot_design.motion_planning.dataset_generator import Dataset
 
 
-
 def calc_n_sort_df_with_ws(dataset: Dataset) -> pd.DataFrame:
-    upd_df = dataset.df.assign(total_ws = lambda x: np.sum(x.values[:,dataset.params_size:dataset.params_size+dataset.ws_grid_size],axis=1))
+    upd_df = dataset.df.assign(
+        total_ws=lambda x: np.sum(
+            x.values[
+                :, dataset.params_size : dataset.params_size + dataset.ws_grid_size
+            ],
+            axis=1,
+        )
+    )
     sorted_df = upd_df.sort_values("total_ws", ascending=False)
 
     return sorted_df
+
 
 def filtered_df_with_ws(df: pd.DataFrame, min_ws: int) -> pd.DataFrame:
     return df[df["total_ws"] >= min_ws]
@@ -29,7 +36,7 @@ def filtered_csv_dataset(dirpath, max_chunksize, min_ws):
             filt_df.to_csv(path_to_csv_filt, mode="w", index_label=False)
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
 
     dirpath = "/var/home/yefim-work/Documents/auto-robotics-design/top_8"
     filtered_csv_dataset(dirpath, 1e5, 1600)

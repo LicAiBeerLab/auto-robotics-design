@@ -61,7 +61,7 @@ class DatasetGenerator:
             - Saves workspace arguments to a .npz file and writes them to an info.txt file.
             - Initializes the dataset CSV file with appropriate headers.
         """
-        
+
         self.ws_args = workspace_args
         self.graph_manager = graph_manager
         self.path = pathlib.Path(path)
@@ -134,7 +134,7 @@ class DatasetGenerator:
         Returns:
             None
         """
-        
+
         joints_pos_batch = np.zeros((len(batch), self.params_size))
         ws_grid_batch = np.zeros((len(batch), self.ws_grid_size))
         for k, el in enumerate(batch):
@@ -184,7 +184,7 @@ class DatasetGenerator:
             A file named "info.txt" containing the number of points generated.
             A file named "dataset.csv" containing the concatenated results of all processed batches.
         """
-        
+
         self.graph_manager.generate_central_from_mutation_range()
         low_bnds = [value[0] for value in self.graph_manager.mutation_ranges.values()]
         up_bnds = [value[1] for value in self.graph_manager.mutation_ranges.values()]
@@ -193,18 +193,21 @@ class DatasetGenerator:
 
         with open(self.path / "info.txt", "a") as file:
             file.writelines("Number of points: " + str(num_points) + "\n")
-            file.writelines("Lower bounds mutation JPs: " + str(np.round(low_bnds,3)) + "\n")
-            file.writelines("Upper bounds mutation JPs: " + str(np.round(up_bnds,3)) + "\n")
-            
+            file.writelines(
+                "Lower bounds mutation JPs: " + str(np.round(low_bnds, 3)) + "\n"
+            )
+            file.writelines(
+                "Upper bounds mutation JPs: " + str(np.round(up_bnds, 3)) + "\n"
+            )
 
         cpus = cpu_count() - 1 if cpu_count() - 1 < len(batches) else len(batches)
         batches_chunks = list(chunk_list(batches, (len(batches) // cpus) + 1))
         try:
-            with concurrent.futures.ProcessPoolExecutor(
-                max_workers=cpus
-            ) as executor:
+            with concurrent.futures.ProcessPoolExecutor(max_workers=cpus) as executor:
                 futures = [
-                    executor.submit(self._calculate_batches, batches, "_" + str(m // cpus ))
+                    executor.submit(
+                        self._calculate_batches, batches, "_" + str(m // cpus)
+                    )
                     for m, batches in enumerate(batches_chunks)
                 ]
         except Exception as e:
@@ -324,7 +327,10 @@ class Dataset:
         for point in ws_points[mask_ws_n_ellps, :]:
             index = self.workspace.calc_index(point)
             ellips_mask[tuple(index)] = True
-        ws_bool_flatten = np.asarray(self.df.values[:, self.params_size:self.params_size+self.ws_grid_size], dtype=bool)
+        ws_bool_flatten = np.asarray(
+            self.df.values[:, self.params_size : self.params_size + self.ws_grid_size],
+            dtype=bool,
+        )
         ell_mask_2_d = ellips_mask.flatten()[np.newaxis :]
         indexes = np.argwhere(
             np.sum(ell_mask_2_d * ws_bool_flatten, axis=1) == np.sum(ell_mask_2_d)
@@ -400,7 +406,7 @@ def set_up_reward_manager(traj_6d):
         manipulability_key="Manip_Jacobian",
         trajectory_key="traj_6d",
         error_key="error",
-        mass_key="MASS",    
+        mass_key="MASS",
     )
 
     reward_manager = RewardManager(crag=crag)
@@ -408,7 +414,7 @@ def set_up_reward_manager(traj_6d):
 
     reward_manager.add_reward(acceleration_capability, 0, 1)
     reward_manager.add_reward(heavy_lifting, 0, 1)
-    
+
     return reward_manager
 
 

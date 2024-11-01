@@ -7,10 +7,14 @@ from auto_robot_design.optimization.rewards.reward_base import RewardManager
 from auto_robot_design.user_interface.check_in_ellips import (
     Ellipse,
 )
-from auto_robot_design.motion_planning.dataset_generator import Dataset,set_up_reward_manager
+from auto_robot_design.motion_planning.dataset_generator import (
+    Dataset,
+    set_up_reward_manager,
+)
 from auto_robot_design.description.builder import (
     jps_graph2pinocchio_robot_3d_constraints,
 )
+
 
 def calc_criteria(id_design, joint_poses, graph_manager, builder, reward_manager):
     """
@@ -49,7 +53,7 @@ def parallel_calculation_rew_manager(indexes, dataset, reward_manager):
     """
     rwd_mgrs = [reward_manager] * len(indexes)
     sub_df = dataset.df.loc[indexes]
-    designs = sub_df.values[:, :dataset.params_size].round(4)
+    designs = sub_df.values[:, : dataset.params_size].round(4)
     grph_mngrs = [dataset.graph_manager] * len(indexes)
     bldrs = [dataset.builder] * len(indexes)
 
@@ -95,21 +99,21 @@ class ManyDatasetAPI:
 
         return self._index_2d_to_1d(list_indexes_2d)
 
-
     def _indexes_1d_to_2d(self, list_indexes_1d):
         list_indexes_2d = [[] for __ in range(len(self.datasets))]
         for index in list_indexes_1d:
             list_indexes_2d[index[0]].append(index[1])
-        list_indexes_2d = tuple([np.array(index_list) for index_list in list_indexes_2d ])
+        list_indexes_2d = tuple(
+            [np.array(index_list) for index_list in list_indexes_2d]
+        )
         return list_indexes_2d
-    
+
     def _index_2d_to_1d(self, list_indexes_2d):
         list_indexes_1d = []
         for id_design, indexes in enumerate(list_indexes_2d):
             list_indexes_1d += [(id_design, index) for index in indexes]
         np.random.shuffle(list_indexes_1d)
         return list_indexes_1d
-
 
     def sorted_indexes_by_reward(self, indexes, num_samples, reward_manager):
         """
@@ -134,10 +138,13 @@ class ManyDatasetAPI:
                 )
 
                 df.sort_values(["reward"], ascending=False, inplace=True)
-                samples += [(k, index, reward) for index, reward in zip(df.index, df["reward"].values)]
+                samples += [
+                    (k, index, reward)
+                    for index, reward in zip(df.index, df["reward"].values)
+                ]
         sorted_samples = sorted(samples, key=lambda x: x[-1], reverse=True)
         return sorted_samples
-    
+
     def indexes2graph(self, indexes):
 
         if isinstance(indexes[0], list):
@@ -146,7 +153,7 @@ class ManyDatasetAPI:
         list_graphs = []
         for index in indexes:
             dataset = self.datasets[index[0]]
-            jps = dataset.df.loc[index[1]].values[:dataset.params_size]
+            jps = dataset.df.loc[index[1]].values[: dataset.params_size]
 
             graph = dataset.graph_manager.get_graph(jps)
 
@@ -155,16 +162,20 @@ class ManyDatasetAPI:
         return list_graphs
 
 
-def get_sorted_graph_from_datasets(many_dataset_api: ManyDatasetAPI, ellipse: Ellipse, rewards: RewardManager):
+def get_sorted_graph_from_datasets(
+    many_dataset_api: ManyDatasetAPI, ellipse: Ellipse, rewards: RewardManager
+):
     valid_design_indexes = many_dataset_api.get_indexes_cover_ellipse(ellipse)
-    sorted_design_indexes_with_rewards = many_dataset_api.sorted_indexes_by_reward(valid_design_indexes)
+    sorted_design_indexes_with_rewards = many_dataset_api.sorted_indexes_by_reward(
+        valid_design_indexes
+    )
     sorted_graphs = many_dataset_api.indexes2graph(sorted_design_indexes_with_rewards)
     return sorted_graphs
+
 
 def test_dataset_functionality(path_to_dir):
 
     dataset = Dataset(path_to_dir)
-
 
     df_upd = dataset.df.assign(
         total_ws=lambda x: np.sum(x.values[:, dataset.params_size :], axis=1)
@@ -189,11 +200,10 @@ def test_dataset_functionality(path_to_dir):
 
     print(f"Time spent {time_end - time_start}")
 
+
 def test_many_dataset_api(list_paths):
-    
-    many_dataset = ManyDatasetAPI(
-            list_paths
-    )
+
+    many_dataset = ManyDatasetAPI(list_paths)
 
     cover_design_indexes = many_dataset.get_indexes_cover_ellipse(
         Ellipse(np.array([0.05, -0.21]), 0, np.array([0.1, 0.04]))
@@ -209,7 +219,9 @@ def test_many_dataset_api(list_paths):
 
     reward_manager = set_up_reward_manager(traj_6d)
 
-    sorted_indexes = many_dataset.sorted_indexes_by_reward(cover_design_indexes, 10, reward_manager)
+    sorted_indexes = many_dataset.sorted_indexes_by_reward(
+        cover_design_indexes, 10, reward_manager
+    )
 
     # for desing in sorted_indexes:
     #     print(desing)
@@ -217,9 +229,11 @@ def test_many_dataset_api(list_paths):
     #         print(ind, rew)
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
 
-    paths = ["/var/home/yefim-work/Documents/auto-robotics-design/top_5",
-    "/var/home/yefim-work/Documents/auto-robotics-design/top_8"]
+    paths = [
+        "/var/home/yefim-work/Documents/auto-robotics-design/top_5",
+        "/var/home/yefim-work/Documents/auto-robotics-design/top_8",
+    ]
 
     test_many_dataset_api(paths)
