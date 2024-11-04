@@ -119,9 +119,9 @@ def get_standard_rewards():
     reward_dict['trajectory_acceleration'] = AccelerationCapability(manipulability_key='Manip_Jacobian',
                                                     trajectory_key="traj_6d", reachability_key="is_reach", actuated_mass_key="Actuated_Mass")
     reward_dict['min_acceleration'] = MinAccelerationCapability(manipulability_key='Manip_Jacobian', trajectory_key="traj_6d", reachability_key="is_reach", actuated_mass_key="Actuated_Mass")
-    reward_dict['mean_heavilifting']  = MeanHeavyLiftingReward(manipulability_key='Manip_Jacobian', reachability_key="is_reach", mass_key="MASS")
-    reward_dict['min_heavilifting']  = HeavyLiftingReward(manipulability_key='Manip_Jacobian',mass_key='MASS',
-                                                    trajectory_key="traj_6d", reachability_key="is_reach")
+    reward_dict['mean_heavy_lifting']  = MeanHeavyLiftingReward(manipulability_key='Manip_Jacobian', reachability_key="is_reach", mass_key="MASS")
+    reward_dict['min_heavy_lifting']  = HeavyLiftingReward(manipulability_key='Manip_Jacobian',mass_key='MASS', reachability_key="is_reach")
+    return reward_dict
 
 def inertial_config_two_link_six_trajectories(workspace_based = False, open_loop = False):
     """Create objects for optimization of two link based robots
@@ -143,9 +143,9 @@ def inertial_config_two_link_six_trajectories(workspace_based = False, open_loop
     left_vertical = trajectories['left_vertical']
     right_vertical = trajectories['right_vertical']
     # set the rewards and weights for the optimization task
-
-    acceleration_capability = MinAccelerationCapability(manipulability_key='Manip_Jacobian', trajectory_key="traj_6d", reachability_key="is_reach", actuated_mass_key="Actuated_Mass")
-    heavy_lifting = MeanHeavyLiftingReward(manipulability_key='Manip_Jacobian', reachability_key="is_reach", mass_key="MASS")
+    rewards = get_standard_rewards()
+    acceleration_capability = rewards['trajectory_acceleration']
+    heavy_lifting = rewards['min_heavy_lifting'] 
 
     # set up special classes for reward calculations
     error_calculator = PositioningErrorCalculator(jacobian_key="Manip_Jacobian")
@@ -170,18 +170,13 @@ def inertial_config_two_link_six_trajectories(workspace_based = False, open_loop
     reward_manager.add_reward(acceleration_capability, 0, 1)
     reward_manager.add_reward(acceleration_capability, 1, 1)
     reward_manager.add_reward(acceleration_capability, 2, 1)
-    reward_manager.add_reward(acceleration_capability, 3, 1)
-    reward_manager.add_reward(acceleration_capability, 4, 1)
-    reward_manager.add_reward(acceleration_capability, 5, 1)
 
-    reward_manager.add_reward(heavy_lifting, 0, 1)
-    reward_manager.add_reward(heavy_lifting, 1, 1)
-    reward_manager.add_reward(heavy_lifting, 2, 1)
     reward_manager.add_reward(heavy_lifting, 3, 1)
     reward_manager.add_reward(heavy_lifting, 4, 1)
     reward_manager.add_reward(heavy_lifting, 5, 1)
 
-    reward_manager.add_trajectory_aggregator([0, 1, 2, 3, 4, 5], 'mean')
+    reward_manager.add_trajectory_aggregator([0, 1, 2], 'mean')
+    reward_manager.add_trajectory_aggregator([3, 4, 5], 'mean')
 
     return builder, crag, soft_constrain, reward_manager
 
@@ -197,55 +192,23 @@ def inertial_config_two_link_workspace(open_loop = False):
     Returns:
         list: builder, crag, soft_constrain, reward_manager
     """
-    thickness = MIT_CHEETAH_PARAMS_DICT["thickness"]
-    actuator = MIT_CHEETAH_PARAMS_DICT["actuator"]
-    density = MIT_CHEETAH_PARAMS_DICT["density"]
-    body_density = MIT_CHEETAH_PARAMS_DICT["body_density"]
-    builder = ParametrizedBuilder(DetailedURDFCreatorFixedEE,
-                                density={"default": density, "G": body_density},
-                                thickness={"default": thickness, "EE": 0.003},
-                                actuator={"default": actuator},
-                                size_ground=np.array(MIT_CHEETAH_PARAMS_DICT["size_ground"]),
-                                offset_ground=MIT_CHEETAH_PARAMS_DICT["offset_ground_rl"]
-                                )
-    workspace_trajectory = convert_x_y_to_6d_traj_xz(
-        *add_auxilary_points_to_trajectory(get_workspace_trajectory([-0.15, -0.35], 0.14, 0.3, 30, 60)))
-
-    # 2) characteristics to be calculated
-    # criteria that either calculated without any reference to points, or calculated through the aggregation of values from all points on trajectory
-    dict_trajectory_criteria = {
-        "MASS": NeutralPoseMass(),
-        "POS_ERR": TranslationErrorMSE()  # MSE of deviation from the trajectory
-    }
-    # criteria calculated for each point on the trajectory
-    dict_point_criteria = {
-        # Impact mitigation factor along the axis
-        "IMF": ImfCompute(ImfProjections.Z),
-        "MANIP": ManipCompute(MovmentSurface.XZ),
-        "Effective_Inertia": EffectiveInertiaCompute(),
-        "Actuated_Mass": ActuatedMass(),
-        "Manip_Jacobian": ManipJacobian(MovmentSurface.XZ)
-    }
-    # special object that calculates the criteria for a robot and a trajectory
-    if open_loop:
-        crag = CriteriaAggregator(dict_point_criteria, dict_trajectory_criteria, alg_name="Open_Loop")
-    else:
-        crag = CriteriaAggregator(dict_point_criteria, dict_trajectory_criteria)
-
+    builder = get_standard_builder()
+    trajectories = get_standard_trajectories()
+    crag = get_standard_crag(open_loop)
+    workspace_trajectory = trajectories['workspace']
     # set the rewards and weights for the optimization task
-    acceleration_capability = MinAccelerationCapability(manipulability_key='Manip_Jacobian', trajectory_key="traj_6d", reachability_key="is_reach", actuated_mass_key="Actuated_Mass")
-    heavy_lifting = MeanHeavyLiftingReward(manipulability_key='Manip_Jacobian', reachability_key="is_reach", mass_key="MASS")
+    rewards = get_standard_rewards()
+    acceleration_capability = rewards['min_acceleration']
+    heavy_lifting = rewards['mean_heavy_lifting']
 
     # set up special classes for reward calculations
     error_calculator = PositioningErrorCalculator(jacobian_key="Manip_Jacobian")
-
     soft_constrain = PositioningConstrain(error_calculator=error_calculator, points=[workspace_trajectory])
-
+   
     # manager should be filled with trajectories and rewards using the manager API
     reward_manager = RewardManager(crag=crag)
 
     reward_manager.add_trajectory(workspace_trajectory, 0)
-
 
     reward_manager.add_reward(acceleration_capability, 0, 1)
     reward_manager.add_reward(heavy_lifting, 0, 1)

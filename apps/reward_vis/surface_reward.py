@@ -21,15 +21,38 @@ from auto_robot_design.pinokla.criterion_math import ImfProjections
 from auto_robot_design.pinokla.default_traj import convert_x_y_to_6d_traj_xz, get_simple_spline, get_vertical_trajectory, create_simple_step_trajectory,get_workspace_trajectory
 from auto_robot_design.optimization.rewards.reward_base import PositioningReward, PositioningConstrain, PositioningErrorCalculator, RewardManager, PositioningReward
 from auto_robot_design.optimization.rewards.jacobian_and_inertia_rewards import HeavyLiftingReward, AccelerationCapability, MeanHeavyLiftingReward, MinAccelerationCapability
-from auto_robot_design.optimization.rewards.pure_jacobian_rewards import EndPointZRRReward, VelocityReward, ForceEllipsoidReward
+from auto_robot_design.optimization.rewards.pure_jacobian_rewards import VelocityReward
 from auto_robot_design.optimization.rewards.inertia_rewards import MassReward, TrajectoryIMFReward
 from auto_robot_design.description.actuators import TMotor_AK10_9, TMotor_AK60_6, TMotor_AK70_10, TMotor_AK80_64, TMotor_AK80_9
 from auto_robot_design.description.builder import ParametrizedBuilder, DetailedURDFCreatorFixedEE, jps_graph2pinocchio_robot, MIT_CHEETAH_PARAMS_DICT
+from auto_robot_design.utils.configs import get_standard_builder, get_standard_crag, get_standard_trajectories, get_standard_rewards, get_mesh_builder
 
+from auto_robot_design.generator.user_generator.graph_generator import TopologyManager2D
+from auto_robot_design.description.kinematics import JointPoint
 
-generator = TwoLinkGenerator()
-all_graphs = generator.get_standard_set(-0.2, shift=0.1)
-graph, constrain_dict = all_graphs[0]
+tp = TopologyManager2D()
+# creates ground connection
+tp.add_connection(ground=True, self_mutation_range= [(-0.2001, 0.1999),None,(-0.1, 0.1)], dependent_mutation_range=[(-0.13,0.07),None,(-0.3,-0.1)])
+main_ground_jp = JointPoint(r=None, w=np.array([0, 1, 0]), active=True, name='main_ground',attach_ground=True, attach_endeffector=False)
+tp.add_absolute_node(jp=main_ground_jp, initial_coordinates=np.array([0, 0, 0]), mutation_range=[None,None,None], freeze_pos=np.array([0,0,0]))
+main_knee_jp = JointPoint(r = None, w=np.array([0, 1, 0]), active=False, name='main_knee', attach_ground=False, attach_endeffector=False)
+tp.add_absolute_node(jp=main_knee_jp, parent_branch_idx=0, initial_coordinates=[0.03, 0, -0.2], mutation_range=[None,None,(-0.1,0.1)], freeze_pos=np.array([0.03,0,None]))
+# creates connection on the first link
+tp.add_connection(ground=False, self_mutation_range= [(-0.2,0.2),None,(-0.4,0.4)], dependent_mutation_range=[(-0.1,0.1),None,(-0.1,0.1)])
+main_endeffector_jp = JointPoint(r = None, w=np.array([0, 1, 0]), active=False, name='main_endeffector',attach_ground=False, attach_endeffector=True)
+tp.add_absolute_node(jp=main_endeffector_jp, parent_branch_idx=0, initial_coordinates=np.array([0.0, 0, -0.4]), mutation_range=[None,None,None], freeze_pos=np.array([0.,0,-0.4]))
+# creates connection on the second link
+tp.add_connection(ground=False, self_mutation_range= [(-0.2,0.2),None,(-0.5, 0.3)], self_freeze_pos=[0.0,0,-0.4999], dependent_mutation_range=[(-0.2,0.0),None,(-0.0,0.2)])
+# creates branch node and one-joint branch in the topology manager. 
+branch_jp = JointPoint(r=None, w=np.array([0, 1, 0]), active=False, name='branch', attach_ground=False, attach_endeffector=False)
+tp.add_relative_node(branch_jp)
+# adds a dependent connection of the one-joint branch to the 
+tp.add_dependent_connection(0,1,connect_head=True)
+# adds independent connection to the second link finishing the branch building
+tp.add_independent_connection(tp.branch_ends[1][1],tp.connections[2].connection_jp)
+tp.set_mutation_ranges()
+tp.visualize()
+graph = tp.graph
 
 thickness = MIT_CHEETAH_PARAMS_DICT["thickness"]
 actuator = MIT_CHEETAH_PARAMS_DICT["actuator"]
@@ -37,69 +60,27 @@ density = MIT_CHEETAH_PARAMS_DICT["density"]
 body_density = MIT_CHEETAH_PARAMS_DICT["body_density"]
 
 
-builder = ParametrizedBuilder(DetailedURDFCreatorFixedEE,
-                              density={"default": density, "G":body_density},
-                              thickness={"default": thickness, "EE":0.033},
-                              actuator={"default": actuator},
-                              size_ground=np.array(MIT_CHEETAH_PARAMS_DICT["size_ground"]),
-                              offset_ground=MIT_CHEETAH_PARAMS_DICT["offset_ground_rl"]
-)
+builder = get_standard_builder()
+crag = get_standard_crag(open_loop=False)
+trajectories = get_standard_trajectories()
+rewards = get_standard_rewards()
 
-# 2) characteristics to be calculated
-# criteria that either calculated without any reference to points, or calculated through the aggregation of values from all points on trajectory
-dict_trajectory_criteria = {
-    "MASS": NeutralPoseMass(),
-    "POS_ERR": TranslationErrorMSE()
-}
-# criteria calculated for each point on the trajectory
-dict_point_criteria = {
-    "Effective_Inertia": EffectiveInertiaCompute(),
-    "Actuated_Mass": ActuatedMass(),
-    "Manip_Jacobian": ManipJacobian(MovmentSurface.XZ),
-    "IMF": ImfCompute(ImfProjections.Z),
-}
-# special object that calculates the criteria for a robot and a trajectory
-crag = CriteriaAggregator(dict_point_criteria, dict_trajectory_criteria)
-# the result is the dict with key - joint_point, value - tuple of all possible coordinate moves
-constrain_dict["2L_ground"]["optim"] = True
-constrain_dict["2L_bot"]["optim"] = False
-constrain_dict["2L_knee"]["optim"] = False
-
-optimizing_joints = get_optimizing_joints(graph, constrain_dict)
-
-# central_vertical = convert_x_y_to_6d_traj_xz(
-#     *get_vertical_trajectory(-1, 0.4, 0, 50))
-constrain_dictstep = convert_x_y_to_6d_traj_xz(
-    *create_simple_step_trajectory([-0.2,-1],0.1,0.4))
-
-acceleration_capability = AccelerationCapability(manipulability_key='Manip_Jacobian',
-                                                 trajectory_key="traj_6d", error_key="error", actuated_mass_key="Actuated_Mass")
-
-# set up special classes for reward calculations
-pos_error_reward = PositioningReward(pos_error_key='POS_ERR')
-error_calculator = PositioningErrorCalculator(error_key='error', jacobian_key='Manip_Jacobian')
-soft_constrain = PositioningConstrain(error_calculator=error_calculator, points = [constrain_dictstep])
-reward_manager = RewardManager(crag=crag)
-# reward_manager.add_trajectory(ground_symmetric_step, 0)
-reward_manager.add_trajectory(constrain_dictstep, 0)
-reward_manager.add_reward(acceleration_capability, 0, 1)
-
-# JP, (x_min, z_min, x_max, z_max)
-problem = CalculateCriteriaProblemByWeigths(graph,builder=builder,
-                                            jp2limits=optimizing_joints,
-                                            crag = crag,
-                                            soft_constrain=soft_constrain,
-                                            rewards_and_trajectories=reward_manager,
-                                             Actuator = actuator)
-                                            # elementwise_runner=runner,
+trajectory_name = 'step1'
+reward_name = 'dexterity'
+trajectory = trajectories[trajectory_name]
+error_calculator = PositioningErrorCalculator(jacobian_key="Manip_Jacobian")
+soft_constraint = PositioningConstrain(error_calculator=error_calculator, points=[trajectory])
 
 
 nx = 20
 nz = 20
 
+range_idx = 2
+range = mr[list(mr.keys())[range_idx]]
 # curr_j, bounds = list(optimizing_joints.items())[0]
 curr_j, bounds = list(optimizing_joints.items())[0]
 curr_j_2, bounds = list(optimizing_joints.items())[1]
+
 x = np.linspace(-0.8, 0.8, nx)
 z = np.linspace(-0.8, 0.8, nz)
 # x = np.linspace(bounds[0], bounds[2], nx)

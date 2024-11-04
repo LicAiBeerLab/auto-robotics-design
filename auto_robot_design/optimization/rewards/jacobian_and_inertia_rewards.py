@@ -262,7 +262,7 @@ class MinAccelerationCapability(Reward):
 
             torque_2_acc = manipulability_matrix @ np.linalg.inv(
                 effective_mass_matrix)
-            step_result = np.min(abs(np.linalg.eigvals(torque_2_acc)))
+            step_result = np.min(abs(np.linalg.svd(torque_2_acc, compute_uv=False)))
             reward_vector[i] = step_result
 
         return np.mean(reward_vector), reward_vector

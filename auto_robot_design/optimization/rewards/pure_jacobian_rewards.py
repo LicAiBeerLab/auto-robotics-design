@@ -132,7 +132,7 @@ class MinManipulabilityReward(Reward):
         reward_vector = np.zeros(n_steps)
         for i in range(n_steps):
             step_result = np.min(
-                abs(np.linalg.eigvals(manipulability_matrices[i])))
+                abs(np.linalg.svd(manipulability_matrices[i],compute_uv=False)))
             reward_vector[i] = step_result
 
         return np.mean(reward_vector), reward_vector
@@ -175,7 +175,7 @@ class MinForceReward(Reward):
         reward_vector = np.zeros(n_steps)
         for i in range(n_steps):
             step_result = 1/np.max(
-                abs(np.linalg.eigvals(manipulability_matrices[i])))
+                abs(np.linalg.svd(manipulability_matrices[i],compute_uv=False)))
             reward_vector[i] = step_result
 
         return np.mean(reward_vector), reward_vector
@@ -256,8 +256,8 @@ class DexterityIndexReward(Reward):
         n_steps = len(is_reached)
         reward_vector = [0]*n_steps
         for i in range(n_steps):
-            step_result = np.min(abs(np.linalg.eigvals(
-                manipulability_matrices[i])))/np.max(abs(np.linalg.eigvals(manipulability_matrices[i])))
+            s = np.linalg.svd(manipulability_matrices[i],compute_uv=False)
+            step_result = np.min(s)/np.max(s)
             reward_vector[i] = step_result
 
         return np.mean(np.array(reward_vector)), reward_vector

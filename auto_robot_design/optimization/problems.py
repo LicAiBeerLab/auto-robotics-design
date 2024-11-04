@@ -4,7 +4,6 @@ from typing import Tuple, Union
 import dill
 import numpy as np
 from pymoo.core.problem import ElementwiseProblem
-
 from auto_robot_design.description.builder import jps_graph2pinocchio_robot, jps_graph2pinocchio_robot_3d_constraints
 from auto_robot_design.generator.topologies.graph_manager_2l import GraphManager2L
 from auto_robot_design.optimization.rewards.reward_base import (Reward, RewardManager)
