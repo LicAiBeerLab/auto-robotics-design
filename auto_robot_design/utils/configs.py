@@ -17,14 +17,16 @@ from auto_robot_design.description.mesh_builder.mesh_builder import (
     jps_graph2pinocchio_meshes_robot,
 )
 
-def get_mesh_builder():
+def get_mesh_builder(jupyter=True):
     thickness = MIT_CHEETAH_PARAMS_DICT["thickness"]
     actuator = MIT_CHEETAH_PARAMS_DICT["actuator"]
     density = MIT_CHEETAH_PARAMS_DICT["density"]
     body_density = MIT_CHEETAH_PARAMS_DICT["body_density"]
-    
-    predined_mesh = {"G": "../../../mesh/body.stl", "EE": "../../../mesh/wheel_small.stl"}
-    predined_mesh = {"G": "../../mesh/body.stl", "EE": "../../mesh/wheel_small.stl"}
+    if jupyter:
+        predined_mesh = {"G": "../../../mesh/body.stl", "EE": "../../../mesh/wheel_small.stl"}
+        predined_mesh = {"G": "../../mesh/body.stl", "EE": "../../mesh/wheel_small.stl"}
+    else:
+        predined_mesh = {"G": "./mesh/body.stl", "EE": "./mesh/wheel_small.stl"}
     mesh_creator = MeshCreator(predined_mesh)
     urdf_creator = URDFMeshCreator()
     builder = MeshBuilder(
