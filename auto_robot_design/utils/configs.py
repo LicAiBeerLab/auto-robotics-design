@@ -214,3 +214,38 @@ def inertial_config_two_link_workspace(open_loop = False):
     reward_manager.add_reward(heavy_lifting, 0, 1)
 
     return builder, crag, soft_constrain, reward_manager
+
+
+def jacobian_config_two_link_workspace(open_loop = False):
+    """Create objects for optimization of two link based robots
+
+        Inertial rewards for optimization.
+
+    Args:
+        workspace_based (bool, optional): If true use the workspace trajectory for the soft constraint. Defaults to False.
+
+    Returns:
+        list: builder, crag, soft_constrain, reward_manager
+    """
+    builder = get_standard_builder()
+    trajectories = get_standard_trajectories()
+    crag = get_standard_crag(open_loop)
+    workspace_trajectory = trajectories['workspace']
+    # set the rewards and weights for the optimization task
+    rewards = get_standard_rewards()
+    manipulability = rewards['manipulability']
+    zrr = rewards['trajectory_zrr']
+
+    # set up special classes for reward calculations
+    error_calculator = PositioningErrorCalculator(jacobian_key="Manip_Jacobian")
+    soft_constrain = PositioningConstrain(error_calculator=error_calculator, points=[workspace_trajectory])
+   
+    # manager should be filled with trajectories and rewards using the manager API
+    reward_manager = RewardManager(crag=crag)
+
+    reward_manager.add_trajectory(workspace_trajectory, 0)
+
+    reward_manager.add_reward(manipulability, 0, 1)
+    reward_manager.add_reward(zrr, 0, 1)
+
+    return builder, crag, soft_constrain, reward_manager
