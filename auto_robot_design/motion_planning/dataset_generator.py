@@ -302,7 +302,7 @@ class Dataset:
             ws_out.reachable_index = arr_reach_indexes[k]
         return arr_ws_outs
 
-    def get_all_design_indexes_cover_ellipse(self, ellipse: Ellipse):
+    def get_all_design_indexes_cover_ellipse(self, ellipse: Ellipse, df = None):
         """
         Get all design indexes that cover the given ellipse.
         This method calculates the indexes of designs that cover the specified ellipse
@@ -318,6 +318,8 @@ class Dataset:
         """
         points_on_ellps = ellipse.get_points(0.1).T
 
+        if df is None:
+            df = self.df
         for pt in points_on_ellps:
             if not self.workspace.point_in_bound(pt):
                 raise Exception("Input ellipse out of workspace bounds")
@@ -328,14 +330,14 @@ class Dataset:
             index = self.workspace.calc_index(point)
             ellips_mask[tuple(index)] = True
         ws_bool_flatten = np.asarray(
-            self.df.values[:, self.params_size : self.params_size + self.ws_grid_size],
+            df.values[:, self.params_size : self.params_size + self.ws_grid_size],
             dtype=bool,
         )
         ell_mask_2_d = ellips_mask.flatten()[np.newaxis :]
         indexes = np.argwhere(
             np.sum(ell_mask_2_d * ws_bool_flatten, axis=1) == np.sum(ell_mask_2_d)
         )
-        return self.df.index[indexes.flatten()].values
+        return df.index[indexes.flatten()].values
 
     def get_design_parameters_by_indexes(self, indexes):
         """
@@ -359,6 +361,10 @@ class Dataset:
         return [
             self.graph_manager.get_graph(des_param) for des_param in desigm_parameters
         ]
+    
+    # def get_filtered_df_with_jps_limits(self, limits:np.ndarray):
+
+    #     self.df[]
 
 
 def set_up_reward_manager(traj_6d):
