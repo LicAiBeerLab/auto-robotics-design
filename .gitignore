@@ -166,3 +166,4 @@ cython_debug/
 python_tests.ipynb
 
 L*.stl
+top_*/
