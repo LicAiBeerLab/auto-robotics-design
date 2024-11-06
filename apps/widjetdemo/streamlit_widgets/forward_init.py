@@ -200,8 +200,8 @@ def add_trajectory_to_vis(pin_vis, trajectory):
 
 from auto_robot_design.optimization.rewards.reward_base import PositioningConstrain, PositioningErrorCalculator, RewardManager
 from auto_robot_design.optimization.rewards.jacobian_and_inertia_rewards import HeavyLiftingReward, AccelerationCapability, MeanHeavyLiftingReward, MinAccelerationCapability
-from auto_robot_design.optimization.rewards.pure_jacobian_rewards import EndPointZRRReward, VelocityReward, ManipulabilityReward, ForceEllipsoidReward, ZRRReward, MinForceReward, MinManipulabilityReward,DexterityIndexReward
-from auto_robot_design.optimization.rewards.inertia_rewards import MassReward, EndPointIMFReward,ActuatedMassReward, TrajectoryIMFReward
+from auto_robot_design.optimization.rewards.pure_jacobian_rewards import  VelocityReward, ManipulabilityReward, ZRRReward, MinForceReward, MinManipulabilityReward,DexterityIndexReward
+from auto_robot_design.optimization.rewards.inertia_rewards import MassReward, ActuatedMassReward, TrajectoryIMFReward
 from auto_robot_design.pinokla.calc_criterion import ActuatedMass, EffectiveInertiaCompute, ImfCompute, ManipCompute, MovmentSurface, NeutralPoseMass, TranslationErrorMSE, ManipJacobian
 from auto_robot_design.pinokla.criterion_math import ImfProjections
 
@@ -224,32 +224,53 @@ def set_criteria_and_crag():
     # special object that calculates the criteria for a robot and a trajectory
     crag = CriteriaAggregator(dict_point_criteria, dict_trajectory_criteria)
 
-    reward_list=[]
+    #reward_list=[]
     # reward_list.append(EndPointIMFReward(imf_key='IMF', trajectory_key="traj_6d", error_key="error"))
     # reward_list.append(ActuatedMassReward(mass_key='Actuated_Mass'))
-    reward_list.append(TrajectoryIMFReward(imf_key='IMF',trajectory_key="traj_6d", error_key="error"))
-    reward_list.append(VelocityReward(manipulability_key='Manip_Jacobian', trajectory_key="traj_6d", error_key="error"))
-    reward_list.append(ManipulabilityReward(manipulability_key='MANIP',
-                                                    trajectory_key="traj_6d", error_key="error"))
-    reward_list.append(MinManipulabilityReward(manipulability_key='Manip_Jacobian',
-                                                    trajectory_key="traj_6d", error_key="error"))
-    reward_list.append(ForceEllipsoidReward(manipulability_key='Manip_Jacobian',
-                                                    trajectory_key="traj_6d", error_key="error"))
-    reward_list.append(ZRRReward(manipulability_key='Manip_Jacobian',
-                                                    trajectory_key="traj_6d", error_key="error"))
-    # reward_list.append(EndPointZRRReward(manipulability_key='Manip_Jacobian',
+    reward_dict={}
+    reward_dict['mass'] = MassReward(mass_key='MASS')
+    reward_dict['actuated_inertia_matrix']  = ActuatedMassReward(mass_key='Actuated_Mass', reachability_key="is_reach")
+    reward_dict['z_imf'] = TrajectoryIMFReward(imf_key='IMF',trajectory_key="traj_6d", reachability_key="is_reach")
+    reward_dict['trajectory_manipulability'] = VelocityReward(manipulability_key='Manip_Jacobian', trajectory_key="traj_6d", reachability_key="is_reach")
+    reward_dict['manipulability'] = ManipulabilityReward(manipulability_key='MANIP',
+                                                    trajectory_key="traj_6d", reachability_key="is_reach")
+    reward_dict['min_manipulability'] = MinManipulabilityReward(manipulability_key='Manip_Jacobian',
+                                                        trajectory_key="traj_6d", reachability_key="is_reach")
+    reward_dict['min_force'] = MinForceReward(manipulability_key='Manip_Jacobian',
+                                                    trajectory_key="traj_6d", reachability_key="is_reach")
+    reward_dict['trajectory_zrr'] = ZRRReward(manipulability_key='Manip_Jacobian',
+                                                        trajectory_key="traj_6d",  reachability_key="is_reach")
+    reward_dict['dexterity'] = DexterityIndexReward(manipulability_key='Manip_Jacobian',
+                                                    trajectory_key="traj_6d", reachability_key="is_reach")
+    reward_dict['trajectory_acceleration'] = AccelerationCapability(manipulability_key='Manip_Jacobian',
+                                                    trajectory_key="traj_6d", reachability_key="is_reach", actuated_mass_key="Actuated_Mass")
+    reward_dict['min_acceleration'] = MinAccelerationCapability(manipulability_key='Manip_Jacobian', trajectory_key="traj_6d", reachability_key="is_reach", actuated_mass_key="Actuated_Mass")
+    reward_dict['mean_heavy_lifting']  = MeanHeavyLiftingReward(manipulability_key='Manip_Jacobian', reachability_key="is_reach", mass_key="MASS")
+    reward_dict['min_heavy_lifting']  = HeavyLiftingReward(manipulability_key='Manip_Jacobian',mass_key='MASS', reachability_key="is_reach")
+    reward_list = list(reward_dict.values())
+    # reward_list.append(TrajectoryIMFReward(imf_key='IMF',trajectory_key="traj_6d", error_key="error"))
+    # reward_list.append(VelocityReward(manipulability_key='Manip_Jacobian', trajectory_key="traj_6d", error_key="error"))
+    # reward_list.append(ManipulabilityReward(manipulability_key='MANIP',
     #                                                 trajectory_key="traj_6d", error_key="error"))
-    reward_list.append(MinForceReward(manipulability_key='Manip_Jacobian',
-                                                    trajectory_key="traj_6d", error_key="error"))
-    reward_list.append(DexterityIndexReward(manipulability_key='Manip_Jacobian',
-                                                    trajectory_key="traj_6d", error_key="error"))
-    reward_list.append(AccelerationCapability(manipulability_key='Manip_Jacobian',
-                                                        trajectory_key="traj_6d", error_key="is_reach", actuated_mass_key="Actuated_Mass"))
-    reward_list.append(MinAccelerationCapability(manipulability_key='Manip_Jacobian',
-                                                        trajectory_key="traj_6d", error_key="is_reach", actuated_mass_key="Actuated_Mass"))
-    reward_list.append(HeavyLiftingReward(manipulability_key='Manip_Jacobian',mass_key='MASS',
-                                                        trajectory_key="traj_6d", error_key="is_reach"))
-    reward_list.append(MeanHeavyLiftingReward(manipulability_key='Manip_Jacobian',mass_key='MASS',
-                                                        trajectory_key="traj_6d", error_key="is_reach"))
+    # reward_list.append(MinManipulabilityReward(manipulability_key='Manip_Jacobian',
+    #                                                 trajectory_key="traj_6d", error_key="error"))
+    # reward_list.append(ForceEllipsoidReward(manipulability_key='Manip_Jacobian',
+    #                                                 trajectory_key="traj_6d", error_key="error"))
+    # reward_list.append(ZRRReward(manipulability_key='Manip_Jacobian',
+    #                                                 trajectory_key="traj_6d", error_key="error"))
+    # # reward_list.append(EndPointZRRReward(manipulability_key='Manip_Jacobian',
+    # #                                                 trajectory_key="traj_6d", error_key="error"))
+    # reward_list.append(MinForceReward(manipulability_key='Manip_Jacobian',
+    #                                                 trajectory_key="traj_6d", error_key="error"))
+    # reward_list.append(DexterityIndexReward(manipulability_key='Manip_Jacobian',
+    #                                                 trajectory_key="traj_6d", error_key="error"))
+    # reward_list.append(AccelerationCapability(manipulability_key='Manip_Jacobian',
+    #                                                     trajectory_key="traj_6d", error_key="is_reach", actuated_mass_key="Actuated_Mass"))
+    # reward_list.append(MinAccelerationCapability(manipulability_key='Manip_Jacobian',
+    #                                                     trajectory_key="traj_6d", error_key="is_reach", actuated_mass_key="Actuated_Mass"))
+    # reward_list.append(HeavyLiftingReward(manipulability_key='Manip_Jacobian',mass_key='MASS',
+    #                                                     trajectory_key="traj_6d", error_key="is_reach"))
+    # reward_list.append(MeanHeavyLiftingReward(manipulability_key='Manip_Jacobian',mass_key='MASS',
+    #                                                     trajectory_key="traj_6d", error_key="is_reach"))
     motor = MIT_CHEETAH_PARAMS_DICT["actuator"]
     return crag, reward_list,  motor

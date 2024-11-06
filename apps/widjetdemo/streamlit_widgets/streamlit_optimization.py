@@ -61,8 +61,7 @@ if 'gm' not in st.session_state:
     st.session_state.stage = "topology_choice"
     st.session_state.trajectory_groups = []
     st.session_state.trajectory_buffer = {}
-    error_calculator = PositioningErrorCalculator(
-        error_key='error', jacobian_key="Manip_Jacobian")
+    error_calculator = PositioningErrorCalculator(jacobian_key="Manip_Jacobian")
     st.session_state.soft_constraint = PositioningConstrain(
         error_calculator=error_calculator, points=[])
     st.session_state.opt_rewards_dict = {}
