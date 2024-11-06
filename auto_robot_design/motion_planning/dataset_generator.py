@@ -362,9 +362,21 @@ class Dataset:
             self.graph_manager.get_graph(des_param) for des_param in desigm_parameters
         ]
     
-    # def get_filtered_df_with_jps_limits(self, limits:np.ndarray):
+    def get_filtered_df_with_jps_limits(self, limits:np.ndarray, df=None):
+        
+        if df is None:
+            df = self.df
 
-    #     self.df[]
+        def filter_func(df):
+            jps = df.values[:, :self.params_size]
+            arr_higher_low = np.all(jps >= limits[:,0], axis=1)
+            arr_lower_upper = np.all(jps <= limits[:,1], axis=1)
+            arr_in_limits = np.logical_and(arr_higher_low, arr_lower_upper)
+            return arr_in_limits
+        
+        filt_df = df[filter_func(df)]
+
+        return filt_df
 
 
 def set_up_reward_manager(traj_6d):
