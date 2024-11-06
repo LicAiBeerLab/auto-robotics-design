@@ -18,21 +18,21 @@ class Reward():
 
         raise NotImplementedError("A reward must implement calculate method!")
 
-    def check_reachability(self, errors, checked=True, warning=False):
+    def check_reachability(self, is_reach, checked=True, warning=False):
         """The function that checks the reachability of the mech for all points at trajectory
 
             The idea is that the trajectory at the moment of the reward calculation is 
             already checked for reachability by the workspace checker.
         """
-        if np.max(errors) > self.point_precision and checked:
+        if 0 in is_reach and checked:
             if warning:
                 print(
-                    f'Error exceeds threshold for reward {self.reward_name} at point {np.argmax(errors)} with value {np.max(errors)}')
+                    f'For the reward {self.reward_name} the trajectory has unreachable points with index{np.argmin(is_reach)}')
             else:
                 raise ValueError(
-                    f"All points should be reachable to calculate a reward {max(errors)}")
+                    f"All points should be reachable to calculate a reward {self.reward_name}")
 
-        elif np.max(errors) > self.point_precision:
+        elif 0 in is_reach:
             return False
 
         return True
@@ -119,7 +119,7 @@ class PositioningErrorCalculator():
             pos_err = 0
         #pos_err = self.calculate_pos_error(trajectory_results_pos)
 
-        self.check_continuity(trajectory_results_pos)
+        #  self.check_continuity(trajectory_results_pos)
         ret = pos_err
         if self.calc_isotropic_thr:
             isotropic_value = self.calculate_eig_error(
@@ -149,31 +149,31 @@ class PositioningErrorCalculator():
         else:
             return 0
 
-    def check_continuity(self, trajectory_results_pos):
-        """Check if the difference in angles between two points is less then self.delta_q_threshold radian"""
-        value = np.max(
-            np.sum(np.abs(np.diff(trajectory_results_pos['q'], axis=0)), axis=1))
-        l = len(trajectory_results_pos['q'][0])
-        if value > self.delta_q_threshold:
-            #with open('cont_check.txt', 'a') as f:
-            #f.write(f'Continuity is violated with value: {value}, {l}\n')
-            pass
+    # def check_continuity(self, trajectory_results_pos):
+    #     """Check if the difference in angles between two points is less then self.delta_q_threshold radian"""
+    #     value = np.max(
+    #         np.sum(np.abs(np.diff(trajectory_results_pos['q'], axis=0)), axis=1))
+    #     l = len(trajectory_results_pos['q'][0])
+    #     if value > self.delta_q_threshold:
+    #         #with open('cont_check.txt', 'a') as f:
+    #         #f.write(f'Continuity is violated with value: {value}, {l}\n')
+    #         pass
 
-    def calculate_pos_error(self, trajectory_results: DataDict):
-        """Returns max max value of the errors along trajectory if error at any point exceeds the threshold.
+    # def calculate_pos_error(self, trajectory_results: DataDict):
+    #     """Returns max max value of the errors along trajectory if error at any point exceeds the threshold.
 
-        Args:
-            trajectory_results (DataDict): data describing trajectory following
+    #     Args:
+    #         trajectory_results (DataDict): data describing trajectory following
 
-        Returns:
-            float: max error
-        """
-        errors = trajectory_results[self.error_key]
-        if np.max(errors) > self.point_threshold:
-            # return np.mean(errors)
-            return np.max(errors)
-        else:
-            return 0
+    #     Returns:
+    #         float: max error
+    #     """
+    #     errors = trajectory_results[self.error_key]
+    #     if np.max(errors) > self.point_threshold:
+    #         # return np.mean(errors)
+    #         return np.max(errors)
+    #     else:
+    #         return 0
 
     def calculate_isotropic_values(self, trajectory_results: DataDict) -> np.ndarray:
         """Returns max(eigenvalues) divided by min(eigenvalues) for each jacobian in trajectory_results. 

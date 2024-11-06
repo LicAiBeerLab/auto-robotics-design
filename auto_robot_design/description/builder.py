@@ -24,20 +24,23 @@ from auto_robot_design.description.utils import tensor_inertia_sphere_by_mass
 from auto_robot_design.pino_adapter.pino_adapter import get_pino_description, get_pino_description_3d_constraints
 from auto_robot_design.pinokla.loader_tools import build_model_with_extensions
 
-BLUE_COLOR = np.array([[39, 105, 205, 0.3],
-                    [40, 109, 204, 0.3],
-                    [95, 128, 213, 0.3],
-                    [132, 149, 222, 0.3],
-                    [164, 170, 231, 0.3],
-                    [193, 193, 240, 0.3]], dtype=np.float64)
+RED_COLOR = np.array([[245/ 255, 84/ 255, 84/ 255, 1]])
+
+BLUE_COLOR = np.array([[39, 105, 205, 1],
+                    [40, 109, 204, 1],
+                    [95, 128, 213, 1],
+                    [132, 149, 222, 1],
+                    [164, 170, 231, 1],
+                    [193, 193, 240, 1]], dtype=np.float64)
 BLUE_COLOR[:,:3] = BLUE_COLOR[:,:3] / 255
 
-GREEN_COLOR = np.array([[17, 90, 57, 0.8],
-                        [4, 129, 75, 0.8],
-                        [0, 169, 92, 0.8],
-                        [0, 211, 107, 0.8],
-                        [0, 255, 119, 0.8]], dtype=np.float64)
+GREEN_COLOR = np.array([[17, 90, 57, 1],
+                        [4, 129, 75, 1],
+                        [0, 169, 92, 1],
+                        [0, 211, 107, 1],
+                        [0, 255, 119, 1]], dtype=np.float64)
 GREEN_COLOR[:,:3] = GREEN_COLOR[:,:3] / 255
+
 
 
 DEFAULT_DENSITY = 2700 / 2.8
@@ -118,6 +121,31 @@ def add_branch_with_attrib(
             G.add_edge(ed[0], ed[1], **ed[2])
 
 
+def calculate_transform_with_2points(p1: np.ndarray, 
+                                     p2: np.ndarray,
+                                     vec: np.ndarray = np.array([0, 0, 1])):
+    """Calculate transformation from `vec` to vector build with points `p1` and `p2`
+
+    Args:
+        p1 (np.ndarray): point of vector's start
+        p2 (np.ndarray): point of vector's end
+        vec (np.ndarray, optional): Vector tansform from. Defaults to np.array([0, 0, 1]).
+
+    Returns:
+        tuple: position: np.ndarray, rotation: scipy.spatial.rotation, length: float
+    """
+    v_l = p2 - p1
+    angle = np.arccos(np.inner(vec, v_l) / la.norm(v_l) / la.norm(vec))
+    axis = mr.VecToso3(vec[:3]) @ v_l[:3]
+    if not np.isclose(np.sum(axis), 0):
+        axis /= la.norm(axis)
+
+    rot = R.from_rotvec(axis * angle)
+    pos = (p2 + p1) / 2
+    length = la.norm(v_l)
+    
+    return pos, rot, length
+
 class URDFLinkCreator:
     """
     Class responsible for creating URDF links and joints.
@@ -144,21 +172,13 @@ class URDFLinkCreator:
                 pos_joint_in_local.append(H_l_w @ np.r_[j.jp.r, 1])
 
             joint_pos_pairs = combinations(pos_joint_in_local, 2)
-            ez = np.array([0, 0, 1, 0])
             body_origins = []
             for j_p in joint_pos_pairs:
-                v_l = j_p[1] - j_p[0]
-                angle = np.arccos(np.inner(ez, v_l) / la.norm(v_l) / la.norm(ez))
-                axis = mr.VecToso3(ez[:3]) @ v_l[:3]
-                if not np.isclose(np.sum(axis), 0):
-                    axis /= la.norm(axis)
-
-                rot = R.from_rotvec(axis * angle)
-                pos = (j_p[1][:3] + j_p[0][:3]) / 2
-                if la.norm(v_l) > link.geometry.get_thickness():
-                    length = la.norm(v_l) - link.geometry.get_thickness()
+                pos, rot, vec_len = calculate_transform_with_2points(j_p[0][:3], j_p[1][:3])
+                if vec_len > link.geometry.get_thickness():
+                    length = vec_len - link.geometry.get_thickness()
                 else:
-                    length = la.norm(v_l)
+                    length = vec_len
                 body_origins.append(
                     (pos.tolist(), rot.as_euler("xyz").tolist(), length)
                 )
@@ -167,13 +187,15 @@ class URDFLinkCreator:
                 link.geometry.size.moment_inertia_frame(link.inertial_frame),
             )
             urdf_link = cls._create_mesh(
-                link.geometry, link.name, inertia, body_origins
+                link.geometry, link.name, inertia, body_origins, cls.trans_matrix2xyz_rpy(link.inertial_frame)
             )
         elif link.geometry.shape == "box":
             origin = cls.trans_matrix2xyz_rpy(link.inertial_frame)
+            # link_origin = cls.trans_matrix2xyz_rpy(link.frame)
             urdf_link = cls._create_box(link.geometry, link.name, origin, origin)
         elif link.geometry.shape == "sphere":
             origin = cls.trans_matrix2xyz_rpy(link.inertial_frame)
+            # link_origin = cls.trans_matrix2xyz_rpy(link.frame)
             urdf_link = cls._create_sphere(link.geometry, link.name, origin, origin)
         else:
             pass
@@ -546,7 +568,7 @@ class URDFLinkCreator:
         return urdf.Link(visual, collision, inertial, name=name)
 
     @classmethod
-    def _create_mesh(cls, geometry: Mesh, name, inertia, body_origins):
+    def _create_mesh(cls, geometry: Mesh, name, inertia, body_origins, link_origin=None):
         """
         Create a URDF mesh based on the given Mesh geometry.
 
@@ -564,6 +586,12 @@ class URDFLinkCreator:
         origin_I = cls.trans_matrix2xyz_rpy(inertia[0])
         urdf_inertia_origin = urdf.Origin(xyz=origin_I[0], rpy=origin_I[1])
         visual_n_collision = []
+        to_mesh = "D:\\Files\\Working\\auto-robotics-design\\testing_ground\\mesh\\" + name + ".obj"
+        urdf_geometry = urdf.Geometry(urdf.Mesh(to_mesh, 1))
+        urdf_origin = urdf.Origin(
+            xyz=link_origin[0],
+            rpy=link_origin[1],
+        )
         for id, origin in enumerate(body_origins):
             name_c = name + "_" + str(id) + "_Collision"
             name_v = name + "_" + str(id) + "_Visual"
@@ -582,6 +610,7 @@ class URDFLinkCreator:
 
             collision = urdf.Collision(urdf_origin, urdf_geometry, name=name_c)
             visual_n_collision += [visual, collision]
+            visual_n_collision += [collision]
         inertial = urdf.Inertial(
             urdf_inertia_origin,
             urdf.Mass(float(geometry.size.mass)),
@@ -979,8 +1008,19 @@ class URDFLinkCreater3DConstraints(URDFLinkCreator):
                         xyz=origin[0],
                         rpy=origin[1],
                     ),
+                    urdf.Axis(joint.jp.w.tolist()),
+                    urdf.Limit(
+                        lower=joint.pos_limits[0],
+                        upper=joint.pos_limits[1],
+                        effort=joint.actuator.get_max_effort(),
+                        velocity=joint.actuator.get_max_vel(),
+                    ),
+                    urdf.Dynamics(
+                        damping=joint.damphing_friction[0],
+                        friction=joint.damphing_friction[1],
+                    ),
                     name=joint.jp.name,
-                    type="fixed",
+                    type="revolute",
                 )
             else:
                 urdf_joint = urdf.Joint(
@@ -1240,6 +1280,7 @@ class ParametrizedBuilder(Builder):
             self._set_link_attributes(link)
 
         return super().create_kinematic_graph(kinematic_graph, name)
+
 
     def _set_joint_attributes(self, joint):
         if joint.jp.active:

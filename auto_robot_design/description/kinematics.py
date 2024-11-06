@@ -220,8 +220,8 @@ class Link:
         geometry: Optional[Geometry] = None,
         frame: np.ndarray = np.eye(4),
         inertial_frame: np.ndarray = np.eye(4),
-        density: float = 2700,
-        thickness: float = 0.08,
+        density: float = 2700 /4,
+        thickness: float = 0.01,
     ) -> None:
         self.joints: set[JointPoint] = joints
         self.name: str = name

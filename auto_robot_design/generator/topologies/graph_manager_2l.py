@@ -415,7 +415,7 @@ class GraphManager2L():
 
         return self.graph
 
-
+from matplotlib import patches
 def plot_2d_bounds(graph_manager):
     """
     Plot 2D bounds for each joint points in the graph manager. Different colors are used for different types of mutations.
@@ -428,8 +428,8 @@ def plot_2d_bounds(graph_manager):
         None
     """
     for jp, gen_info in graph_manager.generator_dict.items():
-        if gen_info.mutation_type == MutationType.UNMOVABLE:
-            continue
+        # if gen_info.mutation_type == MutationType.UNMOVABLE:
+        #     continue
         ez = np.array([1, 0, 0])
         x_bound = (-0.001,
                    0.001) if gen_info.mutation_range[0] is None else gen_info.mutation_range[0]

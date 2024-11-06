@@ -120,6 +120,7 @@ class AccelerationCapability(Reward):
             raise KeyError("Lifting criterion requires the Actuator")
 
         errors = trajectory_results[self.error_key]
+        print(errors)
         is_trajectory_reachable = self.check_reachability(errors)
         # the reward is none zero only if the point is reached
         if not is_trajectory_reachable:

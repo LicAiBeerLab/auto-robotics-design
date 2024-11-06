@@ -1,0 +1,420 @@
+<?xml version="1.0"?>
+<robot  name="Robot" >
+ <link  name="G" >
+  <visual >
+   <origin  rpy="0.0 0.0 0.0"  xyz="0.188 0.11175 0.0" />
+   <geometry >
+    <mesh  scale="1 1 1"  filename="/home/yefim-work/Documents/Be2rLab/CoDesign/auto-robotics-design/mesh/G.stl" />
+   </geometry>
+   <material  name="G_Material" >
+    <color  rgba="0.9607843137254902 0.32941176470588235 0.32941176470588235 1.0" />
+   </material>
+  </visual>
+  <collision  name="G_Collision" >
+   <origin  rpy="0.0 0.0 0.0"  xyz="0.188 0.11175 0.0" />
+   <geometry >
+    <mesh  scale="1 1 1"  filename="/home/yefim-work/Documents/Be2rLab/CoDesign/auto-robotics-design/mesh/G.stl" />
+   </geometry>
+  </collision>
+  <inertial >
+   <origin  rpy="0.0 0.0 0.0"  xyz="0.188 0.11175 0.0" />
+   <mass  value="0.85" />
+   <inertia  ixy="0.0"  iyy="0.0032373666666666665"  ixz="0.0"  izz="0.008110416666666669"  iyz="0.0"  ixx="0.0032373666666666665" />
+  </inertial>
+ </link>
+ <link  name="L3" >
+  <collision  name="L3_0_Collision" >
+   <origin  rpy="0.0 0.0 0.0"  xyz="2.211233712413855e-18 0.0 0.10111874208078343" />
+   <geometry >
+    <box  size="0.03350000083446503 0.03350000083446503 0.16873748332710184" />
+   </geometry>
+  </collision>
+  <collision  name="L3_1_Collision" >
+   <origin  rpy="0.0 0.0 0.0"  xyz="2.7145190082297587e-18 0.0 0.16178998732925348" />
+   <geometry >
+    <box  size="0.03350000083446503 0.03350000083446503 0.04739499283016173" />
+   </geometry>
+  </collision>
+  <collision  name="L3_2_Collision" >
+   <origin  rpy="0.0 0.0 0.0"  xyz="5.032852958159037e-19 0.0 0.060671245248470056" />
+   <geometry >
+    <box  size="0.03350000083446503 0.03350000083446503 0.08784248966247508" />
+   </geometry>
+  </collision>
+  <visual >
+   <origin  rpy="0.0 0.0 0.0"  xyz="0.0 0.0 0.10786" />
+   <geometry >
+    <mesh  scale="1 1 1"  filename="/home/yefim-work/Documents/Be2rLab/CoDesign/auto-robotics-design/mesh/L3.stl" />
+   </geometry>
+   <material  name="L3_Material" >
+    <color  rgba="0.1568627450980392 0.42745098039215684 0.8 1.0" />
+   </material>
+  </visual>
+  <inertial >
+   <origin  rpy="0.0 0.0 0.0"  xyz="0.0 0.0 0.10786" />
+   <mass  value="0.1642108363877552" />
+   <inertia  ixy="0.0"  iyy="0.007706846828157066"  ixz="0.0005918455023780411"  izz="7.963958933305237e-05"  iyz="0.0"  ixx="0.007657921508876855" />
+  </inertial>
+ </link>
+ <link  name="L7" >
+  <collision  name="L7_0_Collision" >
+   <origin  rpy="0.0 0.0 0.0"  xyz="-6.938893903907228e-18 0.0 0.035391559728274236" />
+   <geometry >
+    <box  size="0.03350000083446503 0.03350000083446503 0.03728311862208339" />
+   </geometry>
+  </collision>
+  <collision  name="L7_1_Collision" >
+   <origin  rpy="0.0 0.0 0.0"  xyz="-6.938893903907228e-18 0.0 0.13651030180905765" />
+   <geometry >
+    <box  size="0.03350000083446503 0.03350000083446503 0.0979543638705534" />
+   </geometry>
+  </collision>
+  <collision  name="L7_2_Collision" >
+   <origin  rpy="0.0 0.0 0.0"  xyz="-6.938893903907228e-18 0.0 0.10111874208078345" />
+   <geometry >
+    <box  size="0.03350000083446503 0.03350000083446503 0.1687374833271018" />
+   </geometry>
+  </collision>
+  <visual >
+   <origin  rpy="0.0 0.0 0.0"  xyz="-0.0 0.0 0.09101" />
+   <geometry >
+    <mesh  scale="1 1 1"  filename="/home/yefim-work/Documents/Be2rLab/CoDesign/auto-robotics-design/mesh/L7.stl" />
+   </geometry>
+   <material  name="L7_Material" >
+    <color  rgba="0.37254901960784315 0.5019607843137255 0.8352941176470589 1.0" />
+   </material>
+  </visual>
+  <inertial >
+   <origin  rpy="0.0 0.0 0.0"  xyz="-0.0 0.0 0.09101" />
+   <mass  value="0.16421084961729976" />
+   <inertia  ixy="0.0"  iyy="0.02571799329100673"  ixz="0.0008832687160136641"  izz="7.963959344752462e-05"  iyz="4.647920729212187e-21"  ixx="0.025669067970086525" />
+  </inertial>
+ </link>
+ <link  name="EE" >
+  <visual >
+   <origin  rpy="0.0 0.0 0.0"  xyz="0.0 0.0 0.0" />
+   <geometry >
+    <mesh  scale="1 1 1"  filename="/home/yefim-work/Documents/Be2rLab/CoDesign/auto-robotics-design/mesh/EE.stl" />
+   </geometry>
+   <material  name="EE_Material" >
+    <color  rgba="0.5176470588235295 0.5843137254901961 0.8705882352941177 1.0" />
+   </material>
+  </visual>
+  <collision  name="EE_Collision" >
+   <origin  rpy="0.0 0.0 0.0"  xyz="0.0 0.0 0.0" />
+   <geometry >
+    <mesh  scale="1 1 1"  filename="/home/yefim-work/Documents/Be2rLab/CoDesign/auto-robotics-design/mesh/EE.stl" />
+   </geometry>
+  </collision>
+  <inertial >
+   <origin  rpy="0.0 0.0 0.0"  xyz="0.0 0.0 0.0" />
+   <mass  value="138.0591057291841" />
+   <inertia  ixy="0.0"  iyy="7.043831924958373"  ixz="0.0"  izz="7.043831924958373"  iyz="0.0"  ixx="7.043831924958373" />
+  </inertial>
+ </link>
+ <link  name="L8" >
+  <visual >
+   <origin  rpy="0.0 0.0 0.0"  xyz="-0.0 0.0 0.06374" />
+   <geometry >
+    <mesh  scale="1 1 1"  filename="/home/yefim-work/Documents/Be2rLab/CoDesign/auto-robotics-design/mesh/L8.stl" />
+   </geometry>
+   <material  name="L8_Material" >
+    <color  rgba="0.01568627450980392 0.5058823529411764 0.29411764705882354 1.0" />
+   </material>
+  </visual>
+  <collision  name="L8_Collision" >
+   <origin  rpy="0.0 0.0 0.0"  xyz="-0.0 0.0 0.06374" />
+   <geometry >
+    <mesh  scale="1 1 1"  filename="/home/yefim-work/Documents/Be2rLab/CoDesign/auto-robotics-design/mesh/L8.stl" />
+   </geometry>
+  </collision>
+  <inertial >
+   <origin  rpy="0.0 0.0 0.0"  xyz="-0.0 0.0 0.06374" />
+   <mass  value="0.07630530693345447" />
+   <inertia  ixy="0.0"  iyy="6.329297766095433e-05"  ixz="0.0"  izz="1.427227178434488e-05"  iyz="0.0"  ixx="6.329297766095433e-05" />
+  </inertial>
+ </link>
+ <link  name="L6" >
+  <collision  name="L6_0_Collision" >
+   <origin  rpy="0.0 0.2937103641866148 0.0"  xyz="0.033525598650927066 0.0 0.11084379430124612" />
+   <geometry >
+    <box  size="0.03350000083446503 0.03350000083446503 0.1981058065193231" />
+   </geometry>
+  </collision>
+  <collision  name="L6_1_Collision" >
+   <origin  rpy="0.0 0.0 0.0"  xyz="1.3877787807814457e-17 0.0 0.036129108762879836" />
+   <geometry >
+    <box  size="0.03350000083446503 0.03350000083446503 0.038758216691294645" />
+   </geometry>
+  </collision>
+  <collision  name="L6_2_Collision" >
+   <origin  rpy="-3.141592653589793 -0.42178478897793514 3.141592653589793"  xyz="0.03352559865092708 0.0 0.14697290306412597" />
+   <geometry >
+    <box  size="0.03350000083446503 0.03350000083446503 0.130283392707127" />
+   </geometry>
+  </collision>
+  <visual >
+   <origin  rpy="0.0 0.0 0.0"  xyz="0.02235 0.0 0.09798" />
+   <geometry >
+    <mesh  scale="1 1 1"  filename="/home/yefim-work/Documents/Be2rLab/CoDesign/auto-robotics-design/mesh/L6.stl" />
+   </geometry>
+   <material  name="L6_Material" >
+    <color  rgba="0.0 0.6627450980392157 0.3607843137254902 1.0" />
+   </material>
+  </visual>
+  <inertial >
+   <origin  rpy="0.0 0.0 0.0"  xyz="0.02235 0.0 0.09798" />
+   <mass  value="0.2485742755644697" />
+   <inertia  ixy="5.107043983311928e-21"  iyy="0.020620561984371767"  ixz="-0.0044551567105632316"  izz="0.001756917028356648"  iyz="5.107043983311928e-21"  ixx="0.018910138705123425" />
+  </inertial>
+ </link>
+ <link  name="L5" >
+  <visual >
+   <origin  rpy="0.0 0.0 0.0"  xyz="0.0 0.0 0.01277" />
+   <geometry >
+    <mesh  scale="1 1 1"  filename="/home/yefim-work/Documents/Be2rLab/CoDesign/auto-robotics-design/mesh/L5.stl" />
+   </geometry>
+   <material  name="L5_Material" >
+    <color  rgba="0.0 0.8274509803921568 0.4196078431372549 1.0" />
+   </material>
+  </visual>
+  <collision  name="L5_Collision" >
+   <origin  rpy="0.0 0.0 0.0"  xyz="0.0 0.0 0.01277" />
+   <geometry >
+    <mesh  scale="1 1 1"  filename="/home/yefim-work/Documents/Be2rLab/CoDesign/auto-robotics-design/mesh/L5.stl" />
+   </geometry>
+  </collision>
+  <inertial >
+   <origin  rpy="0.0 0.0 0.0"  xyz="0.0 0.0 0.01277" />
+   <mass  value="0.020737060686506374" />
+   <inertia  ixy="0.0"  iyy="3.066492849017129e-06"  ixz="0.0"  izz="3.878694392571964e-06"  iyz="0.0"  ixx="3.066492849017129e-06" />
+  </inertial>
+ </link>
+ <link  name="L4" >
+  <visual >
+   <origin  rpy="0.0 0.0 0.0"  xyz="0.0 0.0 0.03" />
+   <geometry >
+    <mesh  scale="1 1 1"  filename="/home/yefim-work/Documents/Be2rLab/CoDesign/auto-robotics-design/mesh/L4.stl" />
+   </geometry>
+   <material  name="L4_Material" >
+    <color  rgba="0.0 1.0 0.4666666666666667 1.0" />
+   </material>
+  </visual>
+  <collision  name="L4_Collision" >
+   <origin  rpy="0.0 0.0 0.0"  xyz="0.0 0.0 0.03" />
+   <geometry >
+    <mesh  scale="1 1 1"  filename="/home/yefim-work/Documents/Be2rLab/CoDesign/auto-robotics-design/mesh/L4.stl" />
+   </geometry>
+  </collision>
+  <inertial >
+   <origin  rpy="0.0 0.0 0.0"  xyz="0.0 0.0 0.03" />
+   <mass  value="0.021517213480000012" />
+   <inertia  ixy="0.0"  iyy="3.2715129995216696e-06"  ixz="0.0"  izz="4.0246154713216695e-06"  iyz="0.0"  ixx="3.2715129995216696e-06" />
+  </inertial>
+ </link>
+ <joint  name="Main_ground"  type="revolute" >
+  <parent  link="G" />
+  <child  link="L3" />
+  <origin  rpy="3.141592653589793 0.14888994760949736 3.141592653589793"  xyz="0.0 0.0 0.0" />
+  <axis  xyz="0 1 0" />
+  <limit  velocity="23.99988291783386"  upper="3.141592653589793"  effort="10.2"  lower="-3.141592653589793" />
+  <dynamics  friction="0"  damping="0.05" />
+ </joint>
+ <joint  name="Main_ground_G_WeldActuator"  type="fixed" >
+  <parent  link="G" />
+  <child  link="Main_ground_GActuator" />
+  <origin  rpy="-1.5707963267948968 0.14888994760949736 -3.141592653589793"  xyz="0.0 0.115 0.0" />
+ </joint>
+ <link  name="Main_ground_GActuator" >
+  <inertial >
+   <inertia  ixy="0.0"  iyy="0.0067466666666666664"  ixz="0.0"  izz="0.01056"  iyz="0.0"  ixx="0.0067466666666666664" />
+   <mass  value="0.44" />
+  </inertial>
+ </link>
+ <link  name="Main_ground_GUnit" >
+  <inertial >
+   <inertia  ixy="0.0"  iyy="0.003958333333333334"  ixz="0.0"  izz="0.004750000000000001"  iyz="0.0"  ixx="0.003958333333333334" />
+   <mass  value="0.1" />
+  </inertial>
+ </link>
+ <joint  name="Main_ground_G_WeldUnit"  type="fixed" >
+  <parent  link="G" />
+  <child  link="Main_ground_GUnit" />
+  <origin  rpy="-1.5707963267948968 0.14888994760949736 -3.141592653589793"  xyz="0.0 0.0 0.0" />
+ </joint>
+ <joint  name="Main_knee"  type="revolute" >
+  <parent  link="L3" />
+  <child  link="L7" />
+  <origin  rpy="0.0 0.29777989521899473 0.0"  xyz="4.42246742482771e-18 0.0 0.20223748416156687" />
+  <axis  xyz="0 1 0" />
+  <limit  velocity="6.283185307179586"  upper="3.141592653589793"  effort="600.0"  lower="-3.141592653589793" />
+  <dynamics  friction="0"  damping="0.05" />
+ </joint>
+ <link  name="Main_knee_L3Unit" >
+  <inertial >
+   <inertia  ixy="0.0"  iyy="0.00065"  ixz="0.0"  izz="0.0008"  iyz="0.0"  ixx="0.00065" />
+   <mass  value="0.1" />
+  </inertial>
+ </link>
+ <joint  name="Main_knee_L3_WeldUnit"  type="fixed" >
+  <parent  link="L3" />
+  <child  link="Main_knee_L3Unit" />
+  <origin  rpy="1.5707963267948963 0.2977798952189945 0.0"  xyz="4.42246742482771e-18 0.0 0.20223748416156687" />
+ </joint>
+ <joint  name="Main_ee"  type="revolute" >
+  <parent  link="L7" />
+  <child  link="EE" />
+  <origin  rpy="3.141592653589793 0.14888994760949736 3.141592653589793"  xyz="-6.938893903907228e-18 0.0 0.20223748416156687" />
+  <axis  xyz="0 1 0" />
+  <limit  velocity="6.283185307179586"  upper="3.141592653589793"  effort="600.0"  lower="-3.141592653589793" />
+  <dynamics  friction="0"  damping="0.05" />
+ </joint>
+ <link  name="Main_ee_L7Unit" >
+  <inertial >
+   <inertia  ixy="0.0"  iyy="0.00065"  ixz="0.0"  izz="0.0008"  iyz="0.0"  ixx="0.00065" />
+   <mass  value="0.1" />
+  </inertial>
+ </link>
+ <joint  name="Main_ee_L7_WeldUnit"  type="fixed" >
+  <parent  link="L7" />
+  <child  link="Main_ee_L7Unit" />
+  <origin  rpy="-1.5707963267948968 0.14888994760949736 -3.141592653589793"  xyz="-6.938893903907228e-18 0.0 0.20223748416156687" />
+ </joint>
+ <joint  name="Ground_connection"  type="revolute" >
+  <parent  link="G" />
+  <child  link="L8" />
+  <origin  rpy="3.141592653589793 -0.1973955598498811 3.141592653589793"  xyz="-0.1 0.0 0.036000000000000004" />
+  <axis  xyz="0 1 0" />
+  <limit  velocity="23.99988291783386"  upper="3.141592653589793"  effort="10.2"  lower="-3.141592653589793" />
+  <dynamics  friction="0"  damping="0.05" />
+ </joint>
+ <joint  name="Ground_connection_G_WeldActuator"  type="fixed" >
+  <parent  link="G" />
+  <child  link="Ground_connection_GActuator" />
+  <origin  rpy="-1.5707963267948966 -0.1973955598498811 -3.141592653589793"  xyz="-0.1 0.115 0.036000000000000004" />
+ </joint>
+ <link  name="Ground_connection_GActuator" >
+  <inertial >
+   <inertia  ixy="0.0"  iyy="0.0067466666666666664"  ixz="0.0"  izz="0.01056"  iyz="0.0"  ixx="0.0067466666666666664" />
+   <mass  value="0.44" />
+  </inertial>
+ </link>
+ <link  name="Ground_connection_GUnit" >
+  <inertial >
+   <inertia  ixy="0.0"  iyy="0.003958333333333334"  ixz="0.0"  izz="0.004750000000000001"  iyz="0.0"  ixx="0.003958333333333334" />
+   <mass  value="0.1" />
+  </inertial>
+ </link>
+ <joint  name="Ground_connection_G_WeldUnit"  type="fixed" >
+  <parent  link="G" />
+  <child  link="Ground_connection_GUnit" />
+  <origin  rpy="-1.5707963267948966 -0.1973955598498811 -3.141592653589793"  xyz="-0.1 0.0 0.036000000000000004" />
+ </joint>
+ <joint  name="branch_0"  type="revolute" >
+  <parent  link="L8" />
+  <child  link="L6" />
+  <origin  rpy="0.0 -1.1648354033548083 0.0"  xyz="-4.163336342344337e-17 0.0 0.12747548783981963" />
+  <axis  xyz="0 1 0" />
+  <limit  velocity="6.283185307179586"  upper="3.141592653589793"  effort="600.0"  lower="-3.141592653589793" />
+  <dynamics  friction="0"  damping="0.05" />
+ </joint>
+ <link  name="branch_0_L8Unit" >
+  <inertial >
+   <inertia  ixy="0.0"  iyy="0.00065"  ixz="0.0"  izz="0.0008"  iyz="0.0"  ixx="0.00065" />
+   <mass  value="0.1" />
+  </inertial>
+ </link>
+ <joint  name="branch_0_L8_WeldUnit"  type="fixed" >
+  <parent  link="L8" />
+  <child  link="branch_0_L8Unit" />
+  <origin  rpy="1.5707963267948966 -1.164835403354808 -1.1102230246251565e-16"  xyz="-4.163336342344337e-17 0.0 0.12747548783981963" />
+ </joint>
+ <link  name="Main_connection_2_L6Pseudo" >
+  <inertial >
+   <mass  value="0.05" />
+   <inertia  ixy="0.0"  iyy="1.145153118274651e-05"  ixz="0.0"  izz="1.145153118274651e-05"  iyz="0.0"  ixx="1.145153118274651e-05" />
+  </inertial>
+ </link>
+ <joint  name="Main_connection_2_L6_Weld"  type="fixed" >
+  <parent  link="L6" />
+  <child  link="Main_connection_2_L6Pseudo" />
+  <origin  rpy="0.0 0.0 0.0"  xyz="0.06705119730185413 0.0 0.22168758860249224" />
+  <axis  xyz="0 1 0" />
+  <limit  velocity="6.283185307179586"  upper="3.141592653589793"  effort="600.0"  lower="-3.141592653589793" />
+  <dynamics  friction="0"  damping="0.05" />
+ </joint>
+ <joint  name="Main_connection_2_L7_Weld"  type="fixed" >
+  <parent  link="L7" />
+  <child  link="Main_connection_2_L7Pseudo" />
+  <origin  rpy="0.0 -1.1163297911144243 0.0"  xyz="-2.7755575615628914e-17 0.0 0.07078311945654846" />
+ </joint>
+ <link  name="Main_connection_2_L7Pseudo" >
+  <inertial >
+   <mass  value="0.05" />
+   <inertia  ixy="0.0"  iyy="1.145153118274651e-05"  ixz="0.0"  izz="1.145153118274651e-05"  iyz="0.0"  ixx="1.145153118274651e-05" />
+  </inertial>
+ </link>
+ <joint  name="branch_1"  type="revolute" >
+  <parent  link="L6" />
+  <child  link="L5" />
+  <origin  rpy="0.0 -1.0056775811504108 0.0"  xyz="2.7755575615628914e-17 0.0 0.07225821752575967" />
+  <axis  xyz="0 1 0" />
+  <limit  velocity="6.283185307179586"  upper="3.141592653589793"  effort="600.0"  lower="-3.141592653589793" />
+  <dynamics  friction="0"  damping="0.05" />
+ </joint>
+ <link  name="branch_1_L6Unit" >
+  <inertial >
+   <inertia  ixy="0.0"  iyy="0.00065"  ixz="0.0"  izz="0.0008"  iyz="0.0"  ixx="0.00065" />
+   <mass  value="0.1" />
+  </inertial>
+ </link>
+ <joint  name="branch_1_L6_WeldUnit"  type="fixed" >
+  <parent  link="L6" />
+  <child  link="branch_1_L6Unit" />
+  <origin  rpy="1.5707963267948963 -1.0056775811504108 0.0"  xyz="2.7755575615628914e-17 0.0 0.07225821752575967" />
+ </joint>
+ <link  name="Main_connection_1_L4Pseudo" >
+  <inertial >
+   <mass  value="0.05" />
+   <inertia  ixy="0.0"  iyy="1.1451530612244902e-05"  ixz="0.0"  izz="1.1451530612244902e-05"  iyz="0.0"  ixx="1.1451530612244902e-05" />
+  </inertial>
+ </link>
+ <joint  name="Main_connection_1_L4_Weld"  type="fixed" >
+  <parent  link="L4" />
+  <child  link="Main_connection_1_L4Pseudo" />
+  <origin  rpy="0.0 0.0 0.0"  xyz="1.3877787807814457e-17 0.0 0.06000000000000001" />
+  <axis  xyz="0 1 0" />
+  <limit  velocity="6.283185307179586"  upper="3.141592653589793"  effort="600.0"  lower="-3.141592653589793" />
+  <dynamics  friction="0"  damping="0.05" />
+ </joint>
+ <joint  name="Main_connection_1_L3_Weld"  type="fixed" >
+  <parent  link="L3" />
+  <child  link="Main_connection_1_L3Pseudo" />
+  <origin  rpy="0.0 -1.4219063791853999 0.0"  xyz="0.0 0.0 0.12134249049694011" />
+ </joint>
+ <link  name="Main_connection_1_L3Pseudo" >
+  <inertial >
+   <mass  value="0.05" />
+   <inertia  ixy="0.0"  iyy="1.145153118274651e-05"  ixz="0.0"  izz="1.145153118274651e-05"  iyz="0.0"  ixx="1.145153118274651e-05" />
+  </inertial>
+ </link>
+ <joint  name="branch_2"  type="revolute" >
+  <parent  link="L5" />
+  <child  link="L4" />
+  <origin  rpy="0.0 0.40232109786044123 0.0"  xyz="0.0 0.0 0.02553918557824425" />
+  <axis  xyz="0 1 0" />
+  <limit  velocity="6.283185307179586"  upper="3.141592653589793"  effort="600.0"  lower="-3.141592653589793" />
+  <dynamics  friction="0"  damping="0.05" />
+ </joint>
+ <link  name="branch_2_L5Unit" >
+  <inertial >
+   <inertia  ixy="0.0"  iyy="0.00065"  ixz="0.0"  izz="0.0008"  iyz="0.0"  ixx="0.00065" />
+   <mass  value="0.1" />
+  </inertial>
+ </link>
+ <joint  name="branch_2_L5_WeldUnit"  type="fixed" >
+  <parent  link="L5" />
+  <child  link="branch_2_L5Unit" />
+  <origin  rpy="1.5707963267948961 0.40232109786044123 1.1102230246251565e-16"  xyz="0.0 0.0 0.02553918557824425" />
+ </joint>
+</robot>

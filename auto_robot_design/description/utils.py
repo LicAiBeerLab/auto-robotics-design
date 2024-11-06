@@ -100,6 +100,14 @@ def calc_weight_for_main_branch(edge, graph: nx.Graph):
 
 
 def get_pos(G: nx.Graph):
+    """Return the dictionary of type {node: [x_coordinate, z_coordinate]} for the JP graph
+
+    Args:
+        G (nx.Graph): a graph with JP nodes
+
+    Returns:
+        dict: dictionary of type {node: [x_coordinate, z_coordinate]}
+    """
     pos = {}
     for node in G:
         pos[node] = [node.r[0], node.r[2]]
@@ -150,7 +158,7 @@ def draw_links(kinematic_graph, JP_graph: nx.Graph):
         nx.draw(sub_graph_l, pos, **options)
         plt.text(pos_name[0],pos_name[1], name_link, fontsize=15)
 
-def draw_joint_point(graph: nx.Graph):
+def draw_joint_point(graph: nx.Graph, draw_labels=True):
     pos = get_pos(graph)
     G_pos = np.array(
         list(
@@ -176,7 +184,10 @@ def draw_joint_point(graph: nx.Graph):
         )
         )
     )
-    labels = {n:n.name for n in graph.nodes()}
+    if draw_labels: 
+        labels = {n:n.name for n in graph.nodes()}
+    else:
+        labels = {n:str() for n in graph.nodes()}
     nx.draw(
         graph,
         pos,
@@ -187,7 +198,21 @@ def draw_joint_point(graph: nx.Graph):
         node_size=150,
         with_labels=False,
     )
-    pos_labels = {g:np.array(p) + np.array([-0.2, 0.2])*la.norm(EE_pos)/5 for g, p in pos.items()}
+    #pos_labels = {g:np.array(p) + np.array([-0.2, 0.2])*la.norm(EE_pos)/5 for g, p in pos.items()}
+    pos_labels = {}
+    pos_additions = [np.array([0.2, 0.2])*la.norm(EE_pos)/5, np.array([0.2, -0.2])*la.norm(EE_pos)/5, 
+                     np.array([0.2,-0.2])*la.norm(EE_pos)/5, np.array([-0.2, -0.2])*la.norm(EE_pos)/5]
+    for g,p in pos.items():
+        pos_flag = False
+        for pos_addition in pos_additions:
+            new_pos = np.array(p) + pos_addition
+            if all([la.norm(new_pos-op)>la.norm(EE_pos)/5 for op in pos_labels.values()]):
+                pos_labels[g] = new_pos
+                pos_flag = True
+                break
+        if not pos_flag:
+            pos_labels[g] = np.array(p)
+
     nx.draw_networkx_labels(
         graph,
         pos_labels,
@@ -211,7 +236,7 @@ def draw_joint_point(graph: nx.Graph):
     plt.plot(active_j_pos[:,0], active_j_pos[:,1], "og",
              markersize=20, 
              fillstyle="none", label="Active")
-    plt.legend()
+    if draw_labels: plt.legend()
     plt.axis("equal")
 
 

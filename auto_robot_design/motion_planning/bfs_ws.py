@@ -5,10 +5,9 @@ from typing import Optional
 import numpy as np
 import pinocchio as pin
 import matplotlib.pyplot as plt
-
 import meshcat
 from pinocchio.visualize import MeshcatVisualizer
-
+    
 from auto_robot_design.pinokla.closed_loop_jacobian import (
     constraint_jacobian_active_to_passive,
 )
@@ -153,7 +152,7 @@ class BreadthFirstSearchPlanner:
             raise Exception("Start position of workspace is not reachable")
 
         del pseudo_start_node, start_index_on_grid, start_pos_on_grid
-        # Словари для обхis_reachода bfs
+        # Словари для обхода bfs
         open_set, closed_set, bad_nodes = dict(), dict(), dict()
         queue = deque()
         open_set[ws.calc_grid_index(start_n.pos)] = start_n
@@ -347,11 +346,6 @@ if __name__ == "__main__":
         ParametrizedBuilder,
         URDFLinkCreater3DConstraints,
         jps_graph2pinocchio_robot_3d_constraints,
-    )
-    import meshcat
-    from pinocchio.visualize import MeshcatVisualizer
-    from auto_robot_design.pinokla.closed_loop_kinematics import (
-        closedLoopProximalMount,
     )
 
     builder = ParametrizedBuilder(URDFLinkCreater3DConstraints)

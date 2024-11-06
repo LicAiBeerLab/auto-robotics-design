@@ -1,5 +1,5 @@
 from functools import partial
-
+import time
 import meshcat
 import numpy as np
 import pinocchio as pin
@@ -102,6 +102,7 @@ class TrajectoryIKManager():
                 break
             if viz:
                 viz.display(q)
+                time.sleep(0.03)
 
             # if the point is reachable, we store the values in corresponding arrays
             pin.framesForwardKinematics(model, data, q)
