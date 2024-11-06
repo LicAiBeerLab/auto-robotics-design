@@ -5,6 +5,7 @@ import pathlib
 import time
 from copy import deepcopy
 import concurrent.futures
+from typing import Optional
 import dill
 from joblib import cpu_count
 from tqdm import tqdm
@@ -302,7 +303,7 @@ class Dataset:
             ws_out.reachable_index = arr_reach_indexes[k]
         return arr_ws_outs
 
-    def get_all_design_indexes_cover_ellipse(self, ellipse: Ellipse, df = None):
+    def get_all_design_indexes_cover_ellipse(self, ellipse: Ellipse, indexes: Optional[list] = None):
         """
         Get all design indexes that cover the given ellipse.
         This method calculates the indexes of designs that cover the specified ellipse
@@ -318,8 +319,10 @@ class Dataset:
         """
         points_on_ellps = ellipse.get_points(0.1).T
 
-        if df is None:
+        if indexes is None:
             df = self.df
+        else:
+            df = self.df.loc[indexes]
         for pt in points_on_ellps:
             if not self.workspace.point_in_bound(pt):
                 raise Exception("Input ellipse out of workspace bounds")
@@ -362,10 +365,12 @@ class Dataset:
             self.graph_manager.get_graph(des_param) for des_param in desigm_parameters
         ]
     
-    def get_filtered_df_with_jps_limits(self, limits:np.ndarray, df=None):
+    def get_filtered_df_with_jps_limits(self, limits:np.ndarray, indexes: Optional[list] = None):
         
-        if df is None:
+        if indexes is None:
             df = self.df
+        else:
+            df = self.df.loc[indexes]
 
         def filter_func(df):
             jps = df.values[:, :self.params_size]
