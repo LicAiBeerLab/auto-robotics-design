@@ -148,7 +148,7 @@ class ManyDatasetAPI:
     def indexes2graph(self, indexes):
 
         if isinstance(indexes[0], list):
-            indexes = self._indexes_2d_to_1d(indexes)
+            indexes = self._index_2d_to_1d(indexes)
 
         list_graphs = []
         for index in indexes:

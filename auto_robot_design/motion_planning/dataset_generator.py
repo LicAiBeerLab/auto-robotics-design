@@ -367,7 +367,7 @@ class Dataset:
     #     self.df[]
 
 
-def set_up_reward_manager(traj_6d):
+def set_up_reward_manager(traj_6d, reward):
     from auto_robot_design.optimization.rewards.jacobian_and_inertia_rewards import (
         HeavyLiftingReward,
         MinAccelerationCapability,
@@ -401,24 +401,21 @@ def set_up_reward_manager(traj_6d):
 
     # set the rewards and weights for the optimization task
 
-    acceleration_capability = MinAccelerationCapability(
-        manipulability_key="Manip_Jacobian",
-        trajectory_key="traj_6d",
-        error_key="error",
-        actuated_mass_key="Actuated_Mass",
-    )
+    # acceleration_capability = MinAccelerationCapability(
+    #     manipulability_key="Manip_Jacobian",
+    #     trajectory_key="traj_6d",
+    #     error_key="error",
+    #     actuated_mass_key="Actuated_Mass",
+    # )
 
     heavy_lifting = HeavyLiftingReward(
-        manipulability_key="Manip_Jacobian",
-        trajectory_key="traj_6d",
-        error_key="error",
-        mass_key="MASS",
-    )
+        manipulability_key='Manip_Jacobian', mass_key='MASS', reachability_key="is_reach")
+    
 
     reward_manager = RewardManager(crag=crag)
     reward_manager.add_trajectory(traj_6d, 0)
 
-    reward_manager.add_reward(acceleration_capability, 0, 1)
+    reward_manager.add_reward(reward, 0, 1)
     reward_manager.add_reward(heavy_lifting, 0, 1)
 
     return reward_manager
