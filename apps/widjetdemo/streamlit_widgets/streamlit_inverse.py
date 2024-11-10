@@ -293,7 +293,7 @@ if st.session_state.stage == 'generate':
     x, y, x_rad, y_rad, angle = st.session_state.ellipsoid_params
     ellipse = Ellipse(np.array([x, y]), np.deg2rad(angle), np.array([x_rad, y_rad]))
     index_list=dataset_api.get_indexes_cover_ellipse(ellipse)
-
+    print(len(index_list))
     des_point = np.array(st.session_state.point)
     traj = np.array(
         add_auxilary_points_to_trajectory(([des_point[0]], [des_point[1]]))
@@ -302,11 +302,21 @@ if st.session_state.stage == 'generate':
     traj_6d = test_ws.robot.motion_space.get_6d_traj(traj)
     reward_manager = set_up_reward_manager(traj_6d, st.session_state.chosen_reward)
     sorted_indexes = dataset_api.sorted_indexes_by_reward(
-        index_list, 10, reward_manager
+        index_list, 9, reward_manager
     )
     print(sorted_indexes)
+    graphs = []
+    for topology_idx, index, value in sorted_indexes:
+        gm = dataset_api.datasets[topology_idx].graph_manager
+        x = dataset_api.datasets[topology_idx].get_design_parameters_by_indexes([index])
+        graph = gm.get_graph(x[0])
+        graphs.append(graph)
+    print(len(graphs), len(sorted_indexes))
+    for i, graph in enumerate(graphs):
+        plt.subplot(3,6,i+1)
+        draw_joint_point(graph, draw_labels=False)
+    plt.gcf().set_size_inches(10, 10)
+    st.pyplot(plt.gcf(), clear_figure=True)
     # print(index_list)
     # x = dataset.get_design_parameters_by_indexes([index_list[-1]])
     # print(x)
-
-

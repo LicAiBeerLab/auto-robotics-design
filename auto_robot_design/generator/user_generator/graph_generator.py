@@ -24,12 +24,13 @@ class MutationType(Enum):
 class GeneratorInfo:
     """Information for node of a generator."""
     mutation_type: int = MutationType.ABSOLUTE
-    initial_coordinates: np.ndarray = np.zeros(3)
+    initial_coordinates: np.ndarray = np.zeros(3)# this is the position for calculation of range using mutation_range
     mutation_range: List[Optional[Tuple]] = field(
         default_factory=lambda: [None, None, None])
     relative_to: Optional[Union[JointPoint, List[JointPoint]]] = None
     freeze_pos: List[Optional[Tuple]] = field(
         default_factory=lambda: [None, 0, None])
+    vis_pos: Optional[np.ndarray] = None
 
 
 @dataclass
@@ -38,6 +39,7 @@ class ConnectionInfo:
     connection_jp: JointPoint  # joint point that is used for connection
     connection_base: Optional[List[JointPoint]]
     # this parameter is used to set the mutation range of the branch joints
+    relative_initial_coordinates: np.ndarray = np.zeros(3)
     relative_mutation_range: List[Optional[Tuple]]
     freeze_pos: List[Optional[Tuple]] = field(default_factory=lambda: [None, 0, None])
 
@@ -54,7 +56,7 @@ class TopologyManager2D():
         self.ground_connection_counter = 0
         self.connection_counter = 0
 
-    def add_absolute_node(self, jp: JointPoint, initial_coordinates, mutation_range, freeze_pos=[None, 0, None], parent_branch_idx=None):
+    def add_absolute_node(self, jp: JointPoint, initial_coordinates, mutation_range, freeze_pos=[None, 0, None], parent_branch_idx=None, vis_pos=None):
         """Adds a joint point to the graph with absolute mutation type.
 
         Absolute mutation requires initial coordinates and mutation range. Final coordinates are calculated as initial_coordinates + value from mutation_range.
@@ -83,8 +85,15 @@ class TopologyManager2D():
             self.branch_ends[parent_branch_idx][1] = jp
         self.generator_dict[jp] = GeneratorInfo(
             mutation_type=MutationType.ABSOLUTE, initial_coordinates=initial_coordinates, mutation_range=mutation_range, freeze_pos=freeze_pos)
+        if vis_pos is not None:
+            self.generator_dict[jp].vis_pos = vis_pos
+        else:
+            self.generator_dict[jp].vis_pos = freeze_pos
+            for i, pos in enumerate(freeze_pos):
+                if pos is None:
+                    self.generator_dict[jp].vis_pos[i] = initial_coordinates[i]+(mutation_range[i][1]-mutation_range[i][0])/2
 
-    def add_connection(self, self_mutation_range: np.ndarray, dependent_mutation_range:np.ndarray, self_freeze_pos:list=[None, 0, None], dependent_freeze_pos:list=[None, 0, None], ground=True):
+    def add_connection(self, self_mutation_range: np.ndarray, dependent_mutation_range:np.ndarray,relative_initial_coordinates=np.zeros(3), self_freeze_pos:list=[None, 0, None], dependent_freeze_pos:list=[None, 0, None], ground=True):
         """Create a connection point on either ground or the last added link.
             
             A connection point has two mutation ranges: one for connection point on the link and another for the dependent joint on the branch.
@@ -106,14 +115,14 @@ class TopologyManager2D():
             )
             self.ground_connection_counter += 1
             self.connections.append(ConnectionInfo(
-                connection_jp=ground_connection_jp, connection_base=None, relative_mutation_range=dependent_mutation_range, freeze_pos=dependent_freeze_pos))
+                connection_jp=ground_connection_jp, relative_initial_coordinates=relative_initial_coordinates,connection_base=None, relative_mutation_range=dependent_mutation_range, freeze_pos=dependent_freeze_pos))
             self.generator_dict[ground_connection_jp] = GeneratorInfo(mutation_type=MutationType.ABSOLUTE, initial_coordinates=np.zeros(3), mutation_range=self_mutation_range, freeze_pos=self_freeze_pos)
         else:
             connection_jp = JointPoint(r=None, w=np.array(
                 [0, 1, 0]), attach_ground=False, active=False, name=f"Connection_{self.connection_counter}")
             self.connection_counter += 1
             self.connections.append(ConnectionInfo(
-                connection_jp=connection_jp, connection_base=self.connection_buffer, relative_mutation_range=dependent_mutation_range, freeze_pos=dependent_freeze_pos))
+                connection_jp=connection_jp, connection_base=self.connection_buffer, relative_mutation_range=dependent_mutation_range, relative_initial_coordinates=relative_initial_coordinates,freeze_pos=dependent_freeze_pos))
             self.generator_dict[connection_jp] = GeneratorInfo(mutation_type=MutationType.RELATIVE_PERCENTAGE,relative_to=self.connection_buffer, initial_coordinates=None, mutation_range=self_mutation_range, freeze_pos=self_freeze_pos)
 
     def add_relative_node(self, jp: JointPoint, mutation_range=None, parent_branch_idx=None, freeze_pos=[None, 0, None]):
@@ -131,13 +140,12 @@ class TopologyManager2D():
         if jp.name in self.mutation_ranges:
             raise ValueError(
                 f"Joint point {jp.name} already exists in the graph.")
-
+        # if parent branch is None we add a new branch
         if parent_branch_idx is None:
             self.branch_ends.append([jp, jp])
             self.graph.add_node(jp)
             self.generator_dict[jp] = GeneratorInfo(
                 mutation_type=MutationType.RELATIVE, relative_to=None, mutation_range=mutation_range, freeze_pos=freeze_pos)
-
         else:
             parent_jp = self.branch_ends[parent_branch_idx][1]
             self.graph.add_edge(parent_jp, jp)

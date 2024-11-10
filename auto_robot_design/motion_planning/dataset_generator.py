@@ -408,15 +408,15 @@ def set_up_reward_manager(traj_6d, reward):
     #     actuated_mass_key="Actuated_Mass",
     # )
 
-    heavy_lifting = HeavyLiftingReward(
-        manipulability_key='Manip_Jacobian', mass_key='MASS', reachability_key="is_reach")
+    # heavy_lifting = HeavyLiftingReward(
+    #     manipulability_key='Manip_Jacobian', mass_key='MASS', reachability_key="is_reach")
     
 
     reward_manager = RewardManager(crag=crag)
     reward_manager.add_trajectory(traj_6d, 0)
 
     reward_manager.add_reward(reward, 0, 1)
-    reward_manager.add_reward(heavy_lifting, 0, 1)
+    # reward_manager.add_reward(heavy_lifting, 0, 1)
 
     return reward_manager
 

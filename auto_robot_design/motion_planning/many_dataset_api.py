@@ -66,7 +66,7 @@ def parallel_calculation_rew_manager(indexes, dataset, reward_manager):
     new_df = pd.DataFrame(columns=dataset.df.columns)
     for k, res in results:
         new_df.loc[k] = sub_df.loc[k]
-        new_df.at[k, "reward"] = np.sum(res[1])
+        new_df.at[k, "reward"] = np.sum(res)
     new_df = new_df.dropna()
     return new_df
 
