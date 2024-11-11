@@ -166,3 +166,4 @@ cython_debug/
 python_tests.ipynb
 manifold3d.pyi
 L*.stl
+top_*/

@@ -76,7 +76,6 @@ class SnakePathFinder:
             pts_dist = np.hstack((filt_points, distance2current[:, np.newaxis]))
             next_points = list(sorted(pts_dist, key=lambda x: x[-1]))
             next_points = np.array(next_points)[:, :-1]
-
         return next_points
 
     def do_intersect(p1, p2, p3, p4):

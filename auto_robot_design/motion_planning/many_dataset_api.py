@@ -66,7 +66,7 @@ def parallel_calculation_rew_manager(indexes, dataset, reward_manager):
     new_df = pd.DataFrame(columns=dataset.df.columns)
     for k, res in results:
         new_df.loc[k] = sub_df.loc[k]
-        new_df.at[k, "reward"] = np.sum(res[1])
+        new_df.at[k, "reward"] = np.sum(res)
     new_df = new_df.dropna()
     return new_df
 
@@ -148,7 +148,7 @@ class ManyDatasetAPI:
     def indexes2graph(self, indexes):
 
         if isinstance(indexes[0], list):
-            indexes = self._indexes_2d_to_1d(indexes)
+            indexes = self._index_2d_to_1d(indexes)
 
         list_graphs = []
         for index in indexes:

@@ -232,7 +232,8 @@ def draw_joint_point(graph: nx.Graph, draw_labels=True):
 
         )
     plt.plot(G_pos[:,0], G_pos[:,1], "ok", label="Ground")
-    plt.plot(EE_pos[:,0], EE_pos[:,1], "ob", label="EndEffector")
+    if EE_pos.size != 0:
+        plt.plot(EE_pos[:,0], EE_pos[:,1], "ob", label="EndEffector")
     plt.plot(active_j_pos[:,0], active_j_pos[:,1], "og",
              markersize=20, 
              fillstyle="none", label="Active")
