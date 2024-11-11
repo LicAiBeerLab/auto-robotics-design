@@ -16,6 +16,8 @@ from auto_robot_design.description.mesh_builder.mesh_builder import (
     MeshBuilder,
     jps_graph2pinocchio_meshes_robot,
 )
+import os
+from pathlib import Path
 
 
 def get_mesh_builder(jupyter=True):
@@ -23,21 +25,27 @@ def get_mesh_builder(jupyter=True):
     actuator = MIT_CHEETAH_PARAMS_DICT["actuator"]
     density = MIT_CHEETAH_PARAMS_DICT["density"]
     body_density = MIT_CHEETAH_PARAMS_DICT["body_density"]
-    if jupyter:
-        predined_mesh = {"G": "../../../mesh/body.stl",
-                         "EE": "../../../mesh/wheel_small.stl"}
-        predined_mesh = {"G": "../../mesh/body.stl",
-                         "EE": "../../mesh/wheel_small.stl"}
+
+    cwd = Path.cwd()
+
+    if str(Path.cwd()).split('/')[-1] == 'auto-robotics-design':
+        body_path = str(Path.joinpath(Path.cwd(), Path('mesh/body.stl')))
+        whell_path = str(Path.joinpath(Path.cwd(), Path('mesh/wheel_small.stl')))
     else:
-        predined_mesh = {"G": "./mesh/body.stl",
-                         "EE": "./mesh/wheel_small.stl"}
-    mesh_creator = MeshCreator(predined_mesh)
+        p = 0 
+        while str(Path.cwd().parents[p]).split('/')!= 'auto-robotics-design':
+            p+=1
+        body_path = str(Path.joinpath(Path.cwd().parents[p], Path('mesh/body.stl')))
+        whell_path = str(Path.joinpath(Path.cwd().parents[p], Path('mesh/wheel_small.stl')))
+
+    predefined_mesh = {"G": body_path, "EE": whell_path}
+    mesh_creator = MeshCreator(predefined_mesh)
     urdf_creator = URDFMeshCreator()
     builder = MeshBuilder(
         urdf_creator,
         mesh_creator,
         density={"default": density, "G": body_density},
-        thickness={"default": thickness, "EE": 0.12},
+        thickness={"default": thickness, "EE": 0.003},
         actuator={"default": actuator},
         size_ground=np.array(MIT_CHEETAH_PARAMS_DICT["size_ground"]),
         offset_ground=MIT_CHEETAH_PARAMS_DICT["offset_ground_rl"],
