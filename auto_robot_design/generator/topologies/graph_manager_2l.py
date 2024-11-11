@@ -55,7 +55,7 @@ class GraphManager2L():
         self.current_main_branch = []
         self.graph = nx.Graph()
         self.mutation_ranges = {}
-    
+
     def get_node_by_name(self, name:str):
         for node in self.graph.nodes:
             if node.name == name:
