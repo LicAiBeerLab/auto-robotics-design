@@ -164,5 +164,5 @@ cython_debug/
 # jupyter tests
 
 python_tests.ipynb
-
+manifold3d.pyi
 L*.stl

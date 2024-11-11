@@ -186,33 +186,46 @@ if __name__ == "__main__":
     import meshcat
     import time
     from pinocchio.visualize import MeshcatVisualizer
-    from auto_robot_design.description.mesh_builder.urdf_creater import URDFMeshCreator, MeshCreator
+    from auto_robot_design.description.mesh_builder.urdf_creater import URDFMeshCreator, MeshCreator, create_mesh_manipulator_base
     from auto_robot_design.description.builder import MIT_CHEETAH_PARAMS_DICT
     from auto_robot_design.generator.topologies.bounds_preset import get_preset_by_index_with_bounds
+    from auto_robot_design.description.actuators import TMotor_AK60_6
     
     thickness = MIT_CHEETAH_PARAMS_DICT["thickness"]
-    actuator = MIT_CHEETAH_PARAMS_DICT["actuator"]
+    actuator = TMotor_AK60_6()#MIT_CHEETAH_PARAMS_DICT["actuator"]
     density = MIT_CHEETAH_PARAMS_DICT["density"]
     body_density = MIT_CHEETAH_PARAMS_DICT["body_density"]
     
-    predined_mesh = {"G":"mesh/body.stl",
-                     "EE":"mesh/wheel_small.stl"}
+    # predined_mesh = {"G":"mesh/body.stl",
+    #                  "EE":"mesh/wheel_small.stl"}
+
+    predined_mesh = {"G":create_mesh_manipulator_base,
+                     "EE":"mesh/uhvat.stl"}
     
     mesh_creator = MeshCreator(predined_mesh)
     urdf_creator = URDFMeshCreator()
     
+    # builder = MeshBuilder(urdf_creator,
+    #                     mesh_creator,
+    #                     density={"default": density, "G": body_density},
+    #                     thickness={"default": thickness},
+    #                     actuator={"default": actuator},
+    #                     size_ground=np.array(
+    #                         MIT_CHEETAH_PARAMS_DICT["size_ground"]),
+    #                     #offset_ground=MIT_CHEETAH_PARAMS_DICT["offset_ground_rl"]
+    #                     )
+    
     builder = MeshBuilder(urdf_creator,
                         mesh_creator,
                         density={"default": density, "G": body_density},
-                        thickness={"default": thickness},
+                        thickness={"default": 0.01},
                         actuator={"default": actuator},
                         size_ground=np.array(
                             MIT_CHEETAH_PARAMS_DICT["size_ground"]),
-                        offset_ground=MIT_CHEETAH_PARAMS_DICT["offset_ground_rl"]
                         )
-    
-    gm = get_preset_by_index_with_bounds(4)
-    x_centre = gm.generate_central_from_mutation_range()
+
+    gm = get_preset_by_index_with_bounds(0)
+    x_centre = gm.generate_random_from_mutation_range()
     graph_jp = gm.get_graph(x_centre)
     
     robot, __ = jps_graph2pinocchio_meshes_robot(graph_jp, builder)
@@ -231,3 +244,4 @@ if __name__ == "__main__":
     q = pin.neutral(robot.model)
     pin.framesForwardKinematics(robot.model, robot.data, q)
     viz.display(q)
+    time.sleep(10)
