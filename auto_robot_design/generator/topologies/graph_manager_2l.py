@@ -47,6 +47,7 @@ class GraphManager2L():
         self.main_connections: List[ConnectionInfo] = []
         self.mutation_ranges = {}
         self.name = "Default"
+        # name_map = {'Main_ground':0, }
 
     def reset(self):
         """Reset the graph builder."""
@@ -275,7 +276,7 @@ class GraphManager2L():
         """
         self.generator_dict[joint].freeze_pos = freeze_pos
 
-    def set_mutation_ranges(self):
+    def set_mutation_ranges(self, name=True):
         """Traverse the generator_dict to get all mutable parameters and their ranges.
         """
         self.mutation_ranges = {}
@@ -284,18 +285,25 @@ class GraphManager2L():
         for key in keys:
             if key not in self.graph.nodes:
                 del self.generator_dict[key]
-
-        for key, value in self.generator_dict.items():
+        axes = ['x', 'y','z']
+        for idx, pare in enumerate(self.generator_dict.items()):
+            key, value = pare
             if value.mutation_type == MutationType.RELATIVE or value.mutation_type == MutationType.RELATIVE_PERCENTAGE:
                 for i, r in enumerate(value.mutation_range):
                     if r is not None and value.freeze_pos[i] is None:
-                        self.mutation_ranges[key.name+'_'+str(i)] = r
+                        if name:
+                            self.mutation_ranges[key.name +'_'+ axes[i]] = r
+                        else:
+                            self.mutation_ranges[str(idx) +'_'+ axes[i]] = r
             elif value.mutation_type == MutationType.ABSOLUTE:
                 for i, r in enumerate(value.mutation_range):
                     if r is not None and value.freeze_pos[i] is None:
-                        self.mutation_ranges[key.name+'_'+str(i)] = (
-                            r[0]+value.initial_coordinate[i], r[1]+value.initial_coordinate[i])
-
+                        if name:
+                            self.mutation_ranges[key.name+'_'+axes[i]] = (
+                                r[0]+value.initial_coordinate[i], r[1]+value.initial_coordinate[i])
+                        else:
+                            self.mutation_ranges[str(idx)+'_'+axes[i]] = (
+                                r[0]+value.initial_coordinate[i], r[1]+value.initial_coordinate[i])
     def generate_random_from_mutation_range(self):
         """Sample random values from the mutation ranges.
 

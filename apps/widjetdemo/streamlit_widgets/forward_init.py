@@ -1,76 +1,33 @@
-from auto_robot_design.optimization.saver import (
-    load_checkpoint,
-)
-import multiprocessing
-import numpy as np
-import matplotlib.pyplot as plt
-import os
-import pinocchio as pin
-import meshcat
-import time
-import streamlit as st
-from pymoo.core.problem import StarmapParallelization
-from pymoo.algorithms.moo.age2 import AGEMOEA2
-from pymoo.decomposition.asf import ASF
-from pymoo.algorithms.soo.nonconvex.pso import PSO
-from auto_robot_design.description.utils import draw_joint_point
-from auto_robot_design.optimization.problems import SingleCriterionProblem
-from auto_robot_design.optimization.optimizer import PymooOptimizer
-from auto_robot_design.pinokla.calc_criterion import (
-    ActuatedMass,
-    EffectiveInertiaCompute,
-    MovmentSurface,
-    NeutralPoseMass,
-    ManipJacobian,
-)
-from auto_robot_design.pinokla.criterion_agregator import CriteriaAggregator
-from auto_robot_design.pinokla.default_traj import (
-    add_auxilary_points_to_trajectory,
-    convert_x_y_to_6d_traj_xz,
-    get_vertical_trajectory,
-    create_simple_step_trajectory,
-    get_workspace_trajectory,
-)
-from auto_robot_design.optimization.rewards.reward_base import (
-    PositioningConstrain,
-    PositioningErrorCalculator,
-    RewardManager,
-)
-from auto_robot_design.optimization.rewards.pure_jacobian_rewards import ZRRReward
-from auto_robot_design.description.builder import (
-    ParametrizedBuilder,
-    DetailedURDFCreatorFixedEE,
-    URDFLinkCreater3DConstraints,
-    jps_graph2pinocchio_robot,
-    MIT_CHEETAH_PARAMS_DICT,
-)
-from auto_robot_design.description.mesh_builder.mesh_builder import (
-    MeshBuilder,
-    jps_graph2pinocchio_meshes_robot,
-)
-from auto_robot_design.description.mesh_builder.urdf_creater import (
-    URDFMeshCreator,
-    MeshCreator,
-)
-from auto_robot_design.generator.topologies.graph_manager_2l import (
-    GraphManager2L,
-    get_preset_by_index,
-    MutationType,
-)
-from auto_robot_design.generator.topologies.bounds_preset import (
-    get_preset_by_index_with_bounds,
-)
-from auto_robot_design.optimization.saver import ProblemSaver
-from auto_robot_design.motion_planning.trajectory_ik_manager import TrajectoryIKManager
-from pinocchio.visualize import MeshcatVisualizer
-
-
-from auto_robot_design.motion_planning.trajectory_ik_manager import TrajectoryIKManager
-from auto_robot_design.simulation.trajectory_movments import TrajectoryMovements
 from dataclasses import dataclass, field
 
-pin.seed(1)
+import matplotlib.pyplot as plt
+import meshcat
+import numpy as np
+import pinocchio as pin
+import streamlit as st
 
+from auto_robot_design.description.builder import ParametrizedBuilder, URDFLinkCreater3DConstraints, MIT_CHEETAH_PARAMS_DICT
+from auto_robot_design.description.mesh_builder.mesh_builder import MeshBuilder
+from auto_robot_design.description.mesh_builder.urdf_creater import MeshCreator, URDFMeshCreator
+from auto_robot_design.description.utils import draw_joint_point
+from auto_robot_design.generator.topologies.bounds_preset import get_preset_by_index_with_bounds
+from auto_robot_design.generator.topologies.graph_manager_2l import GraphManager2L
+from auto_robot_design.motion_planning.trajectory_ik_manager import TrajectoryIKManager
+from auto_robot_design.optimization.rewards.pure_jacobian_rewards import ZRRReward
+from auto_robot_design.optimization.rewards.reward_base import PositioningConstrain, RewardManager
+from auto_robot_design.pinokla.calc_criterion import (ActuatedMass,
+                                                      EffectiveInertiaCompute,
+                                                      ManipJacobian,
+                                                      MovmentSurface,
+                                                      NeutralPoseMass)
+from auto_robot_design.pinokla.criterion_agregator import CriteriaAggregator
+from auto_robot_design.pinokla.default_traj import (
+    add_auxilary_points_to_trajectory, convert_x_y_to_6d_traj_xz,
+    create_simple_step_trajectory, get_vertical_trajectory,
+    get_workspace_trajectory)
+
+pin.seed(1)
+from auto_robot_design.utils.configs import get_standard_builder, get_mesh_builder, get_standard_crag, get_standard_rewards
 @dataclass
 class OptimizationData:
     graph_manager: GraphManager2L
@@ -83,88 +40,12 @@ class OptimizationData:
 
 @st.cache_resource
 def build_constant_objects():
-    thickness = MIT_CHEETAH_PARAMS_DICT["thickness"]
-    actuator = MIT_CHEETAH_PARAMS_DICT["actuator"]
-    density = MIT_CHEETAH_PARAMS_DICT["density"]
-    body_density = MIT_CHEETAH_PARAMS_DICT["body_density"]
-
-    optimization_builder = ParametrizedBuilder(
-        URDFLinkCreater3DConstraints,
-        density={"default": density, "G": body_density},
-        thickness={"default": thickness, "EE": 0.12},
-        actuator={"default": actuator},
-        size_ground=np.array(MIT_CHEETAH_PARAMS_DICT["size_ground"]),
-        offset_ground=MIT_CHEETAH_PARAMS_DICT["offset_ground_rl"],
-    )
-
-    predined_mesh = {"G": "./mesh/body.stl", "EE": "./mesh/wheel_small.stl"}
-
-    mesh_creator = MeshCreator(predined_mesh)
-    urdf_creator = URDFMeshCreator()
-    visualization_builder = MeshBuilder(
-        urdf_creator,
-        mesh_creator,
-        density={"default": density, "G": body_density},
-        thickness={"default": thickness, "EE": 0.12},
-        actuator={"default": actuator},
-        size_ground=np.array(MIT_CHEETAH_PARAMS_DICT["size_ground"]),
-        offset_ground=MIT_CHEETAH_PARAMS_DICT["offset_ground_rl"],
-    )
-
-    # trajectories
-    workspace_trajectory = convert_x_y_to_6d_traj_xz(
-        *add_auxilary_points_to_trajectory(
-            get_workspace_trajectory([-0.15, -0.35], 0.14, 0.3, 30, 60)
-        )
-    )
-    ground_symmetric_step1 = convert_x_y_to_6d_traj_xz(
-        *add_auxilary_points_to_trajectory(
-            create_simple_step_trajectory(
-                starting_point=[-0.14, -0.34],
-                step_height=0.12,
-                step_width=0.28,
-                n_points=100,
-            )
-        )
-    )
-    ground_symmetric_step2 = convert_x_y_to_6d_traj_xz(
-        *add_auxilary_points_to_trajectory(
-            create_simple_step_trajectory(
-                starting_point=[-0.14 + 0.015, -0.34],
-                step_height=0.10,
-                step_width=-2 * (-0.14 + 0.015),
-                n_points=100,
-            )
-        )
-    )
-    ground_symmetric_step3 = convert_x_y_to_6d_traj_xz(
-        *add_auxilary_points_to_trajectory(
-            create_simple_step_trajectory(
-                starting_point=[-0.14 + 0.025, -0.34],
-                step_height=0.08,
-                step_width=-2 * (-0.14 + 0.025),
-                n_points=100,
-            )
-        )
-    )
-    central_vertical = convert_x_y_to_6d_traj_xz(
-        *add_auxilary_points_to_trajectory(get_vertical_trajectory(-0.34, 0.12, 0, 100)))
-    left_vertical = convert_x_y_to_6d_traj_xz(
-        *add_auxilary_points_to_trajectory(get_vertical_trajectory(-0.34, 0.12, -0.12, 100)))
-    right_vertical = convert_x_y_to_6d_traj_xz(
-        *add_auxilary_points_to_trajectory(get_vertical_trajectory(-0.34, 0.12, 0.12, 100)))
-    dict_trajectory_criteria = {
-        "MASS": NeutralPoseMass(),
-    }
-    dict_point_criteria = {
-        "Effective_Inertia": EffectiveInertiaCompute(),
-        "Actuated_Mass": ActuatedMass(),
-        "Manip_Jacobian": ManipJacobian(MovmentSurface.XZ),
-    }
-    crag = CriteriaAggregator(dict_point_criteria, dict_trajectory_criteria)
-    graph_managers = {f"Topology_{i}": get_preset_by_index_with_bounds(i) for i in range(9)}
-
-    return graph_managers, optimization_builder, visualization_builder, crag, workspace_trajectory, ground_symmetric_step1, ground_symmetric_step2, ground_symmetric_step3, central_vertical, left_vertical, right_vertical
+    optimization_builder = get_standard_builder()
+    visualization_builder = get_mesh_builder()
+    crag = get_standard_crag()
+    graph_managers = {f"Топология_{i}": get_preset_by_index_with_bounds(i) for i in range(9)}
+    reward_dict = get_standard_rewards()
+    return graph_managers, optimization_builder, visualization_builder, crag, reward_dict
 
 def add_trajectory_to_vis(pin_vis, trajectory):
     material = meshcat.geometry.MeshPhongMaterial()
@@ -198,12 +79,25 @@ def add_trajectory_to_vis(pin_vis, trajectory):
 # visualizer.loadViewerModel()
 # visualizer.display(pin.neutral(fixed_robot.model))
 
-from auto_robot_design.optimization.rewards.reward_base import PositioningConstrain, PositioningErrorCalculator, RewardManager
-from auto_robot_design.optimization.rewards.jacobian_and_inertia_rewards import HeavyLiftingReward, AccelerationCapability, MeanHeavyLiftingReward, MinAccelerationCapability
-from auto_robot_design.optimization.rewards.pure_jacobian_rewards import  VelocityReward, ManipulabilityReward, ZRRReward, MinForceReward, MinManipulabilityReward,DexterityIndexReward
-from auto_robot_design.optimization.rewards.inertia_rewards import MassReward, ActuatedMassReward, TrajectoryIMFReward
-from auto_robot_design.pinokla.calc_criterion import ActuatedMass, EffectiveInertiaCompute, ImfCompute, ManipCompute, MovmentSurface, NeutralPoseMass, TranslationErrorMSE, ManipJacobian
+from auto_robot_design.optimization.rewards.inertia_rewards import (
+    ActuatedMassReward, MassReward, TrajectoryIMFReward)
+from auto_robot_design.optimization.rewards.jacobian_and_inertia_rewards import (
+    AccelerationCapability, HeavyLiftingReward, MeanHeavyLiftingReward,
+    MinAccelerationCapability)
+from auto_robot_design.optimization.rewards.pure_jacobian_rewards import (
+    DexterityIndexReward, ManipulabilityReward, MinForceReward,
+    MinManipulabilityReward, VelocityReward, ZRRReward)
+from auto_robot_design.optimization.rewards.reward_base import (
+    PositioningConstrain, PositioningErrorCalculator, RewardManager)
+from auto_robot_design.pinokla.calc_criterion import (ActuatedMass,
+                                                      EffectiveInertiaCompute,
+                                                      ImfCompute, ManipCompute,
+                                                      ManipJacobian,
+                                                      MovmentSurface,
+                                                      NeutralPoseMass,
+                                                      TranslationErrorMSE)
 from auto_robot_design.pinokla.criterion_math import ImfProjections
+
 
 @st.cache_resource 
 def set_criteria_and_crag():

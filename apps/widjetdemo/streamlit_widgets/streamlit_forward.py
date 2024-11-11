@@ -32,36 +32,28 @@ from streamlit_widget_auxiliary import get_visualizer, send_graph_to_visualizer
 
 full_crag, rewards, motor = set_criteria_and_crag()
 # build and cache constant objects
-graph_managers, optimization_builder, visualization_builder, crag, workspace_trajectory, ground_symmetric_step1, ground_symmetric_step2, ground_symmetric_step3, central_vertical, left_vertical, right_vertical = build_constant_objects()
-trajectories = {"ground_symmetric_step1": ground_symmetric_step1,
-                "ground_symmetric_step2": ground_symmetric_step2,
-                "ground_symmetric_step3": ground_symmetric_step3,
-                "central_vertical": central_vertical,
-                "left_vertical": left_vertical,
-                "right_vertical": right_vertical}
-# set widget title
-st.title("Mechanical linkage mechanism evaluation")
+graph_managers, optimization_builder, visualization_builder, crag, reward_dict = build_constant_objects()
+
+st.title("Оценка рычажных механизмов")
 # create gm variable that will be used to store the current graph manager and set it to be update for a session
 if 'gm' not in st.session_state:
     st.session_state.gm = get_preset_by_index_with_bounds(-1)
     # the session variable for chosen topology, it gets a value after topology confirmation button is clicked
     st.session_state.stage = 'topology_choice'
-    st.session_state.trajectory_choice = False
+    # st.session_state.trajectory_choice = False
     st.session_state.run_simulation_flag = False
 
 
 def confirm_topology():
     st.session_state.stage = 'joint_point_choice'
-    st.session_state.gm = deepcopy(
-        graph_managers[st.session_state.topology_choice])
+    st.session_state.gm = deepcopy(graph_managers[st.session_state.topology_choice])
 
 
 # the radio button and confirm button are only visible until the topology is selected
 if st.session_state.stage == 'topology_choice':
     with st.sidebar:
-        st.radio(label="Select topology:", options=graph_managers.keys(),
-                 index=0, key='topology_choice')
-        st.button(label='Confirm topology', key='confirm_topology',
+        st.radio(label="Выбор топологии рычажного механизма:", options=graph_managers.keys(), index=0, key='topology_choice')
+        st.button(label='Подтвердить выбор топологии', key='confirm_topology',
                   on_click=confirm_topology)
 
     if st.session_state.topology_choice:
@@ -71,14 +63,15 @@ if st.session_state.stage == 'topology_choice':
     values = gm.generate_central_from_mutation_range()
     graph = st.session_state.gm.get_graph(values)
     send_graph_to_visualizer(graph, visualization_builder)
+    # send_graph_to_visualizer(graph, optimization_builder)
     col_1, col_2 = st.columns(2, gap="medium")
     with col_1:
-        st.header("Graph representation")
-        draw_joint_point(graph, draw_labels=False)
+        st.header("Граф выбранной топологии")
+        draw_joint_point(graph, labels=2)
         plt.gcf().set_size_inches(4, 4)
         st.pyplot(plt.gcf(), clear_figure=True)
     with col_2:
-        st.header("Robot visualization")
+        st.header("Визуализация")
         components.iframe(get_visualizer(visualization_builder).viewer.url(), width=400,
                           height=400, scrolling=True)
 
@@ -149,36 +142,41 @@ def calculate_and_display_rewards(trajectory, reward_mask):
                     label="", value="The trajectory is not feasible, please choose a trajectory within the workspace")
                 break
 
-
+# choose the mechanism for optimization
 if st.session_state.stage == 'joint_point_choice':
+    st.text('Установите необходимые положения для координат центров сичленений')
     gm = st.session_state.gm
+    gm.set_mutation_ranges()
     mut_ranges = gm.mutation_ranges
     current_values = []
     # sliders for joint position choice
+    with st.sidebar:
+        st.button(label='Вернуться к выбору топологии', key='return_to_topology_choice',
+                on_click=lambda: st.session_state.__setitem__('stage', 'topology_choice'))
     with st.sidebar.form("jp_coordinates"):
+        st.header('Выбор положений сочленений')
         for key, value in mut_ranges.items():
             slider = st.slider(
                 label=key, min_value=value[0], max_value=value[1], value=(value[1]+value[0])/2)
             current_values.append(slider)
-        st.form_submit_button('Set joint points')
+        st.form_submit_button('Подтвердить выбор механизма')
     with st.sidebar:
-        st.button(label="Get workspace",
+        st.button(label="Рассчитать рабочее пространство",
                   on_click=evaluate_construction, key="get_workspace")
 
     graph = gm.get_graph(current_values)
     send_graph_to_visualizer(graph, visualization_builder)
     col_1, col_2 = st.columns(2, gap="medium")
     with col_1:
-        st.header("Graph representation")
-        draw_joint_point(graph)
+        st.header("Графовое представление механизма")
+        draw_joint_point(graph, labels=1)
         plt.gcf().set_size_inches(4, 4)
         st.pyplot(plt.gcf(), clear_figure=True)
     with col_2:
-        st.header("Robot visualization")
+        st.header("Робот")
         components.iframe(get_visualizer(visualization_builder).viewer.url(), width=400,
                           height=400, scrolling=True)
-    st.button(label='return to topology choice', key='return_to_topology_choice',
-              on_click=lambda: st.session_state.__setitem__('stage', 'topology_choice'))
+
 
 if st.session_state.stage == 'workspace_visualization':
     gm = st.session_state.gm
