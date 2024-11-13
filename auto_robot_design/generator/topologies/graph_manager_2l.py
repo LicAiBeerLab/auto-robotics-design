@@ -276,7 +276,7 @@ class GraphManager2L():
         """
         self.generator_dict[joint].freeze_pos = freeze_pos
 
-    def set_mutation_ranges(self, name=True):
+    def set_mutation_ranges(self):
         """Traverse the generator_dict to get all mutable parameters and their ranges.
         """
         self.mutation_ranges = {}
@@ -291,19 +291,14 @@ class GraphManager2L():
             if value.mutation_type == MutationType.RELATIVE or value.mutation_type == MutationType.RELATIVE_PERCENTAGE:
                 for i, r in enumerate(value.mutation_range):
                     if r is not None and value.freeze_pos[i] is None:
-                        if name:
-                            self.mutation_ranges[key.name +'_'+ axes[i]] = r
-                        else:
-                            self.mutation_ranges[str(idx) +'_'+ axes[i]] = r
+                            self.mutation_ranges[(key, axes[i])] = r
+
             elif value.mutation_type == MutationType.ABSOLUTE:
                 for i, r in enumerate(value.mutation_range):
                     if r is not None and value.freeze_pos[i] is None:
-                        if name:
-                            self.mutation_ranges[key.name+'_'+axes[i]] = (
+                        self.mutation_ranges[(key, axes[i])] = (
                                 r[0]+value.initial_coordinate[i], r[1]+value.initial_coordinate[i])
-                        else:
-                            self.mutation_ranges[str(idx)+'_'+axes[i]] = (
-                                r[0]+value.initial_coordinate[i], r[1]+value.initial_coordinate[i])
+
     def generate_random_from_mutation_range(self):
         """Sample random values from the mutation ranges.
 

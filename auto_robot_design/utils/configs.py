@@ -20,6 +20,14 @@ import os
 from pathlib import Path
 
 
+def is_in_subdirectory(file_path, current_directory):
+    # Resolve both paths to ensure they are absolute and account for symlinks
+    file_path = Path(file_path).resolve()
+    current_directory = Path(current_directory).resolve()
+    
+    # Check if file_path is in a subdirectory of current_directory
+    return file_path.is_relative_to(current_directory)
+
 def get_mesh_builder(jupyter=True):
     thickness = MIT_CHEETAH_PARAMS_DICT["thickness"]
     actuator = MIT_CHEETAH_PARAMS_DICT["actuator"]
@@ -27,13 +35,13 @@ def get_mesh_builder(jupyter=True):
     body_density = MIT_CHEETAH_PARAMS_DICT["body_density"]
 
     cwd = Path.cwd()
-
-    if str(Path.cwd()).split('/')[-1] == 'auto-robotics-design':
+    path = 'mesh/body.stl'
+    if is_in_subdirectory(path, cwd):
         body_path = str(Path.joinpath(Path.cwd(), Path('mesh/body.stl')))
         whell_path = str(Path.joinpath(Path.cwd(), Path('mesh/wheel_small.stl')))
     else:
         p = 0 
-        while str(Path.cwd().parents[p]).split('/')!= 'auto-robotics-design':
+        while not is_in_subdirectory(path, Path.cwd().parents[p]):
             p+=1
         body_path = str(Path.joinpath(Path.cwd().parents[p], Path('mesh/body.stl')))
         whell_path = str(Path.joinpath(Path.cwd().parents[p], Path('mesh/wheel_small.stl')))
@@ -124,7 +132,7 @@ def get_standard_crag(open_loop=False):
 
 def get_standard_rewards():
     reward_dict = {}
-    reward_dict['mass'] = MassReward(mass_key='MASS')
+    # reward_dict['mass'] = MassReward(mass_key='MASS')
     reward_dict['actuated_inertia_matrix'] = ActuatedMassReward(
         mass_key='Actuated_Mass', reachability_key="is_reach")
     reward_dict['z_imf'] = TrajectoryIMFReward(

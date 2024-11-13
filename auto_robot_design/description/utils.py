@@ -158,7 +158,7 @@ def draw_links(kinematic_graph, JP_graph: nx.Graph):
         nx.draw(sub_graph_l, pos, **options)
         plt.text(pos_name[0],pos_name[1], name_link, fontsize=15)
 
-def draw_joint_point(graph: nx.Graph, labels=0, draw_legend=True):
+def draw_joint_point(graph: nx.Graph, labels=0, draw_legend=True, draw_lines=False):
     pos = get_pos(graph)
     G_pos = np.array(
         list(
@@ -234,13 +234,31 @@ def draw_joint_point(graph: nx.Graph, labels=0, draw_legend=True):
 
         )
     plt.plot(G_pos[:,0], G_pos[:,1], "ok", label="Ground")
+    plt.axis("equal")
+    
+    import matplotlib.ticker as ticker
+    if draw_lines:
+        # plt.gca().set_axis_on()
+        plt.gca().set_title('JP graph')
+        plt.gca().set_ylabel('z [m]')
+        # ax.yaxis.set_major_locator(ticker.MultipleLocator(0.1))
+        # ax.yaxis.set_minor_locator(ticker.MultipleLocator(0.05))
+        # plt.gca().set_yticks(np.arange(-1,1,0.05))
+        # plt.gca().set_xticks(np.arange(-0.4,0.4,0.05))
+        # plt.yticks(np.arange(-1,1,0.05))
+        
+        # plt.axhline(-0.4, color='black', linewidth=0.8)
+        # plt.axvline(0., color='black', linewidth=0.8)
+
+        
+   
+    # plt.axis('on')
     if EE_pos.size != 0:
         plt.plot(EE_pos[:,0], EE_pos[:,1], "ob", label="EndEffector")
     plt.plot(active_j_pos[:,0], active_j_pos[:,1], "og",
              markersize=20, 
              fillstyle="none", label="Active")
     if draw_legend: plt.legend()
-    plt.axis("equal")
 
 
 def draw_kinematic_graph(graph: nx.Graph):
