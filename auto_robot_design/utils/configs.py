@@ -16,40 +16,70 @@ from auto_robot_design.description.mesh_builder.mesh_builder import (
     MeshBuilder,
     jps_graph2pinocchio_meshes_robot,
 )
+from auto_robot_design.description.mesh_builder.urdf_creater import(
+    create_mesh_manipulator_base
+)
+from auto_robot_design.description.actuators import TMotor_AK60_6
 import os
 from pathlib import Path
 
 
-def get_mesh_builder(jupyter=True):
+def get_mesh_builder(jupyter=True, manipulation=False):
     thickness = MIT_CHEETAH_PARAMS_DICT["thickness"]
     actuator = MIT_CHEETAH_PARAMS_DICT["actuator"]
     density = MIT_CHEETAH_PARAMS_DICT["density"]
     body_density = MIT_CHEETAH_PARAMS_DICT["body_density"]
 
-    cwd = Path.cwd()
+    if manipulation:
+        cwd = Path.cwd()
 
-    if str(Path.cwd()).split('/')[-1] == 'auto-robotics-design':
-        body_path = str(Path.joinpath(Path.cwd(), Path('mesh/body.stl')))
-        whell_path = str(Path.joinpath(Path.cwd(), Path('mesh/wheel_small.stl')))
+        if str(Path.cwd()).split('/')[-1] == 'auto-robotics-design':
+            uhvat_path = str(Path.joinpath(Path.cwd(), Path('mesh/uhvat.stl')))
+        else:
+            p = 0 
+            while str(Path.cwd().parents[p]).split('/')!= 'auto-robotics-design':
+                p+=1
+            uhvat_path = str(Path.joinpath(Path.cwd().parents[p], Path('mesh/uhvat.stl')))
+        predefined_mesh = {"G": create_mesh_manipulator_base, "EE": uhvat_path}
+
+        actuator = TMotor_AK60_6()
+        mesh_creator = MeshCreator(predefined_mesh)
+        urdf_creator = URDFMeshCreator()
+        mesh_creator.height_scaler = mesh_creator.MANIPULATOR_HEIGHT_SCALER
+        mesh_creator.radius_scaler = mesh_creator.MANIPULATOR_RADIUS_SCALER
+        builder = MeshBuilder(urdf_creator,
+                            mesh_creator,
+                            density={"default": density, "G": density},
+                            thickness={"default": 0.01},
+                            actuator={"default": actuator},
+                            size_ground=np.array(
+                                [0.1,0.1,0.1]),
+                            )
     else:
-        p = 0 
-        while str(Path.cwd().parents[p]).split('/')!= 'auto-robotics-design':
-            p+=1
-        body_path = str(Path.joinpath(Path.cwd().parents[p], Path('mesh/body.stl')))
-        whell_path = str(Path.joinpath(Path.cwd().parents[p], Path('mesh/wheel_small.stl')))
+        cwd = Path.cwd()
 
-    predefined_mesh = {"G": body_path, "EE": whell_path}
-    mesh_creator = MeshCreator(predefined_mesh)
-    urdf_creator = URDFMeshCreator()
-    builder = MeshBuilder(
-        urdf_creator,
-        mesh_creator,
-        density={"default": density, "G": body_density},
-        thickness={"default": thickness, "EE": 0.003},
-        actuator={"default": actuator},
-        size_ground=np.array(MIT_CHEETAH_PARAMS_DICT["size_ground"]),
-        offset_ground=MIT_CHEETAH_PARAMS_DICT["offset_ground_rl"],
-    )
+        if str(Path.cwd()).split('/')[-1] == 'auto-robotics-design':
+            body_path = str(Path.joinpath(Path.cwd(), Path('mesh/body.stl')))
+            whell_path = str(Path.joinpath(Path.cwd(), Path('mesh/wheel_small.stl')))
+        else:
+            p = 0 
+            while str(Path.cwd().parents[p]).split('/')!= 'auto-robotics-design':
+                p+=1
+            body_path = str(Path.joinpath(Path.cwd().parents[p], Path('mesh/body.stl')))
+            whell_path = str(Path.joinpath(Path.cwd().parents[p], Path('mesh/wheel_small.stl')))
+
+        predefined_mesh = {"G": body_path, "EE": whell_path}
+        mesh_creator = MeshCreator(predefined_mesh)
+        urdf_creator = URDFMeshCreator()
+        builder = MeshBuilder(
+            urdf_creator,
+            mesh_creator,
+            density={"default": density, "G": body_density},
+            thickness={"default": thickness, "EE": 0.003},
+            actuator={"default": actuator},
+            size_ground=np.array(MIT_CHEETAH_PARAMS_DICT["size_ground"]),
+            offset_ground=MIT_CHEETAH_PARAMS_DICT["offset_ground_rl"],
+        )
     return builder
 
 
