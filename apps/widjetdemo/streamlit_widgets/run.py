@@ -18,11 +18,11 @@ if __name__ == "__main__":
     runner = StarmapParallelization(pool.starmap)
     population_size = 64
     n_generations = 10
-    graph_manager = data.graph_manager
-    builder = data.optimization_builder
-    reward_manager = data.reward_manager
-    soft_constraint = data.soft_constraint
-    actuator = data.actuator
+    graph_manager = data[0]
+    builder = data[1]
+    reward_manager = data[3]
+    soft_constraint = data[4]
+    actuator = builder.actuator['default']
     num_objs = reward_manager.close_trajectories()
     print(num_objs)
     if num_objs > 1:

@@ -1,72 +1,60 @@
 import subprocess
-from pymoo.decomposition.asf import ASF
-from auto_robot_design.optimization.optimizer import PymooOptimizer
-from auto_robot_design.optimization.saver import load_checkpoint
-from auto_robot_design.optimization.problems import MultiCriteriaProblem, SingleCriterionProblem
-from copy import deepcopy
 import time
-import os
-import streamlit as st
-import numpy as np
-import streamlit.components.v1 as components
-import matplotlib.pyplot as plt
-from forward_init import add_trajectory_to_vis, build_constant_objects, set_criteria_and_crag, OptimizationData
-from auto_robot_design.generator.topologies.bounds_preset import get_preset_by_index_with_bounds
-from auto_robot_design.description.utils import draw_joint_point
-import pinocchio as pin
-import meshcat
-from auto_robot_design.description.mesh_builder.mesh_builder import (
-    MeshBuilder,
-    jps_graph2pinocchio_meshes_robot,
-)
-from auto_robot_design.generator.topologies.graph_manager_2l import GraphManager2L, plot_2d_bounds, MutationType
+from copy import deepcopy
+
 import dill
-from auto_robot_design.motion_planning.trajectory_ik_manager import TrajectoryIKManager
-from auto_robot_design.pinokla.default_traj import (
-    add_auxilary_points_to_trajectory,
-    convert_x_y_to_6d_traj_xz,
-    get_vertical_trajectory,
-    create_simple_step_trajectory,
-    get_workspace_trajectory,
-)
-from pinocchio.visualize import MeshcatVisualizer
-from auto_robot_design.motion_planning.bfs_ws import Workspace, BreadthFirstSearchPlanner
-from auto_robot_design.description.builder import (
-    ParametrizedBuilder, URDFLinkCreater3DConstraints,
-    jps_graph2pinocchio_robot_3d_constraints,
-)
-from auto_robot_design.optimization.rewards.reward_base import PositioningConstrain, PositioningErrorCalculator, RewardManager
+import matplotlib.pyplot as plt
+import numpy as np
+import pinocchio as pin
+import streamlit as st
+import streamlit.components.v1 as components
+from forward_init import (add_trajectory_to_vis, build_constant_objects,
+                          get_russian_reward_description)
+from pymoo.decomposition.asf import ASF
 from streamlit_widget_auxiliary import get_visualizer, send_graph_to_visualizer
 
-full_crag, rewards, motor = set_criteria_and_crag()
-# build and cache constant objects
-graph_managers, optimization_builder, visualization_builder, crag, workspace_trajectory, ground_symmetric_step1, ground_symmetric_step2, ground_symmetric_step3, central_vertical, left_vertical, right_vertical = build_constant_objects()
-trajectories = {"ground_symmetric_step1": ground_symmetric_step1,
-                "ground_symmetric_step2": ground_symmetric_step2,
-                "ground_symmetric_step3": ground_symmetric_step3,
-                "central_vertical": central_vertical,
-                "left_vertical": left_vertical,
-                "right_vertical": right_vertical}
+from auto_robot_design.description.builder import (jps_graph2pinocchio_robot_3d_constraints)
+from auto_robot_design.description.mesh_builder.mesh_builder import (
+    MeshBuilder, jps_graph2pinocchio_meshes_robot)
+from auto_robot_design.description.utils import draw_joint_point
+from auto_robot_design.generator.topologies.bounds_preset import \
+    get_preset_by_index_with_bounds
+from auto_robot_design.generator.topologies.graph_manager_2l import (
+    GraphManager2L, MutationType, plot_2d_bounds)
+from auto_robot_design.motion_planning.bfs_ws import BreadthFirstSearchPlanner
+from auto_robot_design.motion_planning.trajectory_ik_manager import \
+    TrajectoryIKManager
+from auto_robot_design.optimization.optimizer import PymooOptimizer
+from auto_robot_design.optimization.problems import (MultiCriteriaProblem,
+                                                     SingleCriterionProblem)
+from auto_robot_design.optimization.rewards.reward_base import (
+    PositioningConstrain, PositioningErrorCalculator, RewardManager)
+from auto_robot_design.optimization.saver import load_checkpoint
+from auto_robot_design.pinokla.default_traj import (
+    add_auxilary_points_to_trajectory, convert_x_y_to_6d_traj_xz,
+    create_simple_step_trajectory, get_vertical_trajectory,
+    get_workspace_trajectory)
+
+graph_managers, optimization_builder, visualization_builder, crag, reward_dict = build_constant_objects()
+reward_description = get_russian_reward_description()
 
 
-st.title("Mechanical linkage mechanism optimization")
+st.title("Оптимизация рычажных механизмов")
 
 # gm is the first value that gets set. List of all values that should be update for each session
 if 'gm' not in st.session_state:
     st.session_state.gm = get_preset_by_index_with_bounds(-1)
-    st.session_state.gm_clone = None
-    st.session_state.run_simulation_flag = False
-    st.session_state.reward_manager = RewardManager(crag=full_crag)
-    st.session_state.trajectory_idx = 0
-    st.session_state.stage = "topology_choice"
-    st.session_state.trajectory_groups = []
-    st.session_state.trajectory_buffer = {}
+    st.session_state.reward_manager = RewardManager(crag=crag)
     error_calculator = PositioningErrorCalculator(jacobian_key="Manip_Jacobian")
     st.session_state.soft_constraint = PositioningConstrain(
         error_calculator=error_calculator, points=[])
+    st.session_state.stage = "topology_choice"
+    st.session_state.gm_clone = None
+    st.session_state.run_simulation_flag = False
+    st.session_state.trajectory_idx = 0
+    st.session_state.trajectory_groups = []
+    st.session_state.trajectory_buffer = {}
     st.session_state.opt_rewards_dict = {}
-
-# top columns that usually show the chosen topology in both graph and mesh forms
 
 
 def confirm_topology():
@@ -75,18 +63,22 @@ def confirm_topology():
     # create a deep copy of the graph manager for further updates
     st.session_state.gm_clone = deepcopy(st.session_state.gm)
 
-
 def topology_choice():
     """Update the graph manager based on the selected topology."""
     st.session_state.gm = graph_managers[st.session_state.topology_choice]
 
-
 # the radio button and confirm button are only visible until the topology is selected
 if st.session_state.stage == "topology_choice":
+    some_text = """Данный сценарий предназначен для оптимизации рычажных механизмов.
+Первый шаг - выбор структуры механизма для оптимизации. Структура определяет звенья 
+и сочленения механизма. Рёбра графа соответствуют твердотельным звеньям, 
+а вершины - сочленениям и концевому эффектору.
+Предлагается выбор из девяти структур, основанных на двухзвенной главной цепи."""
+    st.text(some_text)
     with st.sidebar:
-        st.radio(label="Select topology:", options=graph_managers.keys(),
+        st.radio(label="Выбор топологии для оптимизации:", options=graph_managers.keys(),
                  index=None, key='topology_choice', on_change=topology_choice)
-        st.button(label='Confirm topology', key='confirm_topology',
+        st.button(label='Подтвердить выбор топологии', key='confirm_topology',
                   on_click=confirm_topology)
 
     gm = st.session_state.gm
@@ -95,12 +87,12 @@ if st.session_state.stage == "topology_choice":
     send_graph_to_visualizer(graph, visualization_builder)
     col_1, col_2 = st.columns(2, gap="medium")
     with col_1:
-        st.header("Graph representation")
-        draw_joint_point(graph)
+        st.header("Графовое представление выбранной топологии")
+        draw_joint_point(graph, labels=2)
         plt.gcf().set_size_inches(4, 4)
         st.pyplot(plt.gcf(), clear_figure=True)
     with col_2:
-        st.header("Robot visualization")
+        st.header("Визуализация робота")
         components.iframe(get_visualizer(visualization_builder).viewer.url(), width=400,
                           height=400, scrolling=True)
 
@@ -121,7 +113,6 @@ def confirm_ranges():
     for key, value in gm.generator_dict.items():
         print(gm.generator_dict[key].freeze_pos)
     gm_clone.set_mutation_ranges()
-    # print(gm.mutation_ranges)
 
 
 def return_to_topology():
@@ -136,10 +127,11 @@ if st.session_state.stage == "ranges_choice":
     initial_generator_info = st.session_state.gm.generator_dict
     gm = st.session_state.gm_clone
     generator_info = gm.generator_dict
-
+    graph = gm.graph
+    labels = {n:i for i,n in enumerate(graph.nodes())}
     with st.sidebar:
         # return button
-        st.button(label="Return to topology choice",
+        st.button(label="Назад к выбору топологии",
                   key="return_to_topology", on_click=return_to_topology)
         for jp, gen_info in generator_info.items():
             for i, mut_range in enumerate(gen_info.mutation_range):
@@ -148,17 +140,17 @@ if st.session_state.stage == "ranges_choice":
                     continue
                 # create a toggle for each moveable axis. If toggle is off the coordinate is fixed to the value and should be freezed
                 if i == 0:
-                    name = f"{jp.name}_x"
+                    name = f"{labels[jp]}_x"
                     current_on = st.toggle(
-                        f"Activate feature "+name, value=True)
+                        f"Отключить оптимизацию "+name, value=True)
                 elif i == 1:
-                    name = f"{jp.name}_y"
+                    name = f"{labels[jp]}_y"
                     current_on = st.toggle(
-                        f"Activate feature "+name, value=True)
+                        f"Отключить оптимизацию "+name, value=True)
                 else:
-                    name = f"{jp.name}_z"
+                    name = f"{labels[jp]}_z"
                     current_on = st.toggle(
-                        f"Activate feature "+name, value=True)
+                        f"Отключить оптимизацию "+name, value=True)
                 # initial values constrain slider range. The same jp can be used in both dicts because of the hash function type, joint copies have the same hash
                 init_values = initial_generator_info[jp].mutation_range[i]
                 if current_on:
@@ -171,19 +163,24 @@ if st.session_state.stage == "ranges_choice":
                     gen_info.mutation_range[i] = (
                         current_value, current_value)
 
-        st.button(label="Confirm optimization ranges",
+        st.button(label="подтвердить диапазоны оптимизации",
                   key='ranges_confirm', on_click=confirm_ranges)
     # here should be some kind of visualization for ranges
     gm.set_mutation_ranges()
     center = gm.generate_central_from_mutation_range()
     graph = gm.get_graph(center)
-    draw_joint_point(graph)
+    draw_joint_point(graph, labels=1)
     # here gm is a clone
-    plot_2d_bounds(gm)
+    # plot_2d_bounds(gm)
     st.pyplot(plt.gcf(), clear_figure=True)
     # this way we set ranges after each step, but without freezing joints
-    
-    st.write(gm.mutation_ranges)
+    some_text = """Диапазоны оптимизации определяют границы пространства поиска механизмов в процессе 
+оптимизации. x - горизонтальные координаты, z - вертикальные координаты.
+Отключенные координаты не будут участвовать в оптимизации и будут иметь постоянные 
+значения во всех механизмах."""
+    st.text(some_text)
+    # st.text("x - горизонтальные координаты, z - вертикальные координаты")
+
 
 
 def add_trajectory(trajectory, idx):
@@ -214,11 +211,11 @@ def add_to_group(trajectory, idx):
 
 #     st.session_state.rerun = True
 
-
 def start_optimization(rewards_tf):
     """Start the optimization process."""
     # print(st.session_state.trajectory_groups)
     st.session_state.stage = "optimization"
+    #auxilary parameter just to rerun once in before optimization
     st.session_state.rerun = True
     # rewards_tf = trajectories
     # add all trajectories to the reward manager and soft constraint
@@ -226,6 +223,7 @@ def start_optimization(rewards_tf):
         st.session_state.reward_manager.add_trajectory(trj, idx_trj)
         st.session_state.soft_constraint.add_points_set(trj)
     # add all rewards to the reward manager according to trajectory groups
+    rewards = list(reward_dict.values())
     for trj_list_idx, trajectory_list in enumerate(st.session_state.trajectory_groups):
         for trj in trajectory_list:
             for r_idx, r in enumerate(rewards_tf[trj_list_idx]):
@@ -240,8 +238,7 @@ def start_optimization(rewards_tf):
     reward_manager = deepcopy(st.session_state.reward_manager)
     sf = deepcopy(st.session_state.soft_constraint)
     builder = deepcopy(optimization_builder)
-    data = OptimizationData(graph_manager, builder,
-                            full_crag, reward_manager, sf, motor)
+    data = (graph_manager, builder, crag, reward_manager, sf)
     with open("./results/buffer/data.pkl", "wb+") as f:
         dill.dump(data, f)
 
@@ -253,7 +250,7 @@ def return_to_ranges(reset=False):
         st.session_state.trajectory_groups = []
         st.session_state.trajectory_buffer = {}
         st.session_state.trajectory_idx = 0
-        st.session_state.reward_manager = RewardManager(crag=full_crag)
+        st.session_state.reward_manager = RewardManager(crag=crag)
 
     # when ranges are set we start to choose the reward+trajectory
     # each trajectory should be added to the manager
@@ -262,16 +259,16 @@ if st.session_state.stage == "trajectory_choice":
     graph = st.session_state.gm.graph
     trajectory = None
     with st.sidebar:
-        st.button(label="Return to ranges choice",
+        st.button(label="Назад к выбору диапазонов оптимизации",
                   key="return_to_ranges", on_click=return_to_ranges)
-        st.button(label='return to range choice and reset',
+        st.button(label='Назад к выбору диапазонов оптимизации и сброс диапазонов',
                   key='return_to_ranges_reset', on_click=return_to_ranges, args=[True])
         # currently only choice between predefined parametrized trajectories
-        trajectory_type = st.radio(label='Select trajectory type', options=[
-            "vertical", "step"], index=1, key="trajectory_type")
-        if trajectory_type == "vertical":
+        trajectory_type = st.radio(label='Выберите тип траектории', options=[
+            "вертикальная", "шаг"], index=1, key="trajectory_type")
+        if trajectory_type == "вертикальная":
             height = st.slider(
-                label="height", min_value=0.02, max_value=0.3, value=0.1)
+                label="высота", min_value=0.02, max_value=0.3, value=0.1)
             x = st.slider(label="x", min_value=-0.3,
                           max_value=0.3, value=0.0)
             z = st.slider(label="z", min_value=-0.4,
@@ -279,14 +276,14 @@ if st.session_state.stage == "trajectory_choice":
             trajectory = convert_x_y_to_6d_traj_xz(
                 *add_auxilary_points_to_trajectory(get_vertical_trajectory(z, height, x, 100)))
 
-        if trajectory_type == "step":
+        if trajectory_type == "шаг":
             start_x = st.slider(
-                label="start_x", min_value=-0.3, max_value=0.3, value=-0.14)
+                label="х координата начала", min_value=-0.3, max_value=0.3, value=-0.14)
             start_z = st.slider(
-                label="start_z", min_value=-0.4, max_value=-0.2, value=-0.34)
+                label="z координата начала", min_value=-0.4, max_value=-0.2, value=-0.34)
             height = st.slider(
-                label="height", min_value=0.02, max_value=0.3, value=0.1)
-            width = st.slider(label="width", min_value=0.1,
+                label="высота", min_value=0.02, max_value=0.3, value=0.1)
+            width = st.slider(label="ширина", min_value=0.1,
                               max_value=0.6, value=0.28)
             trajectory = convert_x_y_to_6d_traj_xz(
                 *add_auxilary_points_to_trajectory(
@@ -300,21 +297,24 @@ if st.session_state.stage == "trajectory_choice":
             )
         # no more than 2 groups for now
         if len(st.session_state.trajectory_groups) < 2:
-            st.button(label="Add trajectory", key="add_trajectory", args=(
+            st.button(label="Добавить траекторию к новой группе", key="add_trajectory", args=(
                 trajectory, st.session_state.trajectory_idx), on_click=add_trajectory)
         # if there is at leas one group we can add to group or remove group
         if st.session_state.trajectory_groups:
-            st.button(label="Add to group", key="add_to_group", args=[
+            st.button(label="Добавить траекторию к текущей группе", key="add_to_group", args=[
                 trajectory, st.session_state.trajectory_idx], on_click=add_to_group)
-            st.button(label="Remove group", key="remove_group",
+            st.button(label="Удалить текущую группу", key="remove_group",
                       on_click=remove_trajectory_group)
         # for each reward trajectories should be assigned
     # top visualization of current trajectory
-    st.write("Current trajectory visualization:")
+    some_text = """Траектория определяет множество точек в котором будут рассчитаны выбранные критерии.
+Если критерий нужно рассчитать вдоль более чем одной траектории необходимо создать группу траекторий.
+"""
+    st.write(some_text)
     col_1, col_2 = st.columns(2, gap="medium")
     with col_1:
         st.header("Graph representation")
-        draw_joint_point(graph)
+        draw_joint_point(graph,labels=2, draw_legend=False)
         plt.gcf().set_size_inches(4, 4)
         plt.plot(trajectory[:, 0], trajectory[:, 2])
         st.pyplot(plt.gcf(), clear_figure=True)
@@ -325,7 +325,7 @@ if st.session_state.stage == "trajectory_choice":
         components.iframe(get_visualizer(visualization_builder).viewer.url(), width=400,
                           height=400, scrolling=True)
 
-    trajectories = [[0]*len(rewards)]*len(st.session_state.trajectory_groups)
+    trajectories = [[0]*len(list(reward_dict.keys()))]*len(st.session_state.trajectory_groups)
     if st.session_state.trajectory_groups:
         st.write("Select rewards for each trajectory group:")
     rewards_counter = []
@@ -333,24 +333,24 @@ if st.session_state.stage == "trajectory_choice":
         st.write(f"Group {i} trajectories and rewards:")
         cols = st.columns(2)
         with cols[0]:
-            st.header("Graph and trajectories:")
-            draw_joint_point(graph)
+            st.header("Граф и выбранные траектории:")
+            draw_joint_point(graph, labels=2, draw_legend=False)
             for idx in st.session_state.trajectory_groups[i]:
                 current_trajectory = st.session_state.trajectory_buffer[idx]
                 plt.plot(current_trajectory[:, 0], current_trajectory[:, 2])
             st.pyplot(plt.gcf(), clear_figure=True)
         with cols[1]:
             st.header("Rewards:")
-            reward_idxs = [0]*len(rewards)
-            for reward_idx, reward in enumerate(rewards):
+            reward_idxs = [0]*len(list(reward_dict.keys()))
+            for reward_idx, reward in enumerate(reward_dict.items()):
                 current_checkbox = st.checkbox(
-                    label=reward.reward_name, value=False, key=reward.reward_name+str(i))
+                    label=reward_description[reward[0]][0], value=False, key=reward[1].reward_name+str(i), help=reward_description[reward[0]][1])
                 reward_idxs[reward_idx] = current_checkbox
             trajectories[i] = reward_idxs
         rewards_counter.append(sum(reward_idxs))
     # we only allow to start optimization if there is at least one group and all groups have at least one reward
     if st.session_state.trajectory_groups and all([r > 0 for r in rewards_counter]):
-        st.button(label="Start optimization",
+        st.button(label="Старт оптимизации",
                   key="start_optimization", on_click=start_optimization, args=[trajectories])
 
 
@@ -368,7 +368,7 @@ if st.session_state.stage == "optimization":
     col_1, col_2 = st.columns(2, gap="medium")
     with col_1:
         st.header("Graph representation")
-        draw_joint_point(graph)
+        draw_joint_point(graph, labels=2, draw_legend=False)
         plt.gcf().set_size_inches(4, 4)
         st.pyplot(plt.gcf(), clear_figure=True)
     with col_2:
@@ -376,19 +376,20 @@ if st.session_state.stage == "optimization":
         send_graph_to_visualizer(graph, visualization_builder)
         components.iframe(get_visualizer(visualization_builder).viewer.url(), width=400,
                           height=400, scrolling=True)
-    # this is a long process that will block the streamlit app
-    # st.button(label='click')
-    # time.sleep(10)
-    # with st.status("Optimization..."):
-    #     st.write("start the optimization")
-    #     os.system("python apps/widjetdemo/streamlit_widgets/run.py")
+    from pathlib import Path
+    empt = st.empty()
+    with empt:
+        st.image(str(Path('./apps/widjetdemo/loading.gif').absolute()))
     file = open(
         f".\\results\\optimization_widget\\current_results\\out.txt", 'w')
     subprocess.run(
         ['python', "apps/widjetdemo/streamlit_widgets/run.py"], stdout=file)
     file.close()
+
     # the button should appear after the optimization is done
-    st.button(label="Show results", key="show_results", on_click=show_results)
+    with empt:
+        st.button(label="Show results", key="show_results", on_click=show_results)
+    # st.button(label="Show results", key="show_results", on_click=show_results)
 
 
 def run_simulation(**kwargs):
@@ -398,13 +399,13 @@ def run_simulation(**kwargs):
 def calculate_and_display_rewards(graph, trajectory, reward_mask):
     fixed_robot, free_robot = jps_graph2pinocchio_robot_3d_constraints(
         graph, optimization_builder)
-    point_criteria_vector, trajectory_criteria, res_dict_fixed = full_crag.get_criteria_data(
+    point_criteria_vector, trajectory_criteria, res_dict_fixed = crag.get_criteria_data(
         fixed_robot, free_robot, trajectory, viz=None)
     st.session_state.opt_rewards_dict = {}
-    for i, reward in enumerate(rewards):
+    for i, reward in enumerate(reward_dict.values()):
         if reward_mask[i]:
             st.session_state.opt_rewards_dict[reward.reward_name] = str(reward.calculate(
-                point_criteria_vector, trajectory_criteria, res_dict_fixed, Actuator=motor)[0])
+                point_criteria_vector, trajectory_criteria, res_dict_fixed, Actuator=optimization_builder.actuator['default'])[0])
 
 
 if st.session_state.stage == "results":
@@ -418,7 +419,7 @@ if st.session_state.stage == "results":
         optimizer.load_history(selected_directory)
         res = optimizer.run()
         ten_best = np.argsort(np.array(optimizer.history["F"]).flatten())[:11]
-        print(ten_best)
+        # print(ten_best)
 
         idx = st.select_slider(label="best results", options=[
                                1, 2, 3, 4, 5, 6, 7, 8, 9, 10], value=1, help='10 best mechanisms with 1 being the best')
@@ -435,16 +436,16 @@ if st.session_state.stage == "results":
 
             st.button(label='run simulation', key='run_simulation', on_click=run_simulation, kwargs={
                       "graph": graph, "trajectory": trajectory})
-            st.header("Rewards:")
-            reward_idxs = [0]*len(rewards)
-            for reward_idx, reward in enumerate(rewards):
+            st.header("Характеристики:")
+            reward_idxs = [0]*len(list(reward_dict.values()))
+            for reward_idx, reward in enumerate(reward_dict.items()):
                 current_checkbox = st.checkbox(
-                    label=reward.reward_name, value=False, key=reward.reward_name+str(reward_idx), help=reward.__doc__)
+                    label=reward_description[reward[0]][0], value=False, key=reward[1].reward_name+str(reward_idx), help=reward_description[reward[0]][1])
                 reward_idxs[reward_idx] = current_checkbox
         col_1, col_2 = st.columns(2, gap="medium")
         with col_1:
             st.header("Graph representation")
-            draw_joint_point(graph)
+            draw_joint_point(graph,labels=2, draw_legend=False)
             plt.plot(trajectory[:, 0], trajectory[:, 2])
             plt.gcf().set_size_inches(4, 4)
             st.pyplot(plt.gcf(), clear_figure=True)
@@ -464,6 +465,7 @@ if st.session_state.stage == "results":
                 st.text(f"{key}: {value}")
 
     if n_obj == 2:
+        
         problem = MultiCriteriaProblem.load(selected_directory)
         checkpoint = load_checkpoint(selected_directory)
         optimizer = PymooOptimizer(problem, checkpoint)
@@ -488,22 +490,22 @@ if st.session_state.stage == "results":
             trajectory = trajectories[trj_idx]
             st.button(label='run simulation', key='run_simulation', on_click=run_simulation, kwargs={
                       "graph": graph, "trajectory": trajectory})
-            st.header("Rewards:")
-            reward_idxs = [0]*len(rewards)
-            for reward_idx, reward in enumerate(rewards):
+            st.header("Характеристики:")
+            reward_idxs = [0]*len(list(reward_dict.values()))
+            for reward_idx, reward in enumerate(reward_dict.items()):
                 current_checkbox = st.checkbox(
-                    label=reward.reward_name, value=False, key=reward.reward_name+str(reward_idx), help=reward.__doc__)
+                    label=reward_description[reward[0]][0], value=False, key=reward[1].reward_name+str(reward_idx), help=reward_description[reward[0]][1])
                 reward_idxs[reward_idx] = current_checkbox
         send_graph_to_visualizer(graph, visualization_builder)
         col_1, col_2 = st.columns(2, gap="medium")
         with col_1:
-            st.header("Graph representation")
-            draw_joint_point(graph)
+            st.header("Графовое представление")
+            draw_joint_point(graph, labels=2, draw_legend=False)
             plt.plot(trajectory[:, 0], trajectory[:, 2])
             plt.gcf().set_size_inches(4, 4)
             st.pyplot(plt.gcf(), clear_figure=True)
         with col_2:
-            st.header("Robot visualization")
+            st.header("Робот")
             add_trajectory_to_vis(get_visualizer(
                 visualization_builder), trajectory)
             components.iframe(get_visualizer(visualization_builder).viewer.url(), width=400,
