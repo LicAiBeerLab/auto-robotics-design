@@ -7,12 +7,11 @@ import pinocchio as pin
 import streamlit as st
 import streamlit.components.v1 as components
 from forward_init import add_trajectory_to_vis, build_constant_objects, get_russian_reward_description
-from pinocchio.visualize import MeshcatVisualizer
 from streamlit_widget_auxiliary import get_visualizer, send_graph_to_visualizer
 
 from auto_robot_design.description.builder import jps_graph2pinocchio_robot_3d_constraints
 from auto_robot_design.description.mesh_builder.mesh_builder import (
-    MeshBuilder, jps_graph2pinocchio_meshes_robot)
+    jps_graph2pinocchio_meshes_robot)
 from auto_robot_design.description.utils import draw_joint_point
 from auto_robot_design.generator.topologies.bounds_preset import \
     get_preset_by_index_with_bounds
@@ -55,11 +54,10 @@ if st.session_state.stage == 'topology_choice':
     values = gm.generate_central_from_mutation_range()
     graph = st.session_state.gm.get_graph(values)
     send_graph_to_visualizer(graph, visualization_builder)
-    # send_graph_to_visualizer(graph, optimization_builder)
     col_1, col_2 = st.columns(2, gap="medium")
     with col_1:
         st.header("Граф выбранной топологии")
-        draw_joint_point(graph, labels=2,draw_lines=True)
+        draw_joint_point(graph, labels=2, draw_lines=True)
         plt.gcf().set_size_inches(4, 4)
         st.pyplot(plt.gcf(), clear_figure=True)
     with col_2:
@@ -159,19 +157,34 @@ def calculate_and_display_rewards(trajectory, reward_mask):
         gm.graph, optimization_builder)
     point_criteria_vector, trajectory_criteria, res_dict_fixed = crag.get_criteria_data(
         fixed_robot, free_robot, trajectory, viz=None)
+    some_text = """ Критерии представлены в виде поточечных значений вдоль траектории. """
+    st.text(some_text)
     for i, reward in enumerate(reward_dict.items()):
         if reward_mask[i]:
             try:
-                st.text(reward_description[reward[0]][0]+":\n   " + str(reward[1].calculate(
-                    point_criteria_vector, trajectory_criteria, res_dict_fixed, Actuator=optimization_builder.actuator['default'])[0]))
+                calculate_result = reward[1].calculate(
+                    point_criteria_vector, trajectory_criteria, res_dict_fixed, Actuator=optimization_builder.actuator['default'])
+                # st.text(reward_description[reward[0]][0]+":\n   " )
+                reward_vector = np.array(calculate_result[1])
+                plt.gcf().set_figheight(2.5)
+                plt.gcf().set_figwidth(2.5)
+                plt.plot(reward_vector)
+                plt.xticks(fontsize=4)
+                plt.yticks(fontsize=4)
+                plt.xlabel('шаг траектории', fontsize=6)
+                plt.ylabel('значение критерия на шаге', fontsize=6)
+                plt.title(reward_description[reward[0]][0], fontsize=8)
+                plt.legend([f'Итоговое значение критерия: {calculate_result[0]:.2f}'], fontsize=4)
+
+                st.pyplot(plt.gcf(), clear_figure=True, use_container_width=False)
             except ValueError:
                 st.text_area(
                     label="", value="Траектория содержит точки за пределами рабочего пространства. Для рассчёта критериев укажите траекторию внутри рабочей области.")
                 break
 
 if st.session_state.stage == 'workspace_visualization':
-    st.text("Синяя область - рабочее пространство механизма\nКрасные точки - недостижимые недостижимая\nВсе критерии рассчитываются вдоль траектории и для успешного рассчёта необходимо,\nчтобы траектория лежала внутри рабочей области.")
-    st.text("Выберите траекторию для оценки критериев")
+    st.text("Жёлтая область - рабочее пространство механизма\nКрасные область - недостижимые точки\nВсе критерии рассчитываются вдоль траектории и для успешного рассчёта необходимо,\nчтобы траектория лежала внутри рабочей области.")
+    st.text("Выберите траекторию для оценки критериев:")
     gm = st.session_state.gm
     graph = gm.graph
     points = st.session_state.points
@@ -184,15 +197,15 @@ if st.session_state.stage == 'workspace_visualization':
     x_1 = x[values == 1]
     y_1 = y[values == 1]
     # # Plot the points
-    plt.plot(x_0, y_0, "xr", markersize=4)
-    plt.plot(x_1, y_1, "xb", markersize=4)
+    plt.plot(x_0, y_0, "sr", markersize=3)
+    plt.plot(x_1, y_1, "sy", markersize=3)
 
     # trajectory setting script
     trajectory = None
     with st.sidebar:
         st.button(label="Вернуться к выбору механизма",key="return_to_joint_point_choice",on_click=lambda: st.session_state.__setitem__('stage', 'joint_point_choice'))
         trajectory_type = st.radio(label='Выберите тип траектории', options=[
-            "vertical", "step"], index=1, key="trajectory_type")
+            "vertical", "step"], index=None, key="trajectory_type")
         if trajectory_type == "vertical":
             height = st.slider(
                 label="height", min_value=0.02, max_value=0.3, value=0.1)
@@ -221,15 +234,16 @@ if st.session_state.stage == 'workspace_visualization':
                     )
                 )
             )
-        st.button(label="Симуляция движения по траектории", key="run_simulation",
-                  on_click=run_simulation)
-        with st.form(key="rewards"):
-            st.header("Критерии")
-            reward_mask = []
-            for key, reward in reward_dict.items():
-                reward_mask.append(st.checkbox(
-                    label=reward_description[key][0], value=False,help=reward_description[key][1]))
-            cr = st.form_submit_button("Рассчитать значения выбранных критериев")
+        if trajectory_type is not None:
+            st.button(label="Симуляция движения по траектории", key="run_simulation",
+                    on_click=run_simulation)
+            with st.form(key="rewards"):
+                st.header("Критерии")
+                reward_mask = []
+                for key, reward in reward_dict.items():
+                    reward_mask.append(st.checkbox(
+                        label=reward_description[key][0], value=False,help=reward_description[key][1]))
+                cr = st.form_submit_button("Рассчитать значения выбранных критериев")
         
 
     col_1, col_2 = st.columns(2, gap="medium")
@@ -237,17 +251,18 @@ if st.session_state.stage == 'workspace_visualization':
         st.header("Графовое представление механизма")
         draw_joint_point(graph, labels=2, draw_legend=False)
         plt.gcf().set_size_inches(6, 6)
-        plt.plot(trajectory[50:, 0], trajectory[50:, 2], 'green', markersize=2)
+        if trajectory_type is not None:
+            plt.plot(trajectory[50:, 0], trajectory[50:, 2], 'green', markersize=2)
         st.pyplot(plt.gcf(), clear_figure=True)
     with col_2:
         st.header("Робот")
-        add_trajectory_to_vis(get_visualizer(
-            visualization_builder), trajectory)
+        if trajectory_type is not None: add_trajectory_to_vis(get_visualizer(visualization_builder), trajectory[50:])
         components.iframe(get_visualizer(visualization_builder).viewer.url(), width=400,
                           height=400, scrolling=True)
 
-    if st.session_state.run_simulation_flag or cr:
-        calculate_and_display_rewards(trajectory, reward_mask)
+    if trajectory_type is not None:
+        if st.session_state.run_simulation_flag or cr:
+            calculate_and_display_rewards(trajectory, reward_mask)
 
     if st.session_state.run_simulation_flag:
         ik_manager = TrajectoryIKManager()
@@ -265,4 +280,3 @@ if st.session_state.stage == 'workspace_visualization':
         get_visualizer(visualization_builder).display(
             pin.neutral(fixed_robot.model))
         st.session_state.run_simulation_flag = False
-
