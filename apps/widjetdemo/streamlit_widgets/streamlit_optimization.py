@@ -110,8 +110,8 @@ def confirm_ranges():
                 current_fp[i] = values[0]
                 gm_clone.freeze_joint(key, current_fp)
 
-    for key, value in gm.generator_dict.items():
-        print(gm.generator_dict[key].freeze_pos)
+    # for key, value in gm.generator_dict.items():
+    #     print(gm.generator_dict[key].freeze_pos)
     gm_clone.set_mutation_ranges()
 
 
@@ -356,6 +356,27 @@ if st.session_state.stage == "trajectory_choice":
 
 def show_results():
     st.session_state.stage = "results"
+    n_obj = st.session_state.reward_manager.close_trajectories()
+    selected_directory = "./results/optimization_widget/current_results"
+    st.session_state.n_obj = n_obj
+    if n_obj == 1:
+        problem = SingleCriterionProblem.load(selected_directory)
+        checkpoint = load_checkpoint(selected_directory)
+        optimizer = PymooOptimizer(problem, checkpoint)
+        optimizer.load_history(selected_directory)
+        res = optimizer.run()
+        st.session_state.optimizer = optimizer
+        st.session_state.problem = problem
+        st.session_state.res = res
+    if n_obj == 2:
+        problem = MultiCriteriaProblem.load(selected_directory)
+        checkpoint = load_checkpoint(selected_directory)
+        optimizer = PymooOptimizer(problem, checkpoint)
+        optimizer.load_history(selected_directory)
+        res = optimizer.run()
+        st.session_state.optimizer = optimizer
+        st.session_state.problem = problem
+        st.session_state.res = res
 
 
 if st.session_state.stage == "optimization":
@@ -396,32 +417,55 @@ def run_simulation(**kwargs):
     st.session_state.run_simulation_flag = True
 
 
+# def calculate_and_display_rewards(graph, trajectory, reward_mask):
+#     fixed_robot, free_robot = jps_graph2pinocchio_robot_3d_constraints(
+#         graph, optimization_builder)
+#     point_criteria_vector, trajectory_criteria, res_dict_fixed = crag.get_criteria_data(
+#         fixed_robot, free_robot, trajectory, viz=None)
+#     st.session_state.opt_rewards_dict = {}
+#     for i, reward in enumerate(reward_dict.values()):
+#         if reward_mask[i]:
+#             st.session_state.opt_rewards_dict[reward.reward_name] = str(reward.calculate(
+#                 point_criteria_vector, trajectory_criteria, res_dict_fixed, Actuator=optimization_builder.actuator['default'])[0])
+
 def calculate_and_display_rewards(graph, trajectory, reward_mask):
-    fixed_robot, free_robot = jps_graph2pinocchio_robot_3d_constraints(
-        graph, optimization_builder)
+    fixed_robot, free_robot = jps_graph2pinocchio_robot_3d_constraints(graph, optimization_builder)
     point_criteria_vector, trajectory_criteria, res_dict_fixed = crag.get_criteria_data(
         fixed_robot, free_robot, trajectory, viz=None)
-    st.session_state.opt_rewards_dict = {}
-    for i, reward in enumerate(reward_dict.values()):
+    some_text = """ Критерии представлены в виде поточечных значений вдоль траектории. """
+    st.text(some_text)
+    for i, reward in enumerate(reward_dict.items()):
         if reward_mask[i]:
-            st.session_state.opt_rewards_dict[reward.reward_name] = str(reward.calculate(
-                point_criteria_vector, trajectory_criteria, res_dict_fixed, Actuator=optimization_builder.actuator['default'])[0])
+            try:
+                calculate_result = reward[1].calculate(
+                    point_criteria_vector, trajectory_criteria, res_dict_fixed, Actuator=optimization_builder.actuator['default'])
+                # st.text(reward_description[reward[0]][0]+":\n   " )
+                reward_vector = np.array(calculate_result[1])
+                plt.gcf().set_figheight(2.5)
+                plt.gcf().set_figwidth(2.5)
+                plt.plot(reward_vector)
+                plt.xticks(fontsize=4)
+                plt.yticks(fontsize=4)
+                plt.xlabel('шаг траектории', fontsize=6)
+                plt.ylabel('значение критерия на шаге', fontsize=6)
+                plt.title(reward_description[reward[0]][0], fontsize=8)
+                plt.legend([f'Итоговое значение критерия: {calculate_result[0]:.2f}'], fontsize=4)
 
+                st.pyplot(plt.gcf(), clear_figure=True, use_container_width=False)
+            except ValueError:
+                st.text_area(
+                    label="", value="Траектория содержит точки за пределами рабочего пространства. Для рассчёта критериев укажите траекторию внутри рабочей области.")
+                break
 
 if st.session_state.stage == "results":
-    n_obj = st.session_state.reward_manager.close_trajectories()
-    selected_directory = "./results/optimization_widget/current_results"
-
+    n_obj = st.session_state.n_obj
     if n_obj == 1:
-        problem = SingleCriterionProblem.load(selected_directory)
-        checkpoint = load_checkpoint(selected_directory)
-        optimizer = PymooOptimizer(problem, checkpoint)
-        optimizer.load_history(selected_directory)
-        res = optimizer.run()
+        optimizer = st.session_state.optimizer
+        problem = st.session_state.problem
         ten_best = np.argsort(np.array(optimizer.history["F"]).flatten())[:11]
         # print(ten_best)
 
-        idx = st.select_slider(label="best results", options=[
+        idx = st.select_slider(label="Лучшие по заданному критерию механизмы:", options=[
                                1, 2, 3, 4, 5, 6, 7, 8, 9, 10], value=1, help='10 best mechanisms with 1 being the best')
         best_id = ten_best[idx]
         best_x = optimizer.history["X"][best_id]
@@ -444,39 +488,35 @@ if st.session_state.stage == "results":
                 reward_idxs[reward_idx] = current_checkbox
         col_1, col_2 = st.columns(2, gap="medium")
         with col_1:
-            st.header("Graph representation")
+            st.header("Графовое представление")
             draw_joint_point(graph,labels=2, draw_legend=False)
             plt.plot(trajectory[:, 0], trajectory[:, 2])
             plt.gcf().set_size_inches(4, 4)
             st.pyplot(plt.gcf(), clear_figure=True)
         with col_2:
-            st.header("Robot visualization")
+            st.header("Робот")
             add_trajectory_to_vis(get_visualizer(
                 visualization_builder), trajectory)
             components.iframe(get_visualizer(visualization_builder).viewer.url(), width=400,
                               height=400, scrolling=True)
 
         with st.sidebar:
-            bc = st.button(label="calculate rewards", key="calculate_rewards",
-                      on_click=calculate_and_display_rewards, args=[graph, trajectory, reward_idxs])
+            bc = st.button(label="Визуализация движения", key="calculate_rewards")
 
         if bc:
-            for key, value in st.session_state.opt_rewards_dict.items():
-                st.text(f"{key}: {value}")
+            calculate_and_display_rewards(graph, trajectory, reward_idxs)
+            # for key, value in st.session_state.opt_rewards_dict.items():
+            #     st.text(f"{key}: {value}")
 
     if n_obj == 2:
-        
-        problem = MultiCriteriaProblem.load(selected_directory)
-        checkpoint = load_checkpoint(selected_directory)
-        optimizer = PymooOptimizer(problem, checkpoint)
-        optimizer.load_history(selected_directory)
-        res = optimizer.run()
+        res = st.session_state.res 
+        optimizer = st.session_state.optimizer
+        problem = st.session_state.problem
         F = res.F
         approx_ideal = F.min(axis=0)
         approx_nadir = F.max(axis=0)
         nF = (F - approx_ideal) / (approx_nadir - approx_ideal)
-        st.header('Choose the solution weights:')
-        w1 = st.slider(label="Select weight", min_value=0.1,
+        w1 = st.slider(label="Выбор решения из Парето фронта при помощи указания относительного веса:", min_value=0.1,
                        max_value=0.9, value=0.5)
         weights = np.array([w1, 1-w1])
         decomp = ASF()
@@ -485,10 +525,10 @@ if st.session_state.stage == "results":
         graph = problem.graph_manager.get_graph(best_x)
         with st.sidebar:
             trajectories = st.session_state.reward_manager.trajectories
-            trj_idx = st.radio(label="Select trajectory", options=trajectories.keys(
+            trj_idx = st.radio(label="Выберите траекторию из заданных перед оптимизацией:", options=trajectories.keys(
             ), index=0, key='opt_trajectory_choice')
             trajectory = trajectories[trj_idx]
-            st.button(label='run simulation', key='run_simulation', on_click=run_simulation, kwargs={
+            st.button(label='Визуализация движения', key='run_simulation', on_click=run_simulation, kwargs={
                       "graph": graph, "trajectory": trajectory})
             st.header("Характеристики:")
             reward_idxs = [0]*len(list(reward_dict.values()))
@@ -510,26 +550,44 @@ if st.session_state.stage == "results":
                 visualization_builder), trajectory)
             components.iframe(get_visualizer(visualization_builder).viewer.url(), width=400,
                               height=400, scrolling=True)
-        # draw_joint_point(graph)
-        # st.pyplot(plt.gcf(), clear_figure=True)
-        with st.sidebar:
-            bc = st.button(label="calculate rewards", key="calculate_rewards",
-                      on_click=calculate_and_display_rewards, args=[graph, trajectory, reward_idxs])
-        if bc:
-            for key, value in st.session_state.opt_rewards_dict.items():
-                st.text(f"{key}: {value}")
+        st.text('Красный маркер указывает точку соответствующую заданному весу')
+        labels = []
+        for trajectory_idx, rewards in problem.rewards_and_trajectories.rewards.items():
+            for reward in rewards:
+                if reward[0].reward_name not in labels:
+                    labels.append(reward[0].reward_name)
+        def translate_labels(labels, reward_dict, reward_description):
+            for i, label in enumerate(labels):
+                for key, value in reward_dict.items():
+                    if value.reward_name == label:
+                        labels[i] = reward_description[key][0]
+        translate_labels(labels, reward_dict, reward_description)
+            
         plt.figure(figsize=(7, 5))
+        plt.xlabel(labels[0])
+        plt.ylabel(labels[1])
         plt.scatter(F[:, 0], F[:, 1], s=30,
                     facecolors='none', edgecolors='blue')
-        plt.scatter(approx_ideal[0], approx_ideal[1], facecolors='none',
-                    edgecolors='red', marker="*", s=100, label="Ideal Point (Approx)")
-        plt.scatter(approx_nadir[0], approx_nadir[1], facecolors='none',
-                    edgecolors='black', marker="p", s=100, label="Nadir Point (Approx)")
+        # plt.scatter(approx_ideal[0], approx_ideal[1], facecolors='none',
+        #             edgecolors='red', marker="*", s=100, label="Ideal Point (Approx)")
+        # plt.scatter(approx_nadir[0], approx_nadir[1], facecolors='none',
+        #             edgecolors='black', marker="p", s=100, label="Nadir Point (Approx)")
         plt.scatter(F[b, 0], F[b, 1], marker="x", color="red", s=200)
-        plt.title("Objective Space")
+        plt.title("Парето фронт")
         plt.legend()
-        for key, value in st.session_state.opt_rewards_dict.items():
-            st.text(f"{key}: {value}")
+        st.pyplot(plt.gcf(),clear_figure=True)
+        
+        with st.sidebar:
+            bc = st.button(label="Рассчитать значения выбранных критериев", key="calculate_rewards")
+        if bc:
+            calculate_and_display_rewards(graph, trajectory, reward_idxs)
+            # for key, value in st.session_state.opt_rewards_dict.items():
+            #     st.text(f"{key}: {value}")
+
+
+
+        # for key, value in st.session_state.opt_rewards_dict.items():
+        #     st.text(f"{key}: {value}")
 
     # We need a flag to run the simulation in the frame that was just created
     if st.session_state.run_simulation_flag:

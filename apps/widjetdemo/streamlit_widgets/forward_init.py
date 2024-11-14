@@ -36,6 +36,7 @@ def add_trajectory_to_vis(pin_vis, trajectory):
             T = np.r_[np.c_[np.eye(3), point[:3]+np.array([0,-0.04,0])], np.array([[0, 0, 0, 1]])]
             pin_vis.viewer[ballID].set_transform(T)
 
+@st.cache_resource
 def get_russian_reward_description():
     reward_description={}
     reward_description['mass'] = ("Масса механизма", "Общая масса всех звеньев и моторов")

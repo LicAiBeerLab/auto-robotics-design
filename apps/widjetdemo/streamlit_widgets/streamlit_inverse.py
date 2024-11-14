@@ -15,6 +15,11 @@ from matplotlib.patches import Circle
 from auto_robot_design.motion_planning.dataset_generator import Dataset
 from auto_robot_design.motion_planning.many_dataset_api import ManyDatasetAPI 
 from auto_robot_design.generator.topologies.graph_manager_2l import plot_2d_bounds, MutationType
+from auto_robot_design.pinokla.default_traj import add_auxilary_points_to_trajectory
+from auto_robot_design.motion_planning.dataset_generator import (
+    Dataset,
+    set_up_reward_manager,
+)
 # preparations
 @st.cache_resource
 def get_items():
@@ -94,7 +99,7 @@ if st.session_state.stage == "topology_choice":
         gm = gm_t[1]
         plt.subplot((sum(topology_mask)//3)+1,3,i+1)
         gm.get_graph(gm.generate_central_from_mutation_range())
-        draw_joint_point(gm.graph, draw_labels=False)
+        draw_joint_point(gm.graph, labels=2)
         plt.title(gm_t[0])
     # plt.gcf().set_size_inches(15, 15)
     st.pyplot(plt.gcf(), clear_figure=True, use_container_width=False)
@@ -113,6 +118,7 @@ if st.session_state.stage == "topology_choice":
     #         st.header("Robot visualization")
     #         components.iframe(get_visualizer(visualization_builder).viewer.url(), width=400,
     #                         height=400, scrolling=True)
+
 def confirm_ranges():
     """Confirm the selected ranges and move to the next stage."""
     st.session_state.stage = "ellipsoid"
@@ -228,7 +234,7 @@ if st.session_state.stage == "ellipsoid":
     plt.scatter(points[rev_mask, :][:, 0], points[rev_mask, :][:, 1],s=2)
     plt.scatter(points[mask, :][:, 0], points[mask, :][:, 1],s=2)
     graph = st.session_state.gm.get_graph(st.session_state.gm.generate_central_from_mutation_range())
-    draw_joint_point(graph, draw_labels=False)
+    draw_joint_point(graph, labels=2)
     plt.gcf().set_size_inches(4, 4)
     st.pyplot(plt.gcf(), clear_figure=True)
 
@@ -282,11 +288,7 @@ if st.session_state.stage == 'rewards':
     plt.gca().axes.set_aspect( 1 )
     st.pyplot(plt.gcf(), clear_figure=True)
 
-from auto_robot_design.pinokla.default_traj import add_auxilary_points_to_trajectory
-from auto_robot_design.motion_planning.dataset_generator import (
-    Dataset,
-    set_up_reward_manager,
-)
+
 if st.session_state.stage == 'generate':
     dataset_api = ManyDatasetAPI(st.session_state.datasets)
     # dataset = Dataset("./top_5")
@@ -314,7 +316,7 @@ if st.session_state.stage == 'generate':
     print(len(graphs), len(sorted_indexes))
     for i, graph in enumerate(graphs):
         plt.subplot(3,6,i+1)
-        draw_joint_point(graph, draw_labels=False)
+        draw_joint_point(graph, labels=2)
     plt.gcf().set_size_inches(10, 10)
     st.pyplot(plt.gcf(), clear_figure=True)
     # print(index_list)
