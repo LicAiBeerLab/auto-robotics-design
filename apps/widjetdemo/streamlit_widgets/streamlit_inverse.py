@@ -99,7 +99,7 @@ if st.session_state.stage == "topology_choice":
         gm = gm_t[1]
         plt.subplot((sum(topology_mask)//3)+1,3,i+1)
         gm.get_graph(gm.generate_central_from_mutation_range())
-        draw_joint_point(gm.graph, labels=2)
+        draw_joint_point(gm.graph, labels=0)
         plt.title(gm_t[0])
     # plt.gcf().set_size_inches(15, 15)
     st.pyplot(plt.gcf(), clear_figure=True, use_container_width=False)
@@ -234,7 +234,7 @@ if st.session_state.stage == "ellipsoid":
     plt.scatter(points[rev_mask, :][:, 0], points[rev_mask, :][:, 1],s=2)
     plt.scatter(points[mask, :][:, 0], points[mask, :][:, 1],s=2)
     graph = st.session_state.gm.get_graph(st.session_state.gm.generate_central_from_mutation_range())
-    draw_joint_point(graph, labels=2)
+    draw_joint_point(graph, labels=0)
     plt.gcf().set_size_inches(4, 4)
     st.pyplot(plt.gcf(), clear_figure=True)
 
@@ -275,7 +275,7 @@ if st.session_state.stage == 'rewards':
             chosen_reward = st.radio(label='Выбор целевой функции', options=rewards, index=0, format_func=lambda x: x.reward_name)
             st.session_state.chosen_reward = chosen_reward
         if st.session_state.type == 'suspension':
-            rewards = standard_rewards.values()[:3]
+            rewards = list(standard_rewards.values())[:3]
             chosen_reward = st.radio(label='Выбор целевой функции', options=rewards, index=0, format_func=lambda x: x.reward_name)
             st.session_state.chosen_reward = chosen_reward
         
@@ -316,7 +316,7 @@ if st.session_state.stage == 'generate':
     print(len(graphs), len(sorted_indexes))
     for i, graph in enumerate(graphs):
         plt.subplot(3,6,i+1)
-        draw_joint_point(graph, labels=2)
+        draw_joint_point(graph, labels=0)
     plt.gcf().set_size_inches(10, 10)
     st.pyplot(plt.gcf(), clear_figure=True)
     # print(index_list)

@@ -16,7 +16,7 @@ pin.seed(1)
 @st.cache_resource
 def build_constant_objects():
     optimization_builder = get_standard_builder()
-    visualization_builder = get_mesh_builder()
+    visualization_builder = get_mesh_builder(manipulation=True)
     crag = get_standard_crag()
     graph_managers = {f"Структура_{i}": get_preset_by_index_with_bounds(i) for i in range(9)}
     reward_dict = get_standard_rewards()

@@ -35,13 +35,99 @@ def manifold2trimesh(manifold):
         vertices=vertices, faces=mesh.tri_verts, vertex_colors=colors
     )
 
+def beautiful_cutout_holders(height, length, alp=1):
+
+    x1 = np.linspace(-1,2,200)
+    y1 = np.tanh(x1*alp)
+    x2 = np.linspace(2,3,100)
+    y2 = np.ones_like(x2) * y1[-1]
+    x3 = np.linspace(-2,1,200)
+    y3 = -np.tanh(x3*alp)
+
+    x3_r = np.linspace(3,6,200)
+
+    x4 = np.linspace(x3_r[-1], x1[0], 100)
+    y4 = np.linspace(y3[-1], y1[0], 100)
+
+    x = np.r_[x1, x2, x3_r, x4]
+    y = np.r_[y1, y2, y3, y4]
+
+    coeff_x = length / (np.max(x) - np.min(x))
+    coeff_y = height / (np.max(y) - np.min(y))
+
+
+    y = coeff_y*y
+    x = coeff_x*x
+
+    offset_x = -(np.max(x) + np.min(x)) / 2
+    offset_y = -(np.max(y) + np.min(y)) / 2
+    x += offset_x
+    y += offset_y
+    return x,y
+
+
+def create_mesh_manipulator_base(link):
+    height_base = 0.15
+    radius_rack = 0.02
+    thickness = 0.01
+    pos_jps = [j.jp.r for j in link.joints]
+
+    raduis_actuators = [j.actuator.size[0] for j in link.joints]
+    height_actuators = [j.actuator.size[1] for j in link.joints]
+    jps_pos_mean = np.mean(pos_jps, axis=0)+np.array([0, height_base/2+np.mean(height_actuators)/2, 0])
+
+    pos_jps_db = np.repeat(pos_jps, 2, axis=0)
+
+    k = 0
+    for m in range(len(pos_jps_db)):
+        pos_jps_db[m,[0,2]] = pos_jps_db[m,[0,2]] + (-1)**m * raduis_actuators[k]
+        if m // 2 == 1:
+            k +=1
+    
+    up_right_point_table = np.max(pos_jps_db, axis=0)
+    down_left_point_table = np.min(pos_jps_db, axis=0)
+
+    width = up_right_point_table[0] - down_left_point_table[0]
+    length = up_right_point_table[2] - down_left_point_table[2]
+
+    table_m3d = m3d.Manifold.cube([width, length, 0.03], True)
+
+    diag_table_length = np.sqrt(width**2 + length**2)
+    length_rack = diag_table_length * 1.3
+
+    rot = np.rad2deg(np.arctan2(length, width))
+
+    x,y = beautiful_cutout_holders(height_base, length_rack, 5)
+    custom_md = m3d.CrossSection.hull_points(np.c_[x,y]).extrude(1).translate([0, 0, -0.5]).rotate([90, 0,0]).translate([0,0,-height_base*0.1])
+    box = m3d.Manifold.cube([length_rack,thickness, height_base], True)
+    cylinder_1 = m3d.Manifold.cylinder(height_base,radius_rack,circular_segments=40, center=True).translate([length_rack/2+radius_rack,0,0])
+    cylinder_2 = m3d.Manifold.cylinder(height_base,radius_rack,circular_segments=40, center=True).translate([-(length_rack/2+radius_rack),0,0])
+    holder = (box - custom_md + cylinder_1 + cylinder_2)
+    first_holder = holder.rotate([0,0,rot])
+    second_holder = holder.rotate([0,0,-rot])
+    body = first_holder + second_holder+table_m3d.translate([0,0,height_base/2-0.03/2])
+
+    return body.rotate([90, 0, 0]).translate(jps_pos_mean)
+
 class MeshCreator:
+    LOCOMOTION_RADIUS_SCALER = {"InActuator": 1, "InRevoluteUnit": 1, "OutActuator": 0.4, "OutRevoluteUnit": 1, "EE": 1.7}
+    LOCOMOTION_HEIGHT_SCALER = {"InActuator": 1, "InRevoluteUnit": 0.6, "OutActuator": 1.5, "OutRevoluteUnit": 1.5, "EE": 1.4}
+    MANIPULATOR_RADIUS_SCALER = {"InActuator": 1, "InRevoluteUnit": 1, "OutActuator": 0.4, "OutRevoluteUnit": 1, "EE": 0.5}
+    MANIPULATOR_HEIGHT_SCALER = {"InActuator": 1, "InRevoluteUnit": 0.6, "OutActuator": 1.5, "OutRevoluteUnit": 1.5, "EE": 1.4}
+
     def __init__(self, predefind_mesh: dict[str, str] = {}):
         self.predefind_mesh = predefind_mesh
+        self.radius_scaler = self.LOCOMOTION_RADIUS_SCALER
+        self.height_scaler = self.LOCOMOTION_HEIGHT_SCALER
+
     
     def build_link_mesh(self, link: Link):
         if link.name in self.predefind_mesh:
-            mesh = trimesh.load_mesh(self.predefind_mesh[link.name])
+            if isinstance(self.predefind_mesh[link.name],str):
+                mesh = trimesh.load_mesh(self.predefind_mesh[link.name])
+            else:
+                body = self.predefind_mesh[link.name](link)
+                mesh = manifold2trimesh(body)
         else:
             body = self.build_link_m3d(link)
             mesh = manifold2trimesh(body)
@@ -71,8 +157,8 @@ class MeshCreator:
                 )
             else:
                 if isinstance(j.actuator, RevoluteUnit):
-                    r_scale = 1
-                    height_scale = 1.5
+                    r_scale = self.radius_scaler["OutRevoluteUnit"] # 1
+                    height_scale = self.height_scaler["OutRevoluteUnit"] # 1.5
                     # joint_bodies.append(
                     #     m3d.Manifold.
                     #     cylinder(size[1]*height_scale, size[0]*r_scale, circular_segments=32, center=True).
@@ -80,8 +166,8 @@ class MeshCreator:
                     # )
                     subtract_size = [0.001, 0]
                 else:
-                    r_scale = 0.4
-                    height_scale = 1.5
+                    r_scale = self.radius_scaler["OutActuator"]#0.4
+                    height_scale = self.height_scaler["OutActuator"]#1.5
                     subtract_size = [0.001, 0]
                 joint_bodies.append(
                     m3d.Manifold.
@@ -101,14 +187,14 @@ class MeshCreator:
             size = j.actuator.size
             
             if isinstance(j.actuator, RevoluteUnit):
-                r_scale = 1
-                height_scale = 0.6
+                r_scale = self.radius_scaler["InRevoluteUnit"] #1
+                height_scale = self.height_scaler["InRevoluteUnit"]#0.6
             else:
-                r_scale = 1
-                height_scale = 1
+                r_scale = self.radius_scaler["InActuator"]#1
+                height_scale = self.height_scaler["InActuator"]#1
             if "EE" in [l.name for l in j.links]:
-                r_scale = 1.7
-                height_scale = 1.4
+                r_scale = self.radius_scaler["EE"]#1.7
+                height_scale = self.height_scaler["EE"]#1.4
             joint_bodies.append(
                 m3d.Manifold.
                 cylinder(size[1]*height_scale, size[0]*r_scale, circular_segments=32, center=True).

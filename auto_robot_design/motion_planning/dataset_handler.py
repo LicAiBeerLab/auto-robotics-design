@@ -37,6 +37,7 @@ def filtered_csv_dataset(dirpath, max_chunksize, min_ws):
 
 
 if __name__ == "__main__":
-
-    dirpath = "/var/home/yefim-work/Documents/auto-robotics-design/top_8"
-    filtered_csv_dataset(dirpath, 1e5, 1600)
+    path_func = lambda x: f"/run/media/yefim-work/Samsung_data1/top_{x}"
+    for i in np.arange(6,9,1):
+        dirpath = path_func(int(i))
+        filtered_csv_dataset(dirpath, 1e5, 1700)
