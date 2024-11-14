@@ -40,13 +40,14 @@ def get_mesh_builder(jupyter=True, manipulation=False):
 
     if manipulation:
         cwd = Path.cwd()
+        path = 'mesh/uhvat.stl'
         if is_in_subdirectory(path, cwd):
-            uhvat_path = str(Path.joinpath(Path.cwd(), Path('mesh/uhvat.stl')))
+            uhvat_path = str(Path.joinpath(Path.cwd(), Path(path)))
         else:
             p = 0 
             while not is_in_subdirectory(path, Path.cwd().parents[p]):
                 p+=1
-            uhvat_path = str(Path.joinpath(Path.cwd().parents[p], Path('mesh/uhvat.stl')))
+            uhvat_path = str(Path.joinpath(Path.cwd().parents[p], Path(path)))
         predefined_mesh = {"G": create_mesh_manipulator_base, "EE": uhvat_path}
 
         actuator = TMotor_AK60_6()
@@ -75,18 +76,18 @@ def get_mesh_builder(jupyter=True, manipulation=False):
             body_path = str(Path.joinpath(Path.cwd().parents[p], Path('mesh/body.stl')))
             whell_path = str(Path.joinpath(Path.cwd().parents[p], Path('mesh/wheel_small.stl')))
 
-            predefined_mesh = {"G": body_path, "EE": whell_path}
-            mesh_creator = MeshCreator(predefined_mesh)
-            urdf_creator = URDFMeshCreator()
-            builder = MeshBuilder(
-                urdf_creator,
-                mesh_creator,
-                density={"default": density, "G": body_density},
-                thickness={"default": thickness, "EE": 0.003},
-                actuator={"default": actuator},
-                size_ground=np.array(MIT_CHEETAH_PARAMS_DICT["size_ground"]),
-                offset_ground=MIT_CHEETAH_PARAMS_DICT["offset_ground_rl"],
-            )
+        predefined_mesh = {"G": body_path, "EE": whell_path}
+        mesh_creator = MeshCreator(predefined_mesh)
+        urdf_creator = URDFMeshCreator()
+        builder = MeshBuilder(
+            urdf_creator,
+            mesh_creator,
+            density={"default": density, "G": body_density},
+            thickness={"default": thickness, "EE": 0.003},
+            actuator={"default": actuator},
+            size_ground=np.array(MIT_CHEETAH_PARAMS_DICT["size_ground"]),
+            offset_ground=MIT_CHEETAH_PARAMS_DICT["offset_ground_rl"],
+        )
     return builder
 
 
