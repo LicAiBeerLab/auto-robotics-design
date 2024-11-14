@@ -238,17 +238,16 @@ def draw_joint_point(graph: nx.Graph, labels=0, draw_legend=True, draw_lines=Fal
     
     import matplotlib.ticker as ticker
     if draw_lines:
-        # plt.gca().set_axis_on()
-        # plt.gca().set_title('JP graph')
-        # plt.gca().set_ylabel('z [m]')
-        # ax.yaxis.set_major_locator(ticker.MultipleLocator(0.1))
-        # ax.yaxis.set_minor_locator(ticker.MultipleLocator(0.05))
-        # plt.gca().set_yticks(np.arange(-1,1,0.05))
-        # plt.gca().set_xticks(np.arange(-0.4,0.4,0.05))
-        # plt.yticks(np.arange(-1,1,0.05))
-        
-        # plt.axhline(-0.4, color='black', linewidth=0.8)
-        # plt.axvline(0., color='black', linewidth=0.8)
+        ax = plt.gca()
+        ax.set_axis_on()
+        ax.set_title('JP graph')
+        ax.set_ylabel('z [m]')
+        ax.set_xlabel('x [m]')
+        ax.tick_params(left=True, bottom=True, labelleft=True, labelbottom=True)
+        ax.set_yticks(np.arange(-1,1,0.1))
+        ax.set_xticks(np.arange(-0.4,0.4,0.1))
+        ax.set_xlim(-0.4, 0.4)
+        ax.set_ylim(-0.5, 0.1)
         pass
 
         

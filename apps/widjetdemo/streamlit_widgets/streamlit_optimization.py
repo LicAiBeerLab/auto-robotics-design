@@ -416,18 +416,6 @@ if st.session_state.stage == "optimization":
 def run_simulation(**kwargs):
     st.session_state.run_simulation_flag = True
 
-
-# def calculate_and_display_rewards(graph, trajectory, reward_mask):
-#     fixed_robot, free_robot = jps_graph2pinocchio_robot_3d_constraints(
-#         graph, optimization_builder)
-#     point_criteria_vector, trajectory_criteria, res_dict_fixed = crag.get_criteria_data(
-#         fixed_robot, free_robot, trajectory, viz=None)
-#     st.session_state.opt_rewards_dict = {}
-#     for i, reward in enumerate(reward_dict.values()):
-#         if reward_mask[i]:
-#             st.session_state.opt_rewards_dict[reward.reward_name] = str(reward.calculate(
-#                 point_criteria_vector, trajectory_criteria, res_dict_fixed, Actuator=optimization_builder.actuator['default'])[0])
-
 def calculate_and_display_rewards(graph, trajectory, reward_mask):
     fixed_robot, free_robot = jps_graph2pinocchio_robot_3d_constraints(graph, optimization_builder)
     point_criteria_vector, trajectory_criteria, res_dict_fixed = crag.get_criteria_data(

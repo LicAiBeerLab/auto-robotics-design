@@ -32,7 +32,7 @@ def is_in_subdirectory(file_path, current_directory):
     # Check if file_path is in a subdirectory of current_directory
     return file_path.is_relative_to(current_directory)
 
-def get_mesh_builder(jupyter=True, manipulation=False):
+def get_mesh_builder(manipulation=False):
     thickness = MIT_CHEETAH_PARAMS_DICT["thickness"]
     actuator = MIT_CHEETAH_PARAMS_DICT["actuator"]
     density = MIT_CHEETAH_PARAMS_DICT["density"]
@@ -44,7 +44,7 @@ def get_mesh_builder(jupyter=True, manipulation=False):
         if is_in_subdirectory(path, cwd):
             uhvat_path = str(Path.joinpath(Path.cwd(), Path(path)))
         else:
-            p = 0 
+            p = 0
             while not is_in_subdirectory(path, Path.cwd().parents[p]):
                 p+=1
             uhvat_path = str(Path.joinpath(Path.cwd().parents[p], Path(path)))
@@ -101,10 +101,7 @@ def get_standard_builder():
                                            "G": body_density},
                                   thickness={
                                       "default": thickness, "EE": 0.003},
-                                  actuator={"default": actuator},
-                                  size_ground=np.array(
-                                      MIT_CHEETAH_PARAMS_DICT["size_ground"]),
-                                  offset_ground=MIT_CHEETAH_PARAMS_DICT["offset_ground_rl"]
+                                  actuator={"default": actuator}
                                   )
     return builder
 

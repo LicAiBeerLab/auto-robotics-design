@@ -16,11 +16,12 @@ pin.seed(1)
 @st.cache_resource
 def build_constant_objects():
     optimization_builder = get_standard_builder()
-    visualization_builder = get_mesh_builder(manipulation=True)
+    manipulation_builder = get_mesh_builder(manipulation=True)
+    suspension_builder = get_mesh_builder(manipulation=True)
     crag = get_standard_crag()
     graph_managers = {f"Структура_{i}": get_preset_by_index_with_bounds(i) for i in range(9)}
     reward_dict = get_standard_rewards()
-    return graph_managers, optimization_builder, visualization_builder, crag, reward_dict
+    return graph_managers, optimization_builder, manipulation_builder, suspension_builder, crag, reward_dict
 
 def add_trajectory_to_vis(pin_vis, trajectory):
     material = meshcat.geometry.MeshPhongMaterial()
