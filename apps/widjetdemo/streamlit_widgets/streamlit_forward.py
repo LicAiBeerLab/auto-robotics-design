@@ -24,7 +24,7 @@ from auto_robot_design.pinokla.default_traj import (
     create_simple_step_trajectory, get_vertical_trajectory)
 
 # build and cache constant objects
-graph_managers, optimization_builder, visualization_builder, crag, reward_dict = build_constant_objects()
+graph_managers, optimization_builder, _,visualization_builder, crag, reward_dict = build_constant_objects()
 reward_description = get_russian_reward_description()
 st.title("Оценка рычажных механизмов")
 # create gm variable that will be used to store the current graph manager and set it to be update for a session

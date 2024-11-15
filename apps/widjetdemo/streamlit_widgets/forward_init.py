@@ -17,7 +17,7 @@ pin.seed(1)
 def build_constant_objects():
     optimization_builder = get_standard_builder()
     manipulation_builder = get_mesh_builder(manipulation=True)
-    suspension_builder = get_mesh_builder(manipulation=True)
+    suspension_builder = get_mesh_builder(manipulation=False)
     crag = get_standard_crag()
     graph_managers = {f"Структура_{i}": get_preset_by_index_with_bounds(i) for i in range(9)}
     reward_dict = get_standard_rewards()

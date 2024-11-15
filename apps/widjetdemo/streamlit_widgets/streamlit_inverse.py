@@ -47,6 +47,7 @@ st.title("Генерация механизмов по заданной рабо
 if not hasattr(st.session_state, "stage"):
     st.session_state.stage = 'class_choice'
     st.session_state.gm = get_preset_by_index_with_bounds(-1)
+    st.session_state.run_simulation_flag = False
 
 def type_choice(t):
     if t == 'free':
@@ -277,14 +278,14 @@ if st.session_state.stage == 'rewards':
         y_p = st.slider(label="y координата центра", min_value=-0.42,
                         max_value=0., value=-0.3)
         if st.session_state.type == 'free':
-            rewards = reward_dict.values()
-            chosen_reward = st.radio(label='Выбор целевой функции', options=rewards, index=0, format_func=lambda x: x.reward_name)
-            st.session_state.chosen_reward = chosen_reward
+            rewards = list(reward_dict.items())
+            chosen_reward_idx = st.radio(label='Выбор целевой функции', options=range(len(rewards)), index=0, format_func=lambda x: reward_description[rewards[x][0]][0])
+            st.session_state.chosen_reward = rewards[chosen_reward_idx][1]
         if st.session_state.type == 'suspension':
             rewards = list(reward_dict.values())
             chosen_reward = st.radio(label='Выбор целевой функции', options=rewards, index=0, format_func=lambda x: x.reward_name)
             st.session_state.chosen_reward = chosen_reward
-        if st.session_state.type == "manipulation":
+        if st.session_state.type == "manipulator":
             rewards = list(reward_dict.values())[3:6]
             chosen_reward = st.radio(label='Выбор целевой функции', options=rewards, index=0, format_func=lambda x: x.reward_name)
             st.session_state.chosen_reward = chosen_reward
@@ -318,8 +319,6 @@ if st.session_state.stage == 'generate':
         index_list, 10, reward_manager
     )
 
-    
-    
     graphs = []
     for topology_idx, index, value in sorted_indexes[:10]:
         gm = dataset_api.datasets[topology_idx].graph_manager
@@ -328,7 +327,7 @@ if st.session_state.stage == 'generate':
         graphs.append(deepcopy(graph))
     st.session_state.graphs = graphs
     with empt:
-        st.button(label="Show results", key="show_results", on_click=show_results)
+        st.button(label="Результаты генерации", key="show_results", on_click=show_results)
     
     
     # st.rerun()

@@ -35,7 +35,7 @@ from auto_robot_design.pinokla.default_traj import (
     create_simple_step_trajectory, get_vertical_trajectory,
     get_workspace_trajectory)
 
-graph_managers, optimization_builder, visualization_builder, crag, reward_dict = build_constant_objects()
+graph_managers, optimization_builder, _,visualization_builder, crag, reward_dict = build_constant_objects()
 reward_description = get_russian_reward_description()
 
 
