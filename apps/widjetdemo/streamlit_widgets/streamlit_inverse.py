@@ -1,46 +1,45 @@
-import streamlit as st
-import os
-from copy import deepcopy
-import numpy as np
-from auto_robot_design.utils.configs import get_mesh_builder, get_standard_builder, get_standard_rewards
-from streamlit_widget_auxiliary import get_visualizer, send_graph_to_visualizer
-from auto_robot_design.description.utils import draw_joint_point
-from auto_robot_design.generator.topologies.bounds_preset import get_preset_by_index_with_bounds
-import streamlit.components.v1 as components
-import matplotlib.pyplot as plt
-from pathlib import Path
-from auto_robot_design.user_interface.check_in_ellips import Ellipse, check_points_in_ellips
-from auto_robot_design.motion_planning.bfs_ws import Workspace, BreadthFirstSearchPlanner
-from matplotlib.patches import Circle
-from auto_robot_design.motion_planning.dataset_generator import Dataset
-from auto_robot_design.motion_planning.many_dataset_api import ManyDatasetAPI 
-from auto_robot_design.generator.topologies.graph_manager_2l import plot_2d_bounds, MutationType
-from auto_robot_design.pinokla.default_traj import add_auxilary_points_to_trajectory
-from auto_robot_design.motion_planning.dataset_generator import (
-    Dataset,
-    set_up_reward_manager,
-)
-from auto_robot_design.pinokla.default_traj import add_auxilary_points_to_trajectory, convert_x_y_to_6d_traj_xz, get_vertical_trajectory, create_simple_step_trajectory, get_workspace_trajectory, get_horizontal_trajectory
-
-from auto_robot_design.utils.configs import get_standard_builder, get_mesh_builder, get_standard_crag, get_standard_rewards
-from forward_init import add_trajectory_to_vis, build_constant_objects, get_russian_reward_description
-from auto_robot_design.user_interface.check_in_ellips import (Ellipse,SnakePathFinder,check_points_in_ellips)
-import pinocchio as pin
 import time
-from auto_robot_design.motion_planning.trajectory_ik_manager import TrajectoryIKManager
-from auto_robot_design.description.builder import (jps_graph2pinocchio_robot_3d_constraints)
-from auto_robot_design.description.mesh_builder.mesh_builder import (
-    MeshBuilder, jps_graph2pinocchio_meshes_robot)
+from copy import deepcopy
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pinocchio as pin
+import streamlit as st
+import streamlit.components.v1 as components
+from forward_init import (add_trajectory_to_vis, build_constant_objects,
+                          get_russian_reward_description)
+from matplotlib.patches import Circle
+from streamlit_widget_auxiliary import get_visualizer, send_graph_to_visualizer
+
+from auto_robot_design.description.builder import \
+    jps_graph2pinocchio_robot_3d_constraints
+from auto_robot_design.description.mesh_builder.mesh_builder import \
+    jps_graph2pinocchio_meshes_robot
+from auto_robot_design.description.utils import draw_joint_point
+from auto_robot_design.generator.topologies.bounds_preset import \
+    get_preset_by_index_with_bounds
+from auto_robot_design.generator.topologies.graph_manager_2l import \
+    plot_2d_bounds
+from auto_robot_design.motion_planning.bfs_ws import Workspace
+from auto_robot_design.motion_planning.dataset_generator import \
+    set_up_reward_manager
+from auto_robot_design.motion_planning.many_dataset_api import ManyDatasetAPI
+from auto_robot_design.motion_planning.trajectory_ik_manager import \
+    TrajectoryIKManager
+from auto_robot_design.pinokla.default_traj import (
+    add_auxilary_points_to_trajectory, convert_x_y_to_6d_traj_xz)
+from auto_robot_design.user_interface.check_in_ellips import (
+    Ellipse, SnakePathFinder, check_points_in_ellips)
+
+# constant objects 
 graph_managers, optimization_builder, manipulation_builder, suspension_builder, crag, reward_dict = build_constant_objects()
 reward_description = get_russian_reward_description()
-# preparations
-# @st.cache_resource
-# def get_items():
-#     gms = {f"Топология_{i}": get_preset_by_index_with_bounds(i) for i in range(9) if i not in [0,1,2,3,4,6,7]}
-#     return gms, get_mesh_builder(jupyter=False), get_standard_builder(), get_standard_rewards()
-# graph_managers = {f"Топология_{i}": get_preset_by_index_with_bounds(i) for i in range(9) if i not in [0,1,2,3,4,6,7]}
+general_reward_keys = ["actuated_inertia_matrix", "z_imf", "manipulability", "min_manipulability", "min_force", "trajectory_zrr", "dexterity", "min_acceleration", "mean_heavy_lifting", "min_heavy_lifting"]
+suspension_reward_keys = ["z_imf", "trajectory_zrr","min_acceleration", "mean_heavy_lifting", "min_heavy_lifting" ]
+manipulator_reward_keys = ["manipulability", "min_manipulability", "min_force","dexterity","min_acceleration"]
 dataset_paths = ["./top_0", "./top_1","./top_2", "./top_3","top_4","./top_5","./top_6", "./top_7", "./top_8"]
-# graph_managers, visualization_builder, standard_builder, standard_rewards = get_items()
+
 
 st.title("Генерация механизмов по заданной рабочей области")
 # starting stage
@@ -53,19 +52,28 @@ def type_choice(t):
     if t == 'free':
         st.session_state.type = 'free'
         st.session_state.visualization_builder = optimization_builder
+        st.session_state.reward_keys = general_reward_keys
     elif t == 'suspension':
         st.session_state.type = 'suspension'
         st.session_state.visualization_builder = suspension_builder
+        st.session_state.reward_keys = suspension_reward_keys
     elif t == 'manipulator':
         st.session_state.type = 'manipulator'
         st.session_state.visualization_builder = manipulation_builder
+        st.session_state.reward_keys = manipulator_reward_keys
     st.session_state.stage = 'topology_choice'
 
 # chose the class of optimization
 if st.session_state.stage == 'class_choice':
+    some_text = """В данном сценарии происходит генерация механизмов по заданной рабочей области.
+Предлагается выбрать один из трёх типов механизмов: замкнутая кинематическая структура, 
+подвеска колёсного робота, робот манипулятор.
+Для каждого типа предлагается свой набор критериев, используемых при генерации
+механизма и модель визуализации"""
+    st.text(some_text)
     col_1, col_2, col_3 = st.columns(3, gap="medium")
     with col_1:
-        st.button(label='свободный выбор', key='free',on_click=type_choice, args=['free'])
+        st.button(label='замкнутая кинематическая структура', key='free',on_click=type_choice, args=['free'])
         st.image('./apps/rogue.jpg')
     with col_2:
         st.button(label='подвеска', key='suspension',on_click=type_choice, args=['suspension'])
@@ -76,6 +84,7 @@ if st.session_state.stage == 'class_choice':
 
 def confirm_topology(topology_list, topology_mask):
     """Confirm the selected topology and move to the next stage."""
+    # if only one topology is chosen, there is an option to choose the optimization ranges
     if len(topology_list) == 1:
         st.session_state.stage = 'jp_ranges'
         st.session_state.gm = topology_list[0][1]
@@ -85,22 +94,19 @@ def confirm_topology(topology_list, topology_mask):
         st.session_state.gm_clone = deepcopy(st.session_state.gm)
         st.session_state.stage = "ellipsoid"
         st.session_state.datasets = [x for i, x in enumerate(dataset_paths) if topology_mask[i] is True]
-
     # create a deep copy of the graph manager for further updates
     st.session_state.topology_list = topology_list
     st.session_state.topology_mask = topology_mask
 
 
-# def topology_choice():
-#     """Update the graph manager based on the selected topology."""
-#     st.session_state.gm = graph_managers[st.session_state.topology_choice]
-
 if st.session_state.stage == "topology_choice":
+    some_text = """Предлагается выбор из девяти топологических структур механизмов.
+В процессе генерации будут учитываться только выбранные топологические структуры.
+Для визуализации выбора предлагаются примеры механизмов каждой структуры."""
+    st.text(some_text)
     with st.sidebar:
-        # st.radio(label="Select topology:", options=graph_managers.keys(),
-        #          index=None, key='topology_choice', on_change=topology_choice)
-        st.header("Выбор топологии")
-        st.write("При выборе только одной топологии доступна опция выбора границ для параметров генерации")
+        st.header("Выбор структуры")
+        st.write("При выборе только одной структуры доступна опция выбора границ для параметров генерации")
         topology_mask = []
         for i, gm in enumerate(graph_managers.items()):
             topology_mask.append(st.checkbox(label=gm[0], value=True))
@@ -111,7 +117,6 @@ if st.session_state.stage == "topology_choice":
                     on_click=confirm_topology, args=[chosen_topology_list, topology_mask])
 
     plt.figure(figsize=(10, 10))
-    st.header("Выбранные топологии")
     for i in range(9):
         if i < len(chosen_topology_list):
             gm = chosen_topology_list[i][1]
@@ -203,8 +208,12 @@ def reward_choice():
     st.session_state.stage = 'rewards'
 
 if st.session_state.stage == "ellipsoid":
-    st.header("Выбор рабочего пространства")
+    some_text = """Задайте необходимую рабочую область для генерации механизмов.
+Рабочее пространство всех сгенерированных решений будет включать заданную область.
+Область задаётся в виде эллипса, определяемого своим центром, радиусами и углом."""
+    st.text(some_text)
     with st.sidebar:
+        st.header("Выбор рабочего пространства")
         with st.form(key = 'ellipse'):
             x = st.slider(label="х координата центра", min_value=-0.3,
                             max_value=0.3, value=0.0)
@@ -220,6 +229,7 @@ if st.session_state.stage == "ellipsoid":
     st.session_state.ellipsoid_params = [x, y, x_rad, y_rad, angle]
     ellipse = Ellipse(np.array([x, y]), np.deg2rad(angle), np.array([x_rad, y_rad]))
     point_ellipse = ellipse.get_points()
+    
     size_box_bound = np.array([0.5, 0.42])
     center_bound = np.array([0, -0.21])
     bounds = np.array(
@@ -248,6 +258,10 @@ def generate():
     st.session_state.stage = 'generate'
 
 if st.session_state.stage == 'rewards':
+    some_text = """Укажите критерий оценки для обтбора лучших механизмов.
+Необходимо задать точку рассчёта критерия в рабочей области механизма.
+Используйте боковую панель для установки точки расчёта."""
+    st.text(some_text)
     x, y, x_rad, y_rad, angle = st.session_state.ellipsoid_params
     ellipse = Ellipse(np.array([x, y]), np.deg2rad(angle), np.array([x_rad, y_rad]))
     point_ellipse = ellipse.get_points()
@@ -273,22 +287,22 @@ if st.session_state.stage == 'rewards':
     plt.scatter(points[mask, :][:, 0], points[mask, :][:, 1],s=2)
     with st.sidebar:
         st.header('Выбор точки вычисления')
-        x_p = st.slider(label="х координата центра", min_value=-0.25,
+        x_p = st.slider(label="х координата", min_value=-0.25,
                         max_value=0.25, value=0.0)
-        y_p = st.slider(label="y координата центра", min_value=-0.42,
+        y_p = st.slider(label="y координата", min_value=-0.42,
                         max_value=0., value=-0.3)
         if st.session_state.type == 'free':
             rewards = list(reward_dict.items())
             chosen_reward_idx = st.radio(label='Выбор целевой функции', options=range(len(rewards)), index=0, format_func=lambda x: reward_description[rewards[x][0]][0])
             st.session_state.chosen_reward = rewards[chosen_reward_idx][1]
         if st.session_state.type == 'suspension':
-            rewards = list(reward_dict.values())
-            chosen_reward = st.radio(label='Выбор целевой функции', options=rewards, index=0, format_func=lambda x: x.reward_name)
-            st.session_state.chosen_reward = chosen_reward
+            rewards = list(reward_dict.items())
+            chosen_reward_idx = st.radio(label='Выбор целевой функции', options=range(len(rewards)), index=0, format_func=lambda x: reward_description[rewards[x][0]][0])
+            st.session_state.chosen_reward = rewards[chosen_reward_idx][1]
         if st.session_state.type == "manipulator":
-            rewards = list(reward_dict.values())[3:6]
-            chosen_reward = st.radio(label='Выбор целевой функции', options=rewards, index=0, format_func=lambda x: x.reward_name)
-            st.session_state.chosen_reward = chosen_reward
+            rewards = list(reward_dict.items())
+            chosen_reward_idx = st.radio(label='Выбор целевой функции', options=range(len(rewards)), index=0, format_func=lambda x: reward_description[rewards[x][0]][0])
+            st.session_state.chosen_reward = rewards[chosen_reward_idx][1]
         st.button(label='Сгенерировать механизмы', key='generate',on_click=generate)
     st.session_state.point = [x_p, y_p]
     Drawing_colored_circle = Circle((x_p, y_p),radius=0.01, color='r')
@@ -346,7 +360,7 @@ def run_simulation(**kwargs):
 if st.session_state.stage == "results":
     vis_builder = st.session_state.visualization_builder
     idx = st.select_slider(label="Лучшие по заданному критерию механизмы:", options=[
-                               1, 2, 3, 4, 5, 6, 7, 8, 9, 10], value=1, help='10 best mechanisms with 1 being the best')
+                               1, 2, 3, 4, 5, 6, 7, 8, 9, 10], value=1, help='двигайте ползунок чтобы выбрать один из 10 лучших дизайнов')
     graph = st.session_state.graphs[idx-1]
     send_graph_to_visualizer(graph, vis_builder)
     col_1, col_2 = st.columns(2, gap="medium")
