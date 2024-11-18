@@ -6,6 +6,9 @@ import numpy as np
 from auto_robot_design.pinokla.calc_criterion import DataDict
 
 
+class NotReacablePoints(Exception):
+    pass
+
 class Reward():
     """Interface for the optimization criteria"""
 
@@ -30,7 +33,7 @@ class Reward():
                     f'For the reward {self.reward_name} the trajectory has unreachable points with index{np.argmin(is_reach)}')
                 return False
             else:
-                raise ValueError(
+                raise NotReacablePoints(
                     f"All points should be reachable to calculate a reward {self.reward_name}")
 
         elif 0 in is_reach:

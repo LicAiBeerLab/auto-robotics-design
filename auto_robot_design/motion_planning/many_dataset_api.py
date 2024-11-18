@@ -3,7 +3,7 @@ import concurrent
 import numpy as np
 import pandas as pd
 
-from auto_robot_design.optimization.rewards.reward_base import RewardManager
+from auto_robot_design.optimization.rewards.reward_base import NotReacablePoints, RewardManager
 from auto_robot_design.user_interface.check_in_ellips import (
     Ellipse,
 )
@@ -31,9 +31,12 @@ def calc_criteria(id_design, joint_poses, graph_manager, builder, reward_manager
     graph = graph_manager.get_graph(joint_poses)
     fixed_robot, free_robot = jps_graph2pinocchio_robot_3d_constraints(graph, builder)
     reward_manager.precalculated_trajectories = None
-    _, partial_rewards, _ = reward_manager.calculate_total(
-        fixed_robot, free_robot, builder.actuator["default"]
-    )
+    try:
+        _, partial_rewards, _ = reward_manager.calculate_total(
+            fixed_robot, free_robot, builder.actuator["default"]
+        )
+    except NotReacablePoints as e:
+        partial_rewards = [0]
 
     return id_design, partial_rewards
 
@@ -81,6 +84,7 @@ class ManyDatasetAPI:
         Attributes:
             datasets (list of Dataset): A list of Dataset objects created from the provided directory paths.
         """
+        self.paths = path_to_dirs
         self.datasets = [] + [Dataset(path) for path in path_to_dirs]
 
     def get_indexes_cover_ellipse(self, ellipse: Ellipse):
@@ -141,6 +145,7 @@ class ManyDatasetAPI:
                 )
 
                 df.sort_values(["reward"], ascending=False, inplace=True)
+                df = df[df["reward"] > 0]
                 samples += [
                     (k, index, reward)
                     for index, reward in zip(df.index, df["reward"].values)
