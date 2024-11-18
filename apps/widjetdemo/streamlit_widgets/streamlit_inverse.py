@@ -315,6 +315,11 @@ if st.session_state.stage == 'rewards':
             chosen_reward_idx = st.radio(label='Выбор целевой функции', options=range(len(rewards)), index=0, format_func=lambda x: reward_description[rewards[x][0]][0])
             st.session_state.chosen_reward = rewards[chosen_reward_idx][1]
         if st.session_state.type == 'suspension':
+            rewards = list(reward_dict.items())
+            chosen_reward_idx = st.radio(label='Выбор целевой функции', options=range(len(rewards)), index=0, format_func=lambda x: reward_description[rewards[x][0]][0])
+            st.session_state.chosen_reward = rewards[chosen_reward_idx][1]
+        if st.session_state.type == "manipulator":
+            rewards = list(reward_dict.items())
             chosen_reward_idx = st.radio(label='Выбор целевой функции', options=range(len(rewards)), index=0, format_func=lambda x: reward_description[rewards[x][0]][0])
             st.session_state.chosen_reward = rewards[chosen_reward_idx][1]
         st.button(label='Сгенерировать механизмы', key='generate',on_click=generate)
