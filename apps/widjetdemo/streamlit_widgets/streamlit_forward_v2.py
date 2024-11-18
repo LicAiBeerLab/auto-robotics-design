@@ -93,7 +93,7 @@ def evaluate_construction():
     start_pos = np.array([0, -0.4])
     q = np.zeros(robo.model.nq)
     workspace_obj = Workspace(robo, bounds, np.array([0.01, 0.01]))
-    ws_bfs = BreadthFirstSearchPlanner(workspace_obj, 0)
+    ws_bfs = BreadthFirstSearchPlanner(workspace_obj, 0, dexterous_tolerance=[0,50])
     workspace = ws_bfs.find_workspace(start_pos, q)
     points = []
     point = workspace.bounds[:, 0]

@@ -286,18 +286,17 @@ def closed_loop_ik_grad(rmodel, rconstraint_model, target_pos, ideff, q_start=No
 
 def closedLoopInverseKinematicsProximal(
     rmodel,
-    rdata,
     rconstraint_model,
-    rconstraint_data,
     target_pos,
     ideff,
     q_start=None,
     onlytranslation=False,
 
-    max_it=300,
-    eps=1e-4,
+    max_it=100,
+    eps=1e-5,
     rho=1e-10,
     mu=1e-3,
+    q_delta_threshold:float=0.75
 ):
     """
     q=inverseGeomProximalSolver(rmodel,rdata,rconstraint_model,rconstraint_data,idframe,pos,only_translation=False,max_it=100,eps=1e-12,rho=1e-10,mu=1e-4)
@@ -402,9 +401,9 @@ def closedLoopInverseKinematicsProximal(
         dq = dz[constraint_dim:]
 
         alpha = 0.5
-        q = pin.integrate(model, q, -alpha * dq)
-        if np.linalg.norm(dq, np.inf) > 0.5:
+        if np.linalg.norm(dq, np.inf) > q_delta_threshold:
             break
+        q = pin.integrate(model, q, -alpha * dq)
         y -= alpha * (-dy + y)
 
     pin.framesForwardKinematics(model, data, q)

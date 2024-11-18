@@ -14,7 +14,7 @@ from auto_robot_design.pinokla.closed_loop_jacobian import (
 from auto_robot_design.pinokla.closed_loop_kinematics import (
     closedLoopProximalMount,
 )
-from auto_robot_design.motion_planning.ik_calculator import closed_loop_ik_pseudo_inverse
+from auto_robot_design.motion_planning.ik_calculator import closed_loop_ik_pseudo_inverse, closedLoopInverseKinematicsProximal
 from auto_robot_design.pinokla.default_traj import add_auxilary_points_to_trajectory
 
 from auto_robot_design.motion_planning.trajectory_ik_manager import (
@@ -266,7 +266,15 @@ class BreadthFirstSearchPlanner:
         robot = self.workspace.robot
         ee_id = robot.model.getFrameId(robot.ee_name)
         robot_ms = robot.motion_space
-        q, min_feas, is_reach = closed_loop_ik_pseudo_inverse(
+        # q, min_feas, is_reach = closed_loop_ik_pseudo_inverse(
+        #     robot.model,
+        #     robot.constraint_models,
+        #     robot_ms.get_6d_point(to_node.pos),
+        #     ee_id,
+        #     onlytranslation=True,
+        #     q_start=from_node.q_arr,
+        # )
+        q, min_feas, is_reach = closedLoopInverseKinematicsProximal(
             robot.model,
             robot.constraint_models,
             robot_ms.get_6d_point(to_node.pos),
@@ -376,7 +384,9 @@ if __name__ == "__main__":
     point_6d = robo.motion_space.get_6d_traj(np.array(traj_init_to_center).T)
     ik_manager = TrajectoryIKManager()
     ik_manager.register_model(robo.model, robo.constraint_models)
-    ik_manager.set_solver("Closed_Loop_PI")
+    # ik_manager.set_solver("Closed_Loop_PI")
+    ik_manager.set_solver("Closed_Loop_Proximal")
+
     poses_6d, q_fixed, constraint_errors,reach_array = ik_manager.follow_trajectory(point_6d)
 
     # poses_6d, q_fixed, constraint_errors, reach_array = (

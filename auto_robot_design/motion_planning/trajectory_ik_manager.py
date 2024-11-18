@@ -6,10 +6,11 @@ import pinocchio as pin
 from pinocchio.visualize import MeshcatVisualizer
 
 from auto_robot_design.motion_planning.ik_calculator import (
-    closed_loop_ik_pseudo_inverse, open_loop_ik)
+    closed_loop_ik_pseudo_inverse, open_loop_ik, closedLoopInverseKinematicsProximal)
 
 IK_METHODS = {"Open_Loop": open_loop_ik,
-              "Closed_Loop_PI": closed_loop_ik_pseudo_inverse}
+              "Closed_Loop_PI": closed_loop_ik_pseudo_inverse,
+              "Closed_Loop_Proximal": closedLoopInverseKinematicsProximal}
 
 
 class TrajectoryIKManager():
@@ -19,6 +20,7 @@ class TrajectoryIKManager():
         self.solver = None
         self.visual_model = None
         self.default_name = "Closed_Loop_PI"
+        # self.default_name = "Closed_Loop_Proximal"
         self.frame_name = "EE"
 
     def register_model(self, model, constraint_models, visual_model=None):
