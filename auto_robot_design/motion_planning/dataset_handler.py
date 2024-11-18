@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 
+from auto_robot_design.generator.topologies.graph_manager_2l import MutationType
 from auto_robot_design.motion_planning.dataset_generator import Dataset
 
 
@@ -36,8 +38,44 @@ def filtered_csv_dataset(dirpath, max_chunksize, min_ws):
             filt_df.to_csv(path_to_csv_filt, mode="w", index_label=False)
 
 
+def update_part_old_dataset(dataset):
+        mut_ranges_name = dataset.graph_manager.mutation_ranges.keys()
+        jp_names = [(name[:-2], name[-1:]) for name in  mut_ranges_name]
+        jp_index_s = [(dataset.graph_manager.get_node_by_name(name[0]), name[1]) for name in jp_names] 
+        
+        # [ for jp in jp_s if dataset.graph_manager.generator_dict[jp].generator_info]
+        scaler_list = []
+        for jp, index in jp_index_s:
+            mut_type = dataset.graph_manager.generator_dict[jp].mutation_type
+            if mut_type == MutationType.RELATIVE_PERCENTAGE and index == "0":
+                scaler_list.append(-1)
+            else:
+                scaler_list.append(1)
+        
+        scaler_array = np.array(scaler_list)
+        new_df = dataset.df.apply(lambda x: np.r_[x[:dataset.params_size] * scaler_array, x[dataset.params_size:]], axis=1, raw=True)
+
+        return new_df
+
+
+def update_old_dataset(dirpath, max_chunksize, name_dataset="dataset_filt"):
+        dataset = Dataset(dirpath)
+        path_to_csv_filt = dataset.path / (name_dataset + ".csv")
+        path_new_dataset = dataset.path / (name_dataset + str(1) + ".csv")
+        for chunk in tqdm(pd.read_csv(path_to_csv_filt, chunksize=max_chunksize)):
+            dataset.df = chunk
+            filt_df = update_part_old_dataset(dataset)
+            if path_to_csv_filt.exists():
+                filt_df.to_csv(path_new_dataset, mode="a", index_label=False, header=False)
+            else:
+                filt_df.to_csv(path_new_dataset, mode="w", index_label=False)
+
+
+
 if __name__ == "__main__":
     path_func = lambda x: f"/run/media/yefim-work/Samsung_data1/top_{x}"
-    for i in np.arange(6,9,1):
+    for i in np.arange(0,9,1):
         dirpath = path_func(int(i))
-        filtered_csv_dataset(dirpath, 1e5, 1700)
+        print(dirpath)
+        update_old_dataset(dirpath, 1e5)
+        # filtered_csv_dataset(dirpath, 1e5, 1700)
