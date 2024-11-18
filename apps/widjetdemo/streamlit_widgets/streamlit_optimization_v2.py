@@ -112,8 +112,6 @@ def confirm_ranges():
                 current_fp[i] = values[0]
                 gm_clone.freeze_joint(key, current_fp)
 
-    # for key, value in gm.generator_dict.items():
-    #     print(gm.generator_dict[key].freeze_pos)
     gm_clone.set_mutation_ranges()
 
 

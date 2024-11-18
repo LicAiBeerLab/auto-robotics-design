@@ -20,7 +20,7 @@ from auto_robot_design.description.utils import draw_joint_point
 from auto_robot_design.generator.topologies.bounds_preset import \
     get_preset_by_index_with_bounds
 from auto_robot_design.generator.topologies.graph_manager_2l import \
-    plot_2d_bounds
+    plot_2d_bounds, plot_one_jp_bounds
 from auto_robot_design.motion_planning.bfs_ws import Workspace
 from auto_robot_design.motion_planning.dataset_generator import \
     set_up_reward_manager
@@ -89,6 +89,8 @@ def confirm_topology(topology_list, topology_mask):
         st.session_state.stage = 'jp_ranges'
         st.session_state.gm = topology_list[0][1]
         st.session_state.gm_clone = deepcopy(st.session_state.gm)
+        st.session_state.current_generator_dict = deepcopy(st.session_state.gm.generator_dict)
+        # st.session_state.gm_clone = deepcopy(st.session_state.gm)
         st.session_state.datasets = [x for  x in dataset_paths if topology_mask[i] is True]
     else:
         st.session_state.gm_clone = deepcopy(st.session_state.gm)
@@ -143,66 +145,83 @@ def confirm_ranges():
                 current_fp[i] = values[0]
                 gm_clone.freeze_joint(key, current_fp)
 
-    for key, value in gm.generator_dict.items():
-        print(gm.generator_dict[key].freeze_pos)
     gm_clone.set_mutation_ranges()
-    # print(gm.mutation_ranges)
 
 
 def return_to_topology():
     """Return to the topology choice stage."""
     st.session_state.stage = "topology_choice"
 
-if st.session_state.stage == 'jp_ranges':
+def joint_choice():
+    st.session_state.current_generator_dict = deepcopy(st.session_state.gm_clone.generator_dict)
+
+# second stage
+if st.session_state.stage == "jp_ranges":
+    axis = ['x', 'y', 'z']
+    # form for optimization ranges. All changes affects the gm_clone and it should be used for optimization
+    # initial nodes
     initial_generator_info = st.session_state.gm.generator_dict
+    initial_mutation_ranges = st.session_state.gm.mutation_ranges
     gm = st.session_state.gm_clone
     generator_info = gm.generator_dict
+    graph = gm.graph
+    labels = {n:i for i,n in enumerate(graph.nodes())}
     with st.sidebar:
         # return button
-        st.button(label="Return to topology choice",
+        st.button(label="Назад к выбору топологии",
                   key="return_to_topology", on_click=return_to_topology)
-        for jp, gen_info in generator_info.items():
-            for i, mut_range in enumerate(gen_info.mutation_range):
-                # i is from 0 to 2, 0 is x, 1 is y, 2 is z. None value means that the joint is fixed alone an axis
-                if mut_range is None:
-                    continue
-                # create a toggle for each moveable axis. If toggle is off the coordinate is fixed to the value and should be freezed
-                if i == 0:
-                    name = f"{jp.name}_x"
-                    current_on = st.toggle(
-                        f"Activate feature "+name, value=True)
-                elif i == 1:
-                    name = f"{jp.name}_y"
-                    current_on = st.toggle(
-                        f"Activate feature "+name, value=True)
-                else:
-                    name = f"{jp.name}_z"
-                    current_on = st.toggle(
-                        f"Activate feature "+name, value=True)
-                # initial values constrain slider range. The same jp can be used in both dicts because of the hash function type, joint copies have the same hash
-                init_values = initial_generator_info[jp].mutation_range[i]
-                if current_on:
-                    gen_info.mutation_range[i] = st.slider(
-                        label=name, min_value=init_values[0], max_value=init_values[1], value=(init_values[0], init_values[1]))
-                else:
-                    current_value = st.number_input(label="Insert a value", value=(
-                        init_values[0] + init_values[1])/2, key=name)
-                    # at further stage the same values will be used to signal for joint freezing
-                    gen_info.mutation_range[i] = (
-                        current_value, current_value)
+        
+        # set of joints that have mutation range in initial generator and get current jp and its index on the graph picture
+        
+        mutable_jps = [key[0] for  key in initial_mutation_ranges.keys()]
+        options = [(jp, idx) for jp, idx in labels.items() if jp in mutable_jps]
+        current_jp = st.radio(label="Выбор сочленения для установки границ", options=options, index=0, format_func=lambda x:x[1],key='joint_choice', on_change=joint_choice)
+        # we can get current jp generator info in the cloned gm which contains all the changes
+        current_generator_info = generator_info[current_jp[0]]
+        for i, mut_range in enumerate(current_generator_info.mutation_range):
+            if mut_range is None:
+                continue
+            # we can get mutation range from previous activation of the corresponding radio button
+            left_value, right_value = st.session_state.current_generator_dict[current_jp[0]].mutation_range[i] 
+            name = f"{labels[current_jp[0]]}_{axis[i]}"
+            toggle_value = not left_value == right_value
+            current_on = st.toggle(f"Отключить оптимизацию "+name, value=toggle_value)
+            init_values = initial_generator_info[current_jp[0]].mutation_range[i]
+            if current_on:
+                mut_range = st.slider(
+                    label=name, min_value=init_values[0], max_value=init_values[1], value=(left_value, right_value))
+                generator_info[current_jp[0]].mutation_range[i] = mut_range
+            else:
+                current_value = st.number_input(label="Insert a value", value=(
+                    left_value + right_value)/2, key=name, min_value=init_values[0], max_value=init_values[1])
+                # if current_value < init_values[0]:
+                #     current_value = init_values[0]
+                # if current_value > init_values[1]:
+                #     current_value = init_values[1]
+                mut_range = (current_value, current_value)
+                generator_info[current_jp[0]].mutation_range[i] = mut_range
 
-        st.button(label="Confirm optimization ranges",
+        st.button(label="подтвердить диапазоны оптимизации",
                   key='ranges_confirm', on_click=confirm_ranges)
     # here should be some kind of visualization for ranges
     gm.set_mutation_ranges()
+    plot_one_jp_bounds(gm, current_jp[0].name)
     center = gm.generate_central_from_mutation_range()
     graph = gm.get_graph(center)
-    draw_joint_point(graph, labels=0, draw_legend=False)
+    # here I can insert the visualization for jp bounds
+
+    draw_joint_point(graph, labels=1, draw_legend=False,draw_lines=True)
     # here gm is a clone
-    plot_2d_bounds(gm)
+    
+    # plot_2d_bounds(gm)
     st.pyplot(plt.gcf(), clear_figure=True)
     # this way we set ranges after each step, but without freezing joints
-    st.write(gm.mutation_ranges)
+    some_text = """Диапазоны оптимизации определяют границы пространства поиска механизмов в процессе 
+оптимизации. x - горизонтальные координаты, z - вертикальные координаты.
+Отключенные координаты не будут участвовать в оптимизации и будут иметь постоянные 
+значения во всех механизмах."""
+    st.text(some_text)
+    # st.text("x - горизонтальные координаты, z - вертикальные координаты")
 
 def reward_choice():
     st.session_state.stage = 'rewards'
@@ -296,11 +315,6 @@ if st.session_state.stage == 'rewards':
             chosen_reward_idx = st.radio(label='Выбор целевой функции', options=range(len(rewards)), index=0, format_func=lambda x: reward_description[rewards[x][0]][0])
             st.session_state.chosen_reward = rewards[chosen_reward_idx][1]
         if st.session_state.type == 'suspension':
-            rewards = list(reward_dict.items())
-            chosen_reward_idx = st.radio(label='Выбор целевой функции', options=range(len(rewards)), index=0, format_func=lambda x: reward_description[rewards[x][0]][0])
-            st.session_state.chosen_reward = rewards[chosen_reward_idx][1]
-        if st.session_state.type == "manipulator":
-            rewards = list(reward_dict.items())
             chosen_reward_idx = st.radio(label='Выбор целевой функции', options=range(len(rewards)), index=0, format_func=lambda x: reward_description[rewards[x][0]][0])
             st.session_state.chosen_reward = rewards[chosen_reward_idx][1]
         st.button(label='Сгенерировать механизмы', key='generate',on_click=generate)
@@ -312,6 +326,9 @@ if st.session_state.stage == 'rewards':
     st.pyplot(plt.gcf(), clear_figure=True)
 def show_results():
     st.session_state.stage = 'results'
+
+def reset():
+    delattr(st.session_state, 'stage')
 
 if st.session_state.stage == 'generate':
     empt = st.empty()
@@ -332,28 +349,22 @@ if st.session_state.stage == 'generate':
     sorted_indexes = dataset_api.sorted_indexes_by_reward(
         index_list, 10, reward_manager
     )
+    if len(sorted_indexes)==0:
+        st.markdown("""Для заданного рабочего пространства и топологий не удалось найти решений, рекомендуется изменить требуемую рабочую область и/или топологии""")
+        st.button(label='Перезапуск сценария', on_click=reset)
+    else:
+        n = min(len(sorted_indexes), 10)
+        graphs = []
+        for topology_idx, index, value in sorted_indexes[:n]:
+            gm = dataset_api.datasets[topology_idx].graph_manager
+            x = dataset_api.datasets[topology_idx].get_design_parameters_by_indexes([index])
+            graph = gm.get_graph(x[0])
+            graphs.append(deepcopy(graph))
+        st.session_state.graphs = graphs
+        with empt:
+            st.button(label="Результаты генерации", key="show_results", on_click=show_results)
 
-    graphs = []
-    for topology_idx, index, value in sorted_indexes[:10]:
-        gm = dataset_api.datasets[topology_idx].graph_manager
-        x = dataset_api.datasets[topology_idx].get_design_parameters_by_indexes([index])
-        graph = gm.get_graph(x[0])
-        graphs.append(deepcopy(graph))
-    st.session_state.graphs = graphs
-    with empt:
-        st.button(label="Результаты генерации", key="show_results", on_click=show_results)
-    
-    
-    # st.rerun()
-    # print(len(graphs), len(sorted_indexes))
-    # for i, graph in enumerate(graphs):
-    #     plt.subplot(3,6,i+1)
-    #     draw_joint_point(graph, labels=0)
-    # plt.gcf().set_size_inches(10, 10)
-    # st.pyplot(plt.gcf(), clear_figure=True)
-    # print(index_list)
-    # x = dataset.get_design_parameters_by_indexes([index_list[-1]])
-    # print(x)
+
 def run_simulation(**kwargs):
     st.session_state.run_simulation_flag = True
 
