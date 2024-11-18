@@ -20,7 +20,7 @@ from auto_robot_design.description.utils import draw_joint_point
 from auto_robot_design.generator.topologies.bounds_preset import \
     get_preset_by_index_with_bounds
 from auto_robot_design.generator.topologies.graph_manager_2l import (
-    GraphManager2L, MutationType, plot_2d_bounds)
+    GraphManager2L, MutationType, plot_2d_bounds, plot_one_jp_bounds)
 from auto_robot_design.motion_planning.bfs_ws import BreadthFirstSearchPlanner
 from auto_robot_design.motion_planning.trajectory_ik_manager import \
     TrajectoryIKManager
@@ -37,13 +37,13 @@ from auto_robot_design.pinokla.default_traj import (
 
 graph_managers, optimization_builder, _,visualization_builder, crag, reward_dict = build_constant_objects()
 reward_description = get_russian_reward_description()
-
+axis = ['x', 'y', 'z']
 
 st.title("Оптимизация рычажных механизмов")
 
 # gm is the first value that gets set. List of all values that should be update for each session
 if 'gm' not in st.session_state:
-    st.session_state.gm = get_preset_by_index_with_bounds(-1)
+    st.session_state.gm = get_preset_by_index_with_bounds(0)
     st.session_state.reward_manager = RewardManager(crag=crag)
     error_calculator = PositioningErrorCalculator(jacobian_key="Manip_Jacobian")
     st.session_state.soft_constraint = PositioningConstrain(
@@ -61,7 +61,9 @@ def confirm_topology():
     """Confirm the selected topology and move to the next stage."""
     st.session_state.stage = "ranges_choice"
     # create a deep copy of the graph manager for further updates
+    st.session_state.gm.set_mutation_ranges()
     st.session_state.gm_clone = deepcopy(st.session_state.gm)
+    st.session_state.current_generator_dict = deepcopy(st.session_state.gm.generator_dict)
 
 def topology_choice():
     """Update the graph manager based on the selected topology."""
@@ -77,7 +79,7 @@ if st.session_state.stage == "topology_choice":
     st.markdown(some_text)
     with st.sidebar:
         st.radio(label="Выбор топологии для оптимизации:", options=graph_managers.keys(),
-                 index=None, key='topology_choice', on_change=topology_choice)
+                 index=0, key='topology_choice', on_change=topology_choice)
         st.button(label='Подтвердить выбор топологии', key='confirm_topology',
                   on_click=confirm_topology)
 
@@ -119,12 +121,15 @@ def return_to_topology():
     """Return to the topology choice stage."""
     st.session_state.stage = "topology_choice"
 
+def joint_choice():
+    st.session_state.current_generator_dict = deepcopy(st.session_state.gm_clone.generator_dict)
 
 # second stage
 if st.session_state.stage == "ranges_choice":
     # form for optimization ranges. All changes affects the gm_clone and it should be used for optimization
     # initial nodes
     initial_generator_info = st.session_state.gm.generator_dict
+    initial_mutation_ranges = st.session_state.gm.mutation_ranges
     gm = st.session_state.gm_clone
     generator_info = gm.generator_dict
     graph = gm.graph
@@ -133,44 +138,49 @@ if st.session_state.stage == "ranges_choice":
         # return button
         st.button(label="Назад к выбору топологии",
                   key="return_to_topology", on_click=return_to_topology)
-        for jp, gen_info in generator_info.items():
-            for i, mut_range in enumerate(gen_info.mutation_range):
-                # i is from 0 to 2, 0 is x, 1 is y, 2 is z. None value means that the joint is fixed alone an axis
-                if mut_range is None:
-                    continue
-                # create a toggle for each moveable axis. If toggle is off the coordinate is fixed to the value and should be freezed
-                if i == 0:
-                    name = f"{labels[jp]}_x"
-                    current_on = st.toggle(
-                        f"Отключить оптимизацию "+name, value=True)
-                elif i == 1:
-                    name = f"{labels[jp]}_y"
-                    current_on = st.toggle(
-                        f"Отключить оптимизацию "+name, value=True)
-                else:
-                    name = f"{labels[jp]}_z"
-                    current_on = st.toggle(
-                        f"Отключить оптимизацию "+name, value=True)
-                # initial values constrain slider range. The same jp can be used in both dicts because of the hash function type, joint copies have the same hash
-                init_values = initial_generator_info[jp].mutation_range[i]
-                if current_on:
-                    gen_info.mutation_range[i] = st.slider(
-                        label=name, min_value=init_values[0], max_value=init_values[1], value=(init_values[0], init_values[1]))
-                else:
-                    current_value = st.number_input(label="Insert a value", value=(
-                        init_values[0] + init_values[1])/2, key=name)
-                    # at further stage the same values will be used to signal for joint freezing
-                    gen_info.mutation_range[i] = (
-                        current_value, current_value)
+        
+        # set of joints that have mutation range in initial generator and get current jp and its index on the graph picture
+        
+        mutable_jps = [key[0] for  key in initial_mutation_ranges.keys()]
+        options = [(jp, idx) for jp, idx in labels.items() if jp in mutable_jps]
+        current_jp = st.radio(label="Выбор сочленения для установки границ", options=options, index=0, format_func=lambda x:x[1],key='joint_choice', on_change=joint_choice)
+        # we can get current jp generator info in the cloned gm which contains all the changes
+        current_generator_info = generator_info[current_jp[0]]
+        for i, mut_range in enumerate(current_generator_info.mutation_range):
+            if mut_range is None:
+                continue
+            # we can get mutation range from previous activation of the corresponding radio button
+            left_value, right_value = st.session_state.current_generator_dict[current_jp[0]].mutation_range[i] 
+            name = f"{labels[current_jp[0]]}_{axis[i]}"
+            toggle_value = not left_value == right_value
+            current_on = st.toggle(f"Отключить оптимизацию "+name, value=toggle_value)
+            init_values = initial_generator_info[current_jp[0]].mutation_range[i]
+            if current_on:
+                mut_range = st.slider(
+                    label=name, min_value=init_values[0], max_value=init_values[1], value=(left_value, right_value))
+                generator_info[current_jp[0]].mutation_range[i] = mut_range
+            else:
+                current_value = st.number_input(label="Insert a value", value=(
+                    left_value + right_value)/2, key=name, min_value=init_values[0], max_value=init_values[1])
+                # if current_value < init_values[0]:
+                #     current_value = init_values[0]
+                # if current_value > init_values[1]:
+                #     current_value = init_values[1]
+                mut_range = (current_value, current_value)
+                generator_info[current_jp[0]].mutation_range[i] = mut_range
 
         st.button(label="подтвердить диапазоны оптимизации",
                   key='ranges_confirm', on_click=confirm_ranges)
     # here should be some kind of visualization for ranges
     gm.set_mutation_ranges()
+    plot_one_jp_bounds(gm, current_jp[0].name)
     center = gm.generate_central_from_mutation_range()
     graph = gm.get_graph(center)
-    draw_joint_point(graph, labels=1)
+    # here I can insert the visualization for jp bounds
+
+    draw_joint_point(graph, labels=1, draw_legend=False,draw_lines=True)
     # here gm is a clone
+    
     # plot_2d_bounds(gm)
     st.pyplot(plt.gcf(), clear_figure=True)
     # this way we set ranges after each step, but without freezing joints

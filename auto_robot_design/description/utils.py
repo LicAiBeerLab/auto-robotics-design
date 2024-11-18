@@ -219,7 +219,7 @@ def draw_joint_point(graph: nx.Graph, labels=0, draw_legend=True, draw_lines=Fal
         graph,
         pos_labels,
         labels,
-        font_color = "g",
+        font_color = "r",
         font_family = "monospace",
         font_size=18
     )
@@ -240,9 +240,9 @@ def draw_joint_point(graph: nx.Graph, labels=0, draw_legend=True, draw_lines=Fal
     if draw_lines:
         ax = plt.gca()
         ax.set_axis_on()
-        ax.set_title('JP graph')
-        ax.set_ylabel('z [m]')
-        ax.set_xlabel('x [m]')
+        # ax.set_title('JP graph')
+        ax.set_ylabel('z [м]')
+        ax.set_xlabel('x [м]')
         ax.tick_params(left=True, bottom=True, labelleft=True, labelbottom=True)
         ax.set_yticks(np.arange(-1,1,0.1))
         ax.set_xticks(np.arange(-0.4,0.4,0.1))
@@ -250,8 +250,7 @@ def draw_joint_point(graph: nx.Graph, labels=0, draw_legend=True, draw_lines=Fal
         ax.set_ylim(-0.5, 0.1)
         pass
 
-        
-   
+
     # plt.axis('on')
     if EE_pos.size != 0:
         plt.plot(EE_pos[:,0], EE_pos[:,1], "ob", label="EndEffector")

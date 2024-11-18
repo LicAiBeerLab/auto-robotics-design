@@ -47,7 +47,6 @@ class GraphManager2L():
         self.main_connections: List[ConnectionInfo] = []
         self.mutation_ranges = {}
         self.name = "Default"
-        # name_map = {'Main_ground':0, }
 
     def reset(self):
         """Reset the graph builder."""
@@ -99,7 +98,7 @@ class GraphManager2L():
         self.current_main_branch.append(knee_joint)
         
         self.generator_dict[knee_joint] = GeneratorInfo(
-            MutationType.ABSOLUTE, initial_coordinate=knee_joint_pos.copy(), mutation_range=[None, None, (-0.1, 0.1)])
+            MutationType.ABSOLUTE, initial_coordinate=knee_joint_pos.copy(), mutation_range=[None, None, (-0.1, 0.1)],freeze_pos=[0.03,0,None])
 
         first_connection = JointPoint(r=None, w=np.array([
                                       0, 1, 0]), name="Main_connection_1")
@@ -409,7 +408,7 @@ class GraphManager2L():
                             link_direction = gi.relative_to[0].r - \
                                 gi.relative_to[1].r
                             link_ortogonal = np.array(
-                                [-link_direction[2], link_direction[1], link_direction[0]])
+                                [link_direction[2], link_direction[1], -link_direction[0]])
                             link_length = np.linalg.norm(link_direction)
                             if i == 0:
                                 jp.r += parameter * link_ortogonal
@@ -419,6 +418,93 @@ class GraphManager2L():
         return self.graph
 
 from matplotlib import patches
+def plot_one_jp_bounds(graph_manager, jp):
+    jp = graph_manager.get_node_by_name(jp)
+    info:GeneratorInfo = graph_manager.generator_dict[jp]
+    if info.mutation_type == MutationType.ABSOLUTE:
+        if graph_manager.mutation_ranges.get((jp, 'x')) is None:
+            x_range = (info.freeze_pos[0]-0.001, info.freeze_pos[0]+0.001)
+        elif graph_manager.mutation_ranges[(jp, 'x')][0] == graph_manager.mutation_ranges[(jp, 'x')][1]:
+            x_range = (graph_manager.mutation_ranges[(jp, 'x')][0]-0.01, graph_manager.mutation_ranges[(jp, 'x')][1]+0.01)
+        else:
+            x_range = graph_manager.mutation_ranges[(jp, 'x')]
+        if graph_manager.mutation_ranges.get((jp, 'z')) is None:
+            z_range = (info.freeze_pos[2]-0.001, info.freeze_pos[2]+0.001)
+        elif graph_manager.mutation_ranges[(jp, 'z')][0] == graph_manager.mutation_ranges[(jp, 'z')][1]:
+            z_range = (graph_manager.mutation_ranges[(jp, 'z')][0]-0.01, graph_manager.mutation_ranges[(jp, 'z')][1]+0.01)
+        else:
+            z_range = graph_manager.mutation_ranges[(jp, 'z')]
+        
+        rect = patches.Rectangle(
+            (x_range[0], z_range[0]),
+            width=x_range[1]-x_range[0],
+            height=z_range[1]-z_range[0],
+            angle=0,
+            linewidth=1,
+            edgecolor='r',
+            facecolor="none",
+        )
+        plt.gca().add_patch(rect)
+
+    if info.mutation_type == MutationType.RELATIVE:
+        if graph_manager.mutation_ranges.get((jp, 'x')) is None:
+            x_range = (info.freeze_pos[0]-0.001+info.relative_to.r[0], info.freeze_pos[0]+0.001+info.relative_to.r[0])
+        elif graph_manager.mutation_ranges[(jp, 'x')][0] == graph_manager.mutation_ranges[(jp, 'x')][1]:
+            x_range = (graph_manager.mutation_ranges[(jp, 'x')][0]-0.001+info.relative_to.r[0], graph_manager.mutation_ranges[(jp, 'x')][0]+0.001+info.relative_to.r[0])
+        else:
+            x_range = (graph_manager.mutation_ranges[(jp, 'x')][0]+info.relative_to.r[0], info.relative_to.r[0]+graph_manager.mutation_ranges[(jp, 'x')][1])
+        if graph_manager.mutation_ranges.get((jp, 'z')) is None:
+            z_range = (info.freeze_pos[2]-0.001+ info.relative_to.r[2], info.freeze_pos[2]+0.001+ info.relative_to.r[2])
+        elif graph_manager.mutation_ranges[(jp, 'z')][0] == graph_manager.mutation_ranges[(jp, 'z')][1]:
+            z_range = (graph_manager.mutation_ranges[(jp, 'z')][0]-0.001+ info.relative_to.r[2], graph_manager.mutation_ranges[(jp, 'z')][1]+0.001+ info.relative_to.r[2])
+        else:
+            z_range = (graph_manager.mutation_ranges[(jp, 'z')][0]+ info.relative_to.r[2], info.relative_to.r[2]+graph_manager.mutation_ranges[(jp, 'z')][1])
+        
+        rect = patches.Rectangle(
+            (x_range[0], z_range[0]),
+            width=x_range[1]-x_range[0],
+            height=z_range[1]-z_range[0],
+            angle=0,
+            linewidth=1,
+            edgecolor='b',
+            facecolor="none",
+        )
+        plt.gca().add_patch(rect)
+
+    if info.mutation_type == MutationType.RELATIVE_PERCENTAGE:
+        link_vector = info.relative_to[0].r-info.relative_to[1].r
+        link_length = np.linalg.norm(link_vector)
+        link_cener = (info.relative_to[1].r+info.relative_to[0].r)/2
+        if graph_manager.mutation_ranges.get((jp, 'x')) is None:
+            x_range = (info.freeze_pos[0] * link_length -0.001+link_cener[0], info.freeze_pos[0]*link_length+0.001+link_cener[0])
+        elif graph_manager.mutation_ranges[(jp, 'x')][0] == graph_manager.mutation_ranges[(jp, 'x')][1]:
+            x_range = (graph_manager.mutation_ranges[(jp, 'x')][0]* link_length-0.001+link_cener[0], graph_manager.mutation_ranges[(jp, 'x')][0]* link_length+0.001+link_cener[0])
+        else:
+            x_range = (graph_manager.mutation_ranges[(jp, 'x')][0]* link_length+link_cener[0], link_cener[0]+graph_manager.mutation_ranges[(jp, 'x')][1]* link_length)
+        if graph_manager.mutation_ranges.get((jp, 'z')) is None:
+            z_range = (info.freeze_pos[2]* link_length-0.001+link_cener[2], info.freeze_pos[2]* link_length+0.001+link_cener[2])
+        elif graph_manager.mutation_ranges[(jp, 'z')][0] == graph_manager.mutation_ranges[(jp, 'z')][1]:
+            z_range = (graph_manager.mutation_ranges[(jp, 'z')][0]* link_length-0.001+link_cener[2], graph_manager.mutation_ranges[(jp, 'z')][0]* link_length+0.001+link_cener[2])
+        else:
+            z_range = (graph_manager.mutation_ranges[(jp, 'z')][0]* link_length+link_cener[2], link_cener[2]+graph_manager.mutation_ranges[(jp, 'z')][1]* link_length)
+        
+        u = np.array([0, 0, 1])
+        v = link_vector/link_length
+        angle_rad = np.arctan2(u[0]*v[2] - u[2]*v[0], np.dot(u, v))  # atan2(det, dot)
+        angle_deg = np.degrees(angle_rad)
+        # angle = np.arccos(np.inner(link_vector, np.array([0, 0, 1]))/link_length)
+        rect = patches.Rectangle(
+            (x_range[0], z_range[0]),
+            width=x_range[1]-x_range[0],
+            height=z_range[1]-z_range[0],
+            angle=angle_deg,
+            rotation_point = (link_cener[0], link_cener[2]),
+            linewidth=1,
+            edgecolor='g',
+            facecolor="none",
+        )
+        plt.gca().add_patch(rect)
+
 def plot_2d_bounds(graph_manager):
     """
     Plot 2D bounds for each joint points in the graph manager. Different colors are used for different types of mutations.
