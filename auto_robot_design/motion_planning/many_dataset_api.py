@@ -126,8 +126,11 @@ class ManyDatasetAPI:
             list of pd.Index: A list of pandas Index objects, each containing sorted indexes based on rewards for the corresponding dataset.
         """
 
-        if isinstance(indexes[0], tuple):
-            indexes = self._indexes_1d_to_2d(indexes)
+        if len(indexes) == 0:
+            return []
+
+        indexes = self._indexes_1d_to_2d(indexes)
+
         samples = []
         for k, dataset in enumerate(self.datasets):
 
@@ -147,8 +150,8 @@ class ManyDatasetAPI:
 
     def indexes2graph(self, indexes):
 
-        if isinstance(indexes[0], list):
-            indexes = self._index_2d_to_1d(indexes)
+        if len(indexes) == 0:
+            return []
 
         list_graphs = []
         for index in indexes:
@@ -160,6 +163,22 @@ class ManyDatasetAPI:
             if len(index) > 2:
                 list_graphs.append((graph, *index[2:]))
         return list_graphs
+    
+    def get_indexes_in_bound(self, indexes, bounds):
+
+        if len(indexes) == 0:
+            return []
+
+        indexes = self._indexes_1d_to_2d(indexes)
+
+        indexes_in_bounds = []
+        for k, dataset in enumerate(self.datasets):
+
+            if len(indexes[k]) > 0:
+                index_in_bound = dataset.get_filtered_df_with_jps_limits(bounds[k], indexes[k])
+                indexes_in_bounds.append(index_in_bound)
+
+        return self._index_2d_to_1d(indexes_in_bounds)
 
 
 def get_sorted_graph_from_datasets(
