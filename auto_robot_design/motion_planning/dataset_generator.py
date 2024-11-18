@@ -252,7 +252,7 @@ class Dataset:
         """
         self.path = pathlib.Path(path_to_dir)
 
-        self.df = pd.read_csv(self.path / "dataset_filt.csv", nrows=1e5)
+        self.df = pd.read_csv(self.path / "dataset_filt.csv", nrows=1e4)
         self.dict_ws_args = np.load(self.path / "workspace_arguments.npz")
         self.ws_args = [self.dict_ws_args[name] for name in WORKSPACE_ARGS_NAMES[:-1]]
         self.workspace = Workspace(None, *self.ws_args[:-1])

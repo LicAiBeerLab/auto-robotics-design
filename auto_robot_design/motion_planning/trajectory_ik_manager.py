@@ -21,7 +21,7 @@ class TrajectoryIKManager():
         self.default_name = "Closed_Loop_PI"
         self.frame_name = "EE"
 
-    def register_model(self, model, constraint_models,visual_model=None):
+    def register_model(self, model, constraint_models, visual_model=None):
         """The function to register a model of a mechanism
 
         Args:
