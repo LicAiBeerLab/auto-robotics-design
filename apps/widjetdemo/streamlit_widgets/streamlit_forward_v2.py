@@ -47,7 +47,8 @@ def confirm_topology():
 
 # the radio button and confirm button are only visible until the topology is selected
 if st.session_state.stage == 'topology_choice':
-    st.markdown("""В данном сценарии предлается выбрать одну из девяти структур рычажных механизмов и задать положение сочленений.
+    st.markdown("""В данном сценарии предлается выбрать одну из девяти структур рычажных механизмов и задать положение сочленений для выбора кинематической схемы. После этого будет рассчитано рабочее пространство кинематической схемы и предложены на выбор критерии, которые можно посчитать для неё рассчитать.
+
 Первый шаг - выбор структуры механизма, выберите структуру при помощи кнопок на боковой панели. Для каждой структуры визуализируется пример графа и механизма.""")
     with st.sidebar:
         st.radio(label="Выбор структуры рычажного механизма:", options=graph_managers.keys(), index=0, key='topology_choice')
@@ -122,7 +123,7 @@ def slider_change():
 if st.session_state.stage == 'joint_point_choice':
     st.write("""Установите необходимые положения для координат центров сочленений.
 Каждое сочленение выбирается отдельно при помощи кнопок и слайдеров на боковой панели.
-Если для сочленения нет слайдеров, то данное сочленение в соответствующей структуре является неподвижным.""")
+Если для сочленения нет слайдеров, то данное сочленение в соответствующей структуре является неизменяемым.""")
     gm = st.session_state.gm
     mut_ranges = gm.mutation_ranges
     with st.sidebar:
@@ -205,8 +206,11 @@ def calculate_and_display_rewards(trajectory, reward_mask):
                 break
 
 if st.session_state.stage == 'workspace_visualization':
-    st.text("Жёлтая область - рабочее пространство механизма\nКрасные область - недостижимые точки\nВсе критерии рассчитываются вдоль траектории и для успешного рассчёта необходимо,\nчтобы траектория лежала внутри рабочей области.")
-    st.text("Выберите траекторию для оценки критериев:")
+    st.markdown("""Рабочее пространство изображено совместно с графовым представлением механизма.   
+Жёлтая область - рабочее пространство механизма.  
+Красные область - недостижимые точки.  
+Для выбранной кинематической схемы можно рассчитать набор критериев. Все критерии рассчитываются вдоль траектории и для успешного рассчёта необходимо, чтобы траектория лежала внутри рабочей области.""")
+    st.text("Выберите траекторию и критерии при помощи конопок на боковой панели:")
     gm = st.session_state.gm
     graph = gm.graph
     points = st.session_state.points
@@ -268,16 +272,15 @@ if st.session_state.stage == 'workspace_visualization':
                 cr = st.form_submit_button("Рассчитать значения выбранных критериев")
         
 
-    col_1, col_2 = st.columns(2, gap="medium")
+    col_1, col_2 = st.columns([0.7, 0.3], gap="medium")
     with col_1:
-        st.header("Графовое представление механизма")
         draw_joint_point(graph, labels=2, draw_legend=False, draw_lines=True)
         plt.gcf().set_size_inches(6, 6)
         if trajectory_type is not None:
-            plt.plot(trajectory[50:, 0], trajectory[50:, 2], 'green', markersize=2)
+            # plt.plot(trajectory[50:, 0], trajectory[50:, 2], 'green', markersize=2)
+            plt.plot(trajectory[:, 0], trajectory[:, 2], 'green', markersize=2)
         st.pyplot(plt.gcf(), clear_figure=True)
     with col_2:
-        st.header("Робот")
         if trajectory_type is not None: add_trajectory_to_vis(get_visualizer(visualization_builder), trajectory[50:])
         components.iframe(get_visualizer(visualization_builder).viewer.url(), width=400,
                           height=400, scrolling=True)

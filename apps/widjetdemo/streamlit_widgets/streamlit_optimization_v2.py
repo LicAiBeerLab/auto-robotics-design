@@ -78,9 +78,9 @@ if st.session_state.stage == "topology_choice":
 Предлагается выбор из девяти структур, основанных на двухзвенной главной цепи."""
     st.markdown(some_text)
     with st.sidebar:
-        st.radio(label="Выбор топологии для оптимизации:", options=graph_managers.keys(),
+        st.radio(label="Выбор структруры для оптимизации:", options=graph_managers.keys(),
                  index=0, key='topology_choice', on_change=topology_choice)
-        st.button(label='Подтвердить выбор топологии', key='confirm_topology',
+        st.button(label='Подтвердить выбор структуры', key='confirm_topology',
                   on_click=confirm_topology)
 
     gm = st.session_state.gm
@@ -89,7 +89,7 @@ if st.session_state.stage == "topology_choice":
     send_graph_to_visualizer(graph, visualization_builder)
     col_1, col_2 = st.columns(2, gap="medium")
     with col_1:
-        st.header("Графовое представление выбранной топологии")
+        st.text("Графовое представление выбранной структуры:")
         draw_joint_point(graph, labels=2)
         plt.gcf().set_size_inches(4, 4)
         st.pyplot(plt.gcf(), clear_figure=True)
@@ -315,19 +315,17 @@ if st.session_state.stage == "trajectory_choice":
                       on_click=remove_trajectory_group)
         # for each reward trajectories should be assigned
     # top visualization of current trajectory
-    some_text = """Траектория определяет множество точек в котором будут рассчитаны выбранные критерии.
-Если критерий нужно рассчитать вдоль более чем одной траектории необходимо создать группу траекторий.
+    some_text = """Для оптимизации используются кинематические критерии, рассчитываемые вдоль траекторий. Траектория определяет множество точек в котором будут рассчитаны выбранные критерии.
+Если критерий нужно рассчитать вдоль более чем одной траектории необходимо создать группу траекторий. При помощи кнопок на боковой панели выберите траектории и соответствующие им критерии.
 """
-    st.write(some_text)
-    col_1, col_2 = st.columns(2, gap="medium")
+    st.markdown(some_text)
+    col_1, col_2 = st.columns([0.7, 0.3], gap="medium")
     with col_1:
-        st.header("Graph representation")
         draw_joint_point(graph,labels=2, draw_legend=False)
         plt.gcf().set_size_inches(4, 4)
         plt.plot(trajectory[:, 0], trajectory[:, 2])
         st.pyplot(plt.gcf(), clear_figure=True)
     with col_2:
-        st.header("Robot visualization")
         add_trajectory_to_vis(get_visualizer(
             visualization_builder), trajectory)
         components.iframe(get_visualizer(visualization_builder).viewer.url(), width=400,
@@ -335,20 +333,20 @@ if st.session_state.stage == "trajectory_choice":
 
     trajectories = [[0]*len(list(reward_dict.keys()))]*len(st.session_state.trajectory_groups)
     if st.session_state.trajectory_groups:
-        st.write("Select rewards for each trajectory group:")
+        st.write("Выберите критерии для каждой группы траекторий:")
     rewards_counter = []
     for i, t_g in enumerate(st.session_state.trajectory_groups):
-        st.write(f"Group {i} trajectories and rewards:")
+        st.write(f"Группа {i} траектории и критерии:")
         cols = st.columns(2)
         with cols[0]:
-            st.header("Граф и выбранные траектории:")
+            st.text("Граф и выбранные траектории:")
             draw_joint_point(graph, labels=2, draw_legend=False)
             for idx in st.session_state.trajectory_groups[i]:
                 current_trajectory = st.session_state.trajectory_buffer[idx]
                 plt.plot(current_trajectory[:, 0], current_trajectory[:, 2])
             st.pyplot(plt.gcf(), clear_figure=True)
         with cols[1]:
-            st.header("Rewards:")
+            st.header("Критерии:")
             reward_idxs = [0]*len(list(reward_dict.keys()))
             for reward_idx, reward in enumerate(reward_dict.items()):
                 current_checkbox = st.checkbox(
@@ -394,14 +392,13 @@ if st.session_state.stage == "optimization":
         st.rerun()
 
     graph = st.session_state.gm.graph
-    col_1, col_2 = st.columns(2, gap="medium")
+    col_1, col_2 = st.columns([0.7, 0.3], gap="medium")
     with col_1:
-        st.header("Graph representation")
+        st.header("Графовое представление:")
         draw_joint_point(graph, labels=2, draw_legend=False)
         plt.gcf().set_size_inches(4, 4)
         st.pyplot(plt.gcf(), clear_figure=True)
     with col_2:
-        st.header("Robot visualization")
         send_graph_to_visualizer(graph, visualization_builder)
         components.iframe(get_visualizer(visualization_builder).viewer.url(), width=400,
                           height=400, scrolling=True)
@@ -423,6 +420,12 @@ if st.session_state.stage == "optimization":
 
 def run_simulation(**kwargs):
     st.session_state.run_simulation_flag = True
+
+def translate_labels(labels, reward_dict, reward_description):
+    for i, label in enumerate(labels):
+        for key, value in reward_dict.items():
+            if value.reward_name == label:
+                labels[i] = reward_description[key][0]
 
 def calculate_and_display_rewards(graph, trajectory, reward_mask):
     fixed_robot, free_robot = jps_graph2pinocchio_robot_3d_constraints(graph, optimization_builder)
@@ -458,14 +461,17 @@ if st.session_state.stage == "results":
     if n_obj == 1:
         optimizer = st.session_state.optimizer
         problem = st.session_state.problem
-        ten_best = np.argsort(np.array(optimizer.history["F"]).flatten())[:11]
-        # print(ten_best)
-
+        ten_best = np.argsort(np.array(optimizer.history["F"]).flatten())[:10]
+        st.markdown("""Результатом оптимизации является набор механизмов с наилучшими значениями заданного критерия, найденными в процессе оптимизации. 
+Для каждого полученного механизма можно рассчитать критерии вдоль траекторий использованных в процессе оптмизации""")
         idx = st.select_slider(label="Лучшие по заданному критерию механизмы:", options=[
-                               1, 2, 3, 4, 5, 6, 7, 8, 9, 10], value=1, help='10 best mechanisms with 1 being the best')
-        best_id = ten_best[idx]
+                               1, 2, 3, 4, 5, 6, 7, 8, 9, 10], value=1, help='10 механизмов с наибольшими значением выбранного критерия, 1 соответствует максимальному значению критерия')
+        x = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        y = []
+        for i in ten_best:
+            y.append(optimizer.history["F"][i][0]*-1)
+        best_id = ten_best[idx-1]
         best_x = optimizer.history["X"][best_id]
-        print(best_x)
         graph = problem.graph_manager.get_graph(best_x)
         send_graph_to_visualizer(graph, visualization_builder)
         with st.sidebar:
@@ -474,7 +480,7 @@ if st.session_state.stage == "results":
             ), index=0, key='opt_trajectory_choice')
             trajectory = trajectories[trj_idx]
 
-            st.button(label='run simulation', key='run_simulation', on_click=run_simulation, kwargs={
+            st.button(label='Визуализация движения', key='run_simulation', on_click=run_simulation, kwargs={
                       "graph": graph, "trajectory": trajectory})
             st.header("Характеристики:")
             reward_idxs = [0]*len(list(reward_dict.values()))
@@ -484,21 +490,23 @@ if st.session_state.stage == "results":
                 reward_idxs[reward_idx] = current_checkbox
         col_1, col_2 = st.columns(2, gap="medium")
         with col_1:
-            st.header("Графовое представление")
             draw_joint_point(graph,labels=2, draw_legend=False)
             plt.plot(trajectory[:, 0], trajectory[:, 2])
             plt.gcf().set_size_inches(4, 4)
             st.pyplot(plt.gcf(), clear_figure=True)
         with col_2:
-            st.header("Робот")
             add_trajectory_to_vis(get_visualizer(
                 visualization_builder), trajectory)
             components.iframe(get_visualizer(visualization_builder).viewer.url(), width=400,
                               height=400, scrolling=True)
 
         with st.sidebar:
-            bc = st.button(label="Визуализация движения", key="calculate_rewards")
-
+            bc = st.button(label="Подсчёт критериев", key="calculate_rewards")
+        
+        plt.figure(figsize=(3,3))
+        plt.scatter(x,np.array(y))
+        st.markdown("""Значения критерия оптимизации для лучших механизмов. График показывыает величину разброса результатов.""")
+        st.pyplot(plt.gcf(), clear_figure=True,use_container_width=False)
         if bc:
             calculate_and_display_rewards(graph, trajectory, reward_idxs)
             # for key, value in st.session_state.opt_rewards_dict.items():
@@ -552,11 +560,7 @@ if st.session_state.stage == "results":
             for reward in rewards:
                 if reward[0].reward_name not in labels:
                     labels.append(reward[0].reward_name)
-        def translate_labels(labels, reward_dict, reward_description):
-            for i, label in enumerate(labels):
-                for key, value in reward_dict.items():
-                    if value.reward_name == label:
-                        labels[i] = reward_description[key][0]
+
         translate_labels(labels, reward_dict, reward_description)
             
         plt.figure(figsize=(7, 5))

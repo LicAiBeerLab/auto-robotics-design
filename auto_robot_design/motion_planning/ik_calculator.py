@@ -53,11 +53,11 @@ def closed_loop_ik_pseudo_inverse(rmodel,
                                   target_pos, ideff, 
                                   q_start=None, 
                                   onlytranslation:bool=True, 
-                                  eps:float=1e-4, 
-                                  max_it:int=200, 
+                                  eps:float=1e-5, 
+                                  max_it:int=100, 
                                   alpha:float=0.5, 
                                   l:float=1e-5, 
-                                  q_delta_threshold:float=1):
+                                  q_delta_threshold:float=0.5):
     """Finds the IK solution using constraint Jacobian. 
 
         The target position is added to the list of constraints and treated as a constraint violated in the starting position.
