@@ -568,6 +568,11 @@ if st.session_state.stage == "results":
     )
     graph = st.session_state.graphs[idx - 1]
     send_graph_to_visualizer(graph, vis_builder)
+    robot_urdf_str = jps_graph2pinocchio_robot_3d_constraints(graph, optimization_builder, True)
+    path_to_robots = Path().parent.absolute().joinpath("robots")
+    path_to_urdf = path_to_robots / "robot_1.urdf"
+    with open(path_to_urdf, "w") as f:
+        f.write(robot_urdf_str)
     col_1, col_2 = st.columns(2, gap="medium")
     x, y, x_rad, y_rad, angle = st.session_state.ellipsoid_params
     ellipse = Ellipse(np.array([x, y]), np.deg2rad(angle), np.array([x_rad, y_rad]))
@@ -613,6 +618,14 @@ if st.session_state.stage == "results":
     st.button(
         label="Визуализация движения", key="run_simulation", on_click=run_simulation
     )
+    with open(path_to_urdf, "r") as f:
+        st.download_button(
+            "Скачать URDF описание робота",
+            data=f,
+            file_name="robot.urdf",
+            mime="robot/urdf",
+
+        )
     if st.session_state.type == "free":
         if st.session_state.run_simulation_flag:
             ik_manager = TrajectoryIKManager()

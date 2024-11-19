@@ -1408,7 +1408,8 @@ def jps_graph2pinocchio_robot(
 
 def jps_graph2pinocchio_robot_3d_constraints(
     graph: nx.Graph,
-    builder: ParametrizedBuilder
+    builder: ParametrizedBuilder,
+    back_urdf_str = False
 ):
     """
     Converts a Joint Point Structure (JPS) graph to a Pinocchio robot model.
@@ -1449,6 +1450,8 @@ def jps_graph2pinocchio_robot_3d_constraints(
         ative_joints, constraints
     )
 
+    if back_urdf_str:
+        return robot.urdf()
     fixed_robot = build_model_with_extensions(robot.urdf(),
                                 joint_description=act_description,
                                 loop_description=constraints_descriptions,
@@ -1460,6 +1463,7 @@ def jps_graph2pinocchio_robot_3d_constraints(
                                 loop_description=constraints_descriptions,
                                 actuator_context=kinematic_graph,
                                 fixed=False)
+
 
     return fixed_robot, free_robot
 
