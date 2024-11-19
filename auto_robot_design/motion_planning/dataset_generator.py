@@ -252,7 +252,7 @@ class Dataset:
         """
         self.path = pathlib.Path(path_to_dir)
 
-        self.df = pd.read_csv(self.path / "dataset_filt.csv", nrows=1e4)
+        self.df = pd.read_csv(self.path / "dataset.csv", nrows=5e4, index_col=0)
         self.dict_ws_args = np.load(self.path / "workspace_arguments.npz")
         self.ws_args = [self.dict_ws_args[name] for name in WORKSPACE_ARGS_NAMES[:-1]]
         self.workspace = Workspace(None, *self.ws_args[:-1])
@@ -362,7 +362,7 @@ class Dataset:
         """
         desigm_parameters = self.get_design_parameters_by_indexes(indexes)
         return [
-            self.graph_manager.get_graph(des_param) for des_param in desigm_parameters
+            deepcopy(self.graph_manager.get_graph(des_param)) for des_param in desigm_parameters
         ]
     
     def get_filtered_df_with_jps_limits(self, limits:np.ndarray, indexes: Optional[list] = None):
