@@ -147,7 +147,7 @@ class BreadthFirstSearchPlanner:
         # Проверка достижимости стартовой ноды из псевдо ноды
         self.transition_function(pseudo_start_node, start_n)
         start_n.parent = None
-        
+
         if not start_n.is_reach:
             raise Exception("Start position of workspace is not reachable")
 
@@ -266,15 +266,7 @@ class BreadthFirstSearchPlanner:
         robot = self.workspace.robot
         ee_id = robot.model.getFrameId(robot.ee_name)
         robot_ms = robot.motion_space
-        # q, min_feas, is_reach = closed_loop_ik_pseudo_inverse(
-        #     robot.model,
-        #     robot.constraint_models,
-        #     robot_ms.get_6d_point(to_node.pos),
-        #     ee_id,
-        #     onlytranslation=True,
-        #     q_start=from_node.q_arr,
-        # )
-        q, min_feas, is_reach = closedLoopInverseKinematicsProximal(
+        q, min_feas, is_reach = closed_loop_ik_pseudo_inverse(
             robot.model,
             robot.constraint_models,
             robot_ms.get_6d_point(to_node.pos),
@@ -282,6 +274,14 @@ class BreadthFirstSearchPlanner:
             onlytranslation=True,
             q_start=from_node.q_arr,
         )
+        # q, min_feas, is_reach = closedLoopInverseKinematicsProximal(
+        #     robot.model,
+        #     robot.constraint_models,
+        #     robot_ms.get_6d_point(to_node.pos),
+        #     ee_id,
+        #     onlytranslation=True,
+        #     q_start=from_node.q_arr,
+        # )
 
         if is_reach:
 
@@ -307,13 +307,21 @@ class BreadthFirstSearchPlanner:
             )
 
             dext_index = np.abs(S).max() / np.abs(S).min()
+            dext_index = np.linalg.norm(np.linalg.det(Jfclosed[robot.motion_space.indexes, :]))
+            m = Jfclosed[robot.motion_space.indexes, :]
+            lower_value = np.abs(np.linalg.det(m / np.linalg.norm(m,axis=0)))
+            # if self.dext_tolerance[1] != np.inf:
+                
+            lower_check = lower_value >= self.dext_tolerance[0]
+            upper_check = dext_index <= self.dext_tolerance[1]
             
-            if self.dext_tolerance[1] != np.inf:
+            is_reach = lower_check and upper_check
+            # if self.dext_tolerance[1] != np.inf:
                 
-                lower_check = dext_index >= self.dext_tolerance[0]
-                upper_check = dext_index <= self.dext_tolerance[1]
+            #     lower_check = dext_index >= self.dext_tolerance[0]
+            #     upper_check = dext_index <= self.dext_tolerance[1]
                 
-                is_reach = lower_check and upper_check
+            #     is_reach = lower_check and upper_check
 
             to_node.transit_to_node(
                     from_node, q, 1 / dext_index, bool(is_reach)
