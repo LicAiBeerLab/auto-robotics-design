@@ -344,6 +344,39 @@ if st.session_state.stage == "ellipsoid":
     some_text = """Задайте необходимую рабочую область для генерации механизмов.
 Рабочее пространство всех сгенерированных решений будет включать заданную область.
 Область задаётся в виде эллипса, определяемого своим центром, радиусами и углом."""
+    warning_text = """<!DOCTYPE html>
+                    <html lang="ru-RU">
+                    <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Warning Alert</title>
+                    <style>
+                        /* The warning alert message box */
+                        .warning-alert {
+                        padding: 25px;
+                        background-color: #f0b33a; /* Yellow */
+                        color: #000; /* Black text */
+                        margin-bottom: 20px;
+                        border-radius: 5px;
+                        border: 1px solid #ccc;
+                        }
+
+                        /* Optional: Add a transition effect to fade out the alert */
+                        .warning-alert {
+                        opacity: 1;
+                        transition: opacity 0.6s; /* 600ms to fade out */
+                        }
+                    </style>
+                    </head>
+                    <body>
+
+                    <div class="alert warning-alert">
+                    <strong>Внимаение! Граница эллипса выходит за область определения:</strong> \n
+                    Пожалуйста, выберете параметры эллипса, входящий в область определения
+                    </div>
+                    </body>
+                    </html>
+                    """
     st.text(some_text)
     with st.sidebar:
         st.header("Выбор рабочего пространства")
@@ -362,9 +395,6 @@ if st.session_state.stage == "ellipsoid":
             )
             angle = st.slider(label="наклон", min_value=0, max_value=180, value=0)
             st.form_submit_button(label="Задать рабочее пространство")
-        st.button(
-            label="Перейти к целевой функции", key="rewards", on_click=reward_choice
-        )
     st.session_state.ellipsoid_params = [x, y, x_rad, y_rad, angle]
     ellipse = Ellipse(np.array([x, y]), np.deg2rad(angle), np.array([x_rad, y_rad]))
     point_ellipse = ellipse.get_points()
@@ -394,6 +424,14 @@ if st.session_state.stage == "ellipsoid":
     draw_joint_point(graph, labels=2, draw_legend=False)
     plt.gcf().set_size_inches(4, 4)
     st.pyplot(plt.gcf(), clear_figure=True)
+
+    if not workspace_obj.point_in_bound(point_ellipse.T):
+        st.html(warning_text)
+    else:
+        with st.sidebar:
+            st.button(
+            label="Перейти к целевой функции", key="rewards", on_click=reward_choice
+        )
 
 
 def generate():

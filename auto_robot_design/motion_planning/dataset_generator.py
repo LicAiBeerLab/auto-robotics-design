@@ -39,6 +39,9 @@ from presets.MIT_preset import get_mit_builder
 WORKSPACE_ARGS_NAMES = ["bounds", "resolution", "dexterous_tolerance", "grid_shape"]
 
 
+class WorkspaceOutBodunds(Exception):
+    pass
+
 class DatasetGenerator:
     def __init__(self, graph_manager, path, workspace_args):
         """
@@ -252,7 +255,7 @@ class Dataset:
         """
         self.path = pathlib.Path(path_to_dir)
 
-        self.df = pd.read_csv(self.path / "dataset_filt.csv", nrows=1e4)
+        self.df = pd.read_csv(self.path / "dataset.csv", nrows=2e4)
         self.dict_ws_args = np.load(self.path / "workspace_arguments.npz")
         self.ws_args = [self.dict_ws_args[name] for name in WORKSPACE_ARGS_NAMES[:-1]]
         self.workspace = Workspace(None, *self.ws_args[:-1])
@@ -325,7 +328,7 @@ class Dataset:
             df = self.df.loc[indexes]
         for pt in points_on_ellps:
             if not self.workspace.point_in_bound(pt):
-                raise Exception("Input ellipse out of workspace bounds")
+                raise WorkspaceOutBodunds("Input ellipse out of workspace bounds")
         ws_points = self.workspace.points
         mask_ws_n_ellps = check_points_in_ellips(ws_points, ellipse, 0.1)
         ellips_mask = np.zeros(self.workspace.mask_shape, dtype=bool)
@@ -362,7 +365,7 @@ class Dataset:
         """
         desigm_parameters = self.get_design_parameters_by_indexes(indexes)
         return [
-            self.graph_manager.get_graph(des_param) for des_param in desigm_parameters
+            deepcopy(self.graph_manager.get_graph(des_param)) for des_param in desigm_parameters
         ]
     
     def get_filtered_df_with_jps_limits(self, limits:np.ndarray, indexes: Optional[list] = None):

@@ -33,9 +33,9 @@ def filtered_csv_dataset(dirpath, max_chunksize, min_ws):
         sorted_df = calc_n_sort_df_with_ws(dataset)
         filt_df = filtered_df_with_ws(sorted_df, min_ws)
         if path_to_csv_filt.exists():
-            filt_df.to_csv(path_to_csv_filt, mode="a", index_label=False, header=False)
+            filt_df.to_csv(path_to_csv_filt, mode="a", index_label=False,index=False, header=False)
         else:
-            filt_df.to_csv(path_to_csv_filt, mode="w", index_label=False)
+            filt_df.to_csv(path_to_csv_filt, mode="w", index_label=False, index=False,)
 
 
 def update_part_old_dataset(dataset):
@@ -58,7 +58,7 @@ def update_part_old_dataset(dataset):
         return new_df
 
 
-def update_old_dataset(dirpath, max_chunksize, name_dataset="dataset_filt"):
+def update_old_dataset(dirpath, max_chunksize, name_dataset="dataset"):
         dataset = Dataset(dirpath)
         path_to_csv_filt = dataset.path / (name_dataset + ".csv")
         path_new_dataset = dataset.path / (name_dataset + str(1) + ".csv")
@@ -66,9 +66,9 @@ def update_old_dataset(dirpath, max_chunksize, name_dataset="dataset_filt"):
             dataset.df = chunk
             filt_df = update_part_old_dataset(dataset)
             if path_to_csv_filt.exists():
-                filt_df.to_csv(path_new_dataset, mode="a", index_label=False, header=False)
+                filt_df.to_csv(path_new_dataset, mode="a", index_label=False, index=False, header=False)
             else:
-                filt_df.to_csv(path_new_dataset, mode="w", index_label=False)
+                filt_df.to_csv(path_new_dataset, mode="w", index_label=False, index=False)
 
 
 
