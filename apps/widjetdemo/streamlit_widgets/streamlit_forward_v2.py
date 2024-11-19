@@ -73,7 +73,7 @@ if st.session_state.stage == 'topology_choice':
                           height=400, scrolling=True)
 
 
-def evaluate_construction():
+def evaluate_construction(tolerance):
     """Calculate the workspace of the robot and display it"""
     st.session_state.stage = 'workspace_visualization'
     gm = st.session_state.gm
@@ -93,7 +93,9 @@ def evaluate_construction():
     start_pos = np.array([0, -0.4])
     q = np.zeros(robo.model.nq)
     workspace_obj = Workspace(robo, bounds, np.array([0.01, 0.01]))
-    ws_bfs = BreadthFirstSearchPlanner(workspace_obj, 0, dexterous_tolerance=[0,50])
+
+    # tolerance = [0.004, 400]
+    ws_bfs = BreadthFirstSearchPlanner(workspace_obj, 0, dexterous_tolerance=tolerance)
     workspace = ws_bfs.find_workspace(start_pos, q)
     points = []
     point = workspace.bounds[:, 0]
@@ -139,10 +141,17 @@ if st.session_state.stage == 'joint_point_choice':
                     label=str(labels[key[0]])+'_'+key[1], min_value=value[0], max_value=value[1], value=st.session_state.slider_constants[i],
                       key="slider_"+str(labels[key[0]])+'_'+key[1])
                 st.session_state.jp_positions[i] = slider
-
+        lower = 0
+        upper = np.inf
+        lower_toggle = st.toggle(label='Задать нижний предел манипулируемости', value = False,key='lower_toggle')
+        if lower_toggle:
+            lower = st.slider(label="нижний предел манипулируемости",min_value=0.0001, max_value=0.001,value=0.0001,step=0.0001,key='lower', format="%f")
+        upper_toggle = st.toggle(label = 'Задать верхний предел манипулируемости', value = False, key='upper_toggle')
+        if upper_toggle:
+            upper = st.slider(label="верхний предел манипулируемости",min_value=10, max_value=100,value=100,step=10, key='upper')
     with st.sidebar:
         st.button(label="Рассчитать рабочее пространство",
-                  on_click=evaluate_construction, key="get_workspace")
+                  on_click=evaluate_construction, key="get_workspace",args=[[lower,upper]])
 
     graph = gm.get_graph(st.session_state.jp_positions)
     send_graph_to_visualizer(graph, visualization_builder)
@@ -293,3 +302,5 @@ if st.session_state.stage == 'workspace_visualization':
         get_visualizer(visualization_builder).display(
             pin.neutral(fixed_robot.model))
         st.session_state.run_simulation_flag = False
+
+    
