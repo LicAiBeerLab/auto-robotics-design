@@ -92,9 +92,11 @@ def get_mesh_builder(manipulation=False):
 
 
 def get_standard_builder(thickness=None, density=None):
-    thickness = MIT_CHEETAH_PARAMS_DICT["thickness"]
+    if thickness is None:
+        thickness = MIT_CHEETAH_PARAMS_DICT["thickness"]
     actuator = MIT_CHEETAH_PARAMS_DICT["actuator"]
-    density = MIT_CHEETAH_PARAMS_DICT["density"]
+    if density is None:
+        density = MIT_CHEETAH_PARAMS_DICT["density"]
     body_density = MIT_CHEETAH_PARAMS_DICT["body_density"]
     builder = ParametrizedBuilder(DetailedURDFCreatorFixedEE,
                                   density={"default": density,

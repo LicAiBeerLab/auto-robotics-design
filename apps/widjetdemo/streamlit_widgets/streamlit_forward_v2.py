@@ -27,7 +27,7 @@ from auto_robot_design.utils.configs import get_standard_builder, get_mesh_build
 # build and cache constant objects
 from auto_robot_design.description.builder import ParametrizedBuilder, DetailedURDFCreatorFixedEE, MIT_CHEETAH_PARAMS_DICT
 from auto_robot_design.optimization.rewards.reward_base import NotReacablePoints
-from auto_robot_design.generator.topologies.graph_manager_2l import scale_graph_manager, scale_jp_graph
+from auto_robot_design.generator.topologies.graph_manager_2l import scale_graph_manager, scale_jp_graph, plot_one_jp_bounds
 
 
 graph_managers, optimization_builder, _, visualization_builder, crag, reward_dict = build_constant_objects()
@@ -37,7 +37,7 @@ reward_description = get_russian_reward_description()
 st.title("Расчёт характеристик рычажных механизмов")
 # create gm variable that will be used to store the current graph manager and set it to be update for a session
 if 'gm' not in st.session_state:
-    st.session_state.gm = get_preset_by_index_with_bounds(-1)
+    # st.session_state.gm = get_preset_by_index_with_bounds(-1)
     # the session variable for chosen topology, it gets a value after topology confirmation button is clicked
     st.session_state.stage = 'topology_choice'
     st.session_state.run_simulation_flag = False
@@ -45,9 +45,9 @@ if 'gm' not in st.session_state:
 
 def confirm_topology():
     st.session_state.stage = 'joint_point_choice'
-    st.session_state.gm = deepcopy(
-        graph_managers[st.session_state.topology_choice])
+    st.session_state.gm = deepcopy(graph_managers[st.session_state.topology_choice])
     st.session_state.gm.set_mutation_ranges()
+    st.session_state.current_gm = st.session_state.gm
     st.session_state.jp_positions = st.session_state.gm.generate_central_from_mutation_range()
     st.session_state.slider_constants = deepcopy(st.session_state.jp_positions)
     st.session_state.scale = 1
@@ -55,17 +55,16 @@ def confirm_topology():
 
 # the radio button and confirm button are only visible until the topology is selected
 if st.session_state.stage == 'topology_choice':
-    st.markdown(""":blossom: В данном сценарии предлается выбрать одну из девяти структур рычажных механизмов и задать положение сочленений для выбора кинематической схемы. После этого будет рассчитано рабочее пространство кинематической схемы и предложены на выбор критерии, которые можно посчитать для неё рассчитать.
+    st.markdown("""В данном сценарии предлается выбрать одну из девяти структур рычажных механизмов и задать положение сочленений для выбора кинематической схемы. После этого будет рассчитано рабочее пространство кинематической схемы и предложены на выбор критерии, которые можно посчитать для неё рассчитать.
 
 Первый шаг - выбор структуры механизма, выберите структуру при помощи кнопок на боковой панели. Для каждой структуры визуализируется пример графа и механизма.""")
     with st.sidebar:
-        st.radio(label="Выбор структуры рычажного механизма:",
+        topology_choice = st.radio(label="Выбор структуры рычажного механизма:",
                  options=graph_managers.keys(), index=0, key='topology_choice')
         st.button(label='Подтвердить выбор структуры', key='confirm_topology',
                   on_click=confirm_topology)
 
-    if st.session_state.topology_choice:
-        st.session_state.gm = graph_managers[st.session_state.topology_choice]
+    st.session_state.gm = graph_managers[st.session_state.topology_choice]
 
     gm = st.session_state.gm
     values = gm.generate_central_from_mutation_range()
@@ -86,7 +85,7 @@ if st.session_state.stage == 'topology_choice':
         """Для управления инерциальными характеристиками механизма можно задать плотность и сечение элементов конструкции.""")
     density = st.slider(label="Плотность [кг/м^3]", min_value=250.0, max_value=2000.0,
                         value=MIT_CHEETAH_PARAMS_DICT["density"], step=1.0, key='density')
-    thickness = st.slider(label="сечение [м^2]", min_value=0.01, max_value=0.1,
+    thickness = st.slider(label="толщина [м]", min_value=0.01, max_value=0.1,
                           value=MIT_CHEETAH_PARAMS_DICT["thickness"], step=0.01, key='thickness')
     st.session_state.optimization_builder = get_standard_builder(
         thickness, density)
@@ -142,14 +141,17 @@ def slider_change():
 
 
 def scale_change():
-    st.session_state.scale = st.session_state.scaler/st.session_state.scale
-    tmp = st.session_state.jp_positions.copy()
+    # graph_scale = st.session_state.scaler/st.session_state.scale
+    st.session_state.scale = st.session_state.scaler
+    tmp = deepcopy(st.session_state.jp_positions.copy())
+
     st.session_state.jp_positions = [i*st.session_state.scale for i in tmp]
     st.session_state.slider_constants = deepcopy(st.session_state.jp_positions)
-    gm = deepcopy(st.session_state.gm)
-    gm = scale_graph_manager(gm, st.session_state.scale)
-    gm.set_mutation_ranges()
-    st.session_state.gm = gm
+
+    current_gm = deepcopy(st.session_state.gm)
+    current_gm = scale_graph_manager(current_gm, st.session_state.scaler)
+    current_gm.set_mutation_ranges()
+    st.session_state.current_gm = current_gm
 
 
 # choose the mechanism for optimization
@@ -163,7 +165,7 @@ if st.session_state.stage == 'joint_point_choice':
                 3. Сочленение в относительных координатах - положение задаётся относительно другого сочленения в метрах.  
                 4. Сочленени задаваемое относительно звена - положение задаётся относительно центра звена в процентах от длины звена.  
                 Для каждого сочленения на боковой панели указан его тип.""")
-    gm = st.session_state.gm
+    gm = st.session_state.current_gm
     mut_ranges = gm.mutation_ranges
     graph = gm.graph
     labels = {n: i for i, n in enumerate(graph.nodes())}
@@ -175,6 +177,7 @@ if st.session_state.stage == 'joint_point_choice':
         st.header('Выбор положений сочленений')
         jp_label = st.radio(label='Сочленение', options=labels.values(
         ), index=0, key='joint_point_choice', horizontal=True, on_change=slider_change)
+        jp = list(labels.keys())[jp_label]
         if st.session_state.gm.generator_dict[list(labels.keys())[jp_label]].mutation_type.value == 1:
             if None in st.session_state.gm.generator_dict[list(labels.keys())[jp_label]].freeze_pos:
                 st.write("Тип сочленения: Сочленение в абсолютных координатах")
@@ -213,6 +216,8 @@ if st.session_state.stage == 'joint_point_choice':
     graph = gm.get_graph(st.session_state.jp_positions)
     send_graph_to_visualizer(graph, visualization_builder)
     draw_joint_point(graph, labels=1, draw_lines=True)
+    plot_one_jp_bounds(gm, jp.name)
+
     plt.gcf().set_size_inches(4, 4)
     st.pyplot(plt.gcf(), clear_figure=True)
     # link lengths calculations
@@ -232,7 +237,7 @@ def run_simulation():
 
 
 def calculate_and_display_rewards(trajectory, reward_mask):
-    gm = st.session_state.gm
+    gm = st.session_state.current_gm
     fixed_robot, free_robot = jps_graph2pinocchio_robot_3d_constraints(
         gm.graph, st.session_state.optimization_builder)
     point_criteria_vector, trajectory_criteria, res_dict_fixed = crag.get_criteria_data(
@@ -253,16 +258,16 @@ def calculate_and_display_rewards(trajectory, reward_mask):
                             point_criteria_vector, trajectory_criteria, res_dict_fixed, Actuator=st.session_state.optimization_builder.actuator['default'])
                         # st.text(reward_description[reward[0]][0]+":\n   " )
                         reward_vector = np.array(calculate_result[1])
-                        plt.gcf().set_figheight(3)
-                        plt.gcf().set_figwidth(3)
+                        # plt.gcf().set_figheight(3)
+                        # plt.gcf().set_figwidth(3)
                         plt.plot(reward_vector)
-                        plt.xticks(fontsize=4)
-                        plt.yticks(fontsize=4)
-                        plt.xlabel('шаг траектории', fontsize=6)
-                        plt.ylabel('значение критерия на шаге', fontsize=6)
-                        plt.title(reward_description[reward[0]][0], fontsize=8)
+                        plt.xticks(fontsize=10)
+                        plt.yticks(fontsize=10)
+                        plt.xlabel('шаг траектории', fontsize=12)
+                        plt.ylabel('значение критерия на шаге', fontsize=12)
+                        plt.title(reward_description[reward[0]][0], fontsize=12)
                         plt.legend(
-                            [f'Итоговое значение критерия: {calculate_result[0]:.2f}'], fontsize=6)
+                            [f'Итоговое значение критерия: {calculate_result[0]:.2f}'], fontsize=12)
                         st.pyplot(plt.gcf(), clear_figure=True,
                                 use_container_width=True)
     except NotReacablePoints:
@@ -285,13 +290,14 @@ if st.session_state.stage == 'workspace_visualization':
 :large_red_square: Красные область - недостижимые точки.  
 Для выбранной кинематической схемы можно рассчитать набор критериев. Все критерии рассчитываются вдоль траектории и для успешного рассчёта необходимо, чтобы траектория лежала внутри рабочей области.""")
     st.text("Выберите траекторию и критерии при помощи конопок на боковой панели:")
-    gm = st.session_state.gm
+    gm = st.session_state.current_gm
     graph = gm.graph
-    points = st.session_state.points
+    # points = st.session_state.points
+    points = st.session_state.workspace.points
     workspace = st.session_state.workspace
     x = points[:, 0]
     y = points[:, 1]
-    values = workspace.reachabilty_mask.T.flatten()
+    values = workspace.reachabilty_mask.flatten()
     x_0 = x[values == 0]
     y_0 = y[values == 0]
     x_1 = x[values == 1]
