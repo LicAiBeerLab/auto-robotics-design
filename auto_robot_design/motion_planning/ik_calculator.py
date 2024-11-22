@@ -47,17 +47,21 @@ def open_loop_ik(rmodel,cs, target_pos, ideff, q_start=None, eps=1e-5, max_it=10
 
     return q, norm(err), is_reach
 
-
+def closed_loop_velocity_ik(rmodel, rconstraint_model,target_pos, ideff, q_start=None, onlytranslation:bool=True, eps:float=2e-5, max_it:int=100):
+    model = pin.Model(rmodel)
+    constraint_model = [pin.RigidConstraintModel(x) for x in rconstraint_model]
+    starting_ee_position=model.frames[ideff].placement
+    
 def closed_loop_ik_pseudo_inverse(rmodel, 
                                   rconstraint_model, 
                                   target_pos, ideff, 
                                   q_start=None, 
                                   onlytranslation:bool=True, 
-                                  eps:float=1e-5, 
+                                  eps:float=2e-5, 
                                   max_it:int=100, 
                                   alpha:float=0.5, 
                                   l:float=1e-5, 
-                                  q_delta_threshold:float=0.5):
+                                  q_delta_threshold:float=1):
     """Finds the IK solution using constraint Jacobian. 
 
         The target position is added to the list of constraints and treated as a constraint violated in the starting position.

@@ -1,7 +1,7 @@
 import subprocess
 import time
 from copy import deepcopy
-
+from pathlib import Path
 import dill
 import matplotlib.pyplot as plt
 import numpy as np
@@ -374,7 +374,7 @@ def show_results():
         st.session_state.optimizer = optimizer
         st.session_state.problem = problem
         st.session_state.res = res
-    if n_obj == 2:
+    if n_obj >= 2:
         problem = MultiCriteriaProblem.load(selected_directory)
         checkpoint = load_checkpoint(selected_directory)
         optimizer = PymooOptimizer(problem, checkpoint)
@@ -426,7 +426,10 @@ def translate_labels(labels, reward_dict, reward_description):
         for key, value in reward_dict.items():
             if value.reward_name == label:
                 labels[i] = reward_description[key][0]
-
+def translate_reward_name(name, reward_dict, reward_description):
+        for key, value in reward_dict.items():
+            if value.reward_name == name:
+                return  reward_description[key][0]
 def calculate_and_display_rewards(graph, trajectory, reward_mask):
     fixed_robot, free_robot = jps_graph2pinocchio_robot_3d_constraints(graph, optimization_builder)
     point_criteria_vector, trajectory_criteria, res_dict_fixed = crag.get_criteria_data(
@@ -455,6 +458,12 @@ def calculate_and_display_rewards(graph, trajectory, reward_mask):
                 st.text_area(
                     label="", value="Траектория содержит точки за пределами рабочего пространства. Для рассчёта критериев укажите траекторию внутри рабочей области.")
                 break
+def create_file(graph):
+    robot_urdf_str = jps_graph2pinocchio_robot_3d_constraints(graph, optimization_builder, True)
+    path_to_robots = Path().parent.absolute().joinpath("robots")
+    path_to_urdf = path_to_robots / "robot_forward.urdf"
+    return robot_urdf_str
+
 
 if st.session_state.stage == "results":
     n_obj = st.session_state.n_obj
@@ -505,18 +514,40 @@ if st.session_state.stage == "results":
         
         plt.figure(figsize=(3,3))
         plt.scatter(x,np.array(y))
-        st.markdown("""Значения критерия оптимизации для лучших механизмов. График показывыает величину разброса результатов.""")
+        st.markdown("""Значения критерия оптимизации для лучших механизмов. График показывыает величину разброса результатов. Для каждого механизма можно рассчитать критерии вдоль указанных для оптимизации траекторий.""")
         st.pyplot(plt.gcf(), clear_figure=True,use_container_width=False)
         if bc:
             calculate_and_display_rewards(graph, trajectory, reward_idxs)
             # for key, value in st.session_state.opt_rewards_dict.items():
             #     st.text(f"{key}: {value}")
 
-    if n_obj == 2:
-        res = st.session_state.res 
+    if n_obj >= 2:
+        if n_obj>2:
+            import itertools
+            st.markdown("Для отображения результатов выберите пару критериев, для построения проекции Парето фронта")
+            reward_manager:RewardManager = st.session_state.problem.rewards_and_trajectories
+            choice_list = []
+            for key, value in reward_manager.rewards.items():
+                for reward in value:
+                    choice_list.append((key,reward[0].reward_name))
+            pairs = list(itertools.combinations(choice_list, 2))
+            pairs_of_idx = list(itertools.combinations(list(range(len(choice_list))), 2))
+            choice = st.radio(label="Выберите пару критериев для построения графика Парето фронта", options=list(range(len(pairs))), index=0, key='pair_choice',format_func = lambda x:f'Траектория {pairs[x][0][0]} критерий {translate_reward_name(pairs[x][0][1], reward_dict, reward_description)} и Траектория {pairs[x][1][0]} критерий {translate_reward_name(pairs[x][1][1], reward_dict, reward_description)}')
+            idx_pair = pairs_of_idx[choice]
+            labels = [choice_list[idx_pair[0]][1], choice_list[idx_pair[1]][1]]
+            translate_labels(labels, reward_dict, reward_description)
+        else:
+            idx_pair = [0,1]
+            labels = []
+            for trajectory_idx, rewards in problem.rewards_and_trajectories.rewards.items():
+                for reward in rewards:
+                    if reward[0].reward_name not in labels:
+                        labels.append(reward[0].reward_name)
+        st.markdown("""Результатом оптимизации является набор механизмов, которые образуют Парето фронт по заданным группам критериев. """)
+        res = st.session_state.res
         optimizer = st.session_state.optimizer
         problem = st.session_state.problem
-        F = res.F
+        F = res.F[:, idx_pair]
         approx_ideal = F.min(axis=0)
         approx_nadir = F.max(axis=0)
         nF = (F - approx_ideal) / (approx_nadir - approx_ideal)
@@ -555,13 +586,7 @@ if st.session_state.stage == "results":
             components.iframe(get_visualizer(visualization_builder).viewer.url(), width=400,
                               height=400, scrolling=True)
         st.text('Красный маркер указывает точку соответствующую заданному весу')
-        labels = []
-        for trajectory_idx, rewards in problem.rewards_and_trajectories.rewards.items():
-            for reward in rewards:
-                if reward[0].reward_name not in labels:
-                    labels.append(reward[0].reward_name)
 
-        translate_labels(labels, reward_dict, reward_description)
             
         plt.figure(figsize=(7, 5))
         plt.xlabel(labels[0])
@@ -573,22 +598,23 @@ if st.session_state.stage == "results":
         # plt.scatter(approx_nadir[0], approx_nadir[1], facecolors='none',
         #             edgecolors='black', marker="p", s=100, label="Nadir Point (Approx)")
         plt.scatter(F[b, 0], F[b, 1], marker="x", color="red", s=200)
-        plt.title("Парето фронт")
-        plt.legend()
+        if n_obj==2:
+            plt.title("Парето фронт")
+        else:
+            plt.title('Проекция Парето фронта на плоскость выбранных критериев')
         st.pyplot(plt.gcf(),clear_figure=True)
         
         with st.sidebar:
             bc = st.button(label="Рассчитать значения выбранных критериев", key="calculate_rewards")
         if bc:
             calculate_and_display_rewards(graph, trajectory, reward_idxs)
-            # for key, value in st.session_state.opt_rewards_dict.items():
-            #     st.text(f"{key}: {value}")
 
-
-
-        # for key, value in st.session_state.opt_rewards_dict.items():
-        #     st.text(f"{key}: {value}")
-
+    st.download_button(
+        "Скачать URDF описание робота",
+        data=create_file(graph),
+        file_name="robot_optimization.urdf",
+        mime="robot/urdf",
+    )
     # We need a flag to run the simulation in the frame that was just created
     if st.session_state.run_simulation_flag:
         ik_manager = TrajectoryIKManager()

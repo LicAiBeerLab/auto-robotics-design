@@ -79,18 +79,19 @@ manipulator_reward_keys = [
     "dexterity",
     "min_acceleration",
 ]
-# dataset_paths = ["./top_0", "./top_1","./top_2", "./top_3","top_4","./top_5","./top_6", "./top_7", "./top_8"]
-dataset_paths = [
-    "/run/media/yefim-work/Samsung_data1/top_0",
-    "/run/media/yefim-work/Samsung_data1/top_1",
-    "/run/media/yefim-work/Samsung_data1/top_2",
-    "/run/media/yefim-work/Samsung_data1/top_3",
-    "/run/media/yefim-work/Samsung_data1/top_4",
-    "/run/media/yefim-work/Samsung_data1/top_5",
-    "/run/media/yefim-work/Samsung_data1/top_6",
-    "/run/media/yefim-work/Samsung_data1/top_7",
-    "/run/media/yefim-work/Samsung_data1/top_8",
-]
+dataset_paths = ["./top_0", "./top_1","./top_2", "./top_3","top_4","./top_5","./top_6", "./top_7", "./top_8"]
+dataset_paths = ["./datasets/top_0", "./datasets/top_1","./datasets/top_2", "./datasets/top_3","./datasets/top_4","./datasets/top_5","./datasets/top_6", "./datasets/top_7", "./datasets/top_8"]
+# dataset_paths = [
+#     "/run/media/yefim-work/Samsung_data1/top_0",
+#     "/run/media/yefim-work/Samsung_data1/top_1",
+#     "/run/media/yefim-work/Samsung_data1/top_2",
+#     "/run/media/yefim-work/Samsung_data1/top_3",
+#     "/run/media/yefim-work/Samsung_data1/top_4",
+#     "/run/media/yefim-work/Samsung_data1/top_5",
+#     "/run/media/yefim-work/Samsung_data1/top_6",
+#     "/run/media/yefim-work/Samsung_data1/top_7",
+#     "/run/media/yefim-work/Samsung_data1/top_8",
+# ]
 
 st.title("Генерация механизмов по заданной рабочей области")
 # starting stage
@@ -118,12 +119,9 @@ def type_choice(t):
 
 # chose the class of optimization
 if st.session_state.stage == "class_choice":
-    some_text = """В данном сценарии происходит генерация механизмов по заданной рабочей области.
-Предлагается выбрать один из трёх типов механизмов: замкнутая кинематическая структура, 
-подвеска колёсного робота, робот манипулятор.
-Для каждого типа предлагается свой набор критериев, используемых при генерации
-механизма и модель визуализации"""
-    st.text(some_text)
+    some_text = """В данном сценарии происходит генерация механизмов по заданной рабочей области. Предлагается выбрать один из трёх типов механизмов: замкнутая кинематическая структура, 
+подвеска колёсного робота, робот манипулятор. Для каждого типа предлагается свой набор критериев, используемых при генерации механизма и модель визуализации."""
+    st.markdown(some_text)
     col_1, col_2, col_3 = st.columns(3, gap="medium")
     with col_1:
         st.button(
@@ -557,6 +555,11 @@ if st.session_state.stage == "generate":
 def run_simulation(**kwargs):
     st.session_state.run_simulation_flag = True
 
+def create_file(graph):
+    robot_urdf_str = jps_graph2pinocchio_robot_3d_constraints(graph, optimization_builder, True)
+    path_to_robots = Path().parent.absolute().joinpath("robots")
+    return robot_urdf_str
+
 
 if st.session_state.stage == "results":
     vis_builder = st.session_state.visualization_builder
@@ -564,7 +567,7 @@ if st.session_state.stage == "results":
         label="Лучшие по заданному критерию механизмы:",
         options=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
         value=1,
-        help="двигайте ползунок чтобы выбрать один из 10 лучших дизайнов",
+        help="Перемещайте ползунок для выбора одного из 10 лучших дизайнов",
     )
     graph = st.session_state.graphs[idx - 1]
     send_graph_to_visualizer(graph, vis_builder)
@@ -618,14 +621,20 @@ if st.session_state.stage == "results":
     st.button(
         label="Визуализация движения", key="run_simulation", on_click=run_simulation
     )
-    with open(path_to_urdf, "r") as f:
-        st.download_button(
-            "Скачать URDF описание робота",
-            data=f,
-            file_name="robot.urdf",
-            mime="robot/urdf",
+    # with open(path_to_urdf, "r") as f:
+    #     st.download_button(
+    #         "Скачать URDF описание робота",
+    #         data=f,
+    #         file_name="robot.urdf",
+    #         mime="robot/urdf",
 
-        )
+    #     )
+    st.download_button(
+        "Скачать URDF описание робота",
+        data=create_file(graph),
+        file_name="robot_inverse.urdf",
+        mime="robot/urdf",
+    )
     if st.session_state.type == "free":
         if st.session_state.run_simulation_flag:
             ik_manager = TrajectoryIKManager()

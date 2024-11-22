@@ -160,6 +160,12 @@ def draw_links(kinematic_graph, JP_graph: nx.Graph):
 
 def draw_joint_point(graph: nx.Graph, labels=0, draw_legend=True, draw_lines=False):
     pos = get_pos(graph)
+    pos_list = [p for p in pos.values()]
+    pos_matrix = np.array(pos_list)
+    min_x, min_y = np.min(pos_matrix, axis=0)
+    max_x, max_y = np.max(pos_matrix, axis=0)
+    for key, value in pos.items():
+        value
     G_pos = np.array(
         list(
         map(
@@ -244,10 +250,10 @@ def draw_joint_point(graph: nx.Graph, labels=0, draw_legend=True, draw_lines=Fal
         ax.set_ylabel('z [м]')
         ax.set_xlabel('x [м]')
         ax.tick_params(left=True, bottom=True, labelleft=True, labelbottom=True)
-        ax.set_yticks(np.arange(-1,1,0.1))
-        ax.set_xticks(np.arange(-0.4,0.4,0.1))
-        ax.set_xlim(-0.4, 0.4)
-        ax.set_ylim(-0.5, 0.1)
+        ax.set_xticks(np.arange(min_x-0.1,max_x+0.1,0.1))
+        ax.set_yticks(np.arange(min_y-0.1,max_y+0.1,0.1))
+        ax.set_xlim(min_x-0.1, max_x+0.1)
+        ax.set_ylim(min_y-0.1, max_y+0.1)
         pass
 
 

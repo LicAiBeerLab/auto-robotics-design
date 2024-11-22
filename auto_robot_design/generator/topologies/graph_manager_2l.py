@@ -75,7 +75,7 @@ class GraphManager2L():
             name="Main_ground"
         )
         self.current_main_branch.append(ground_joint)
-        self.generator_dict[ground_joint] = GeneratorInfo()
+        self.generator_dict[ground_joint] = GeneratorInfo(freeze_pos=[0, 0, 0])
 
         ground_connection_jp = JointPoint(
             r=None,
@@ -118,7 +118,7 @@ class GraphManager2L():
         )
         self.current_main_branch.append(ee)
         self.generator_dict[ee] = GeneratorInfo(
-            initial_coordinate=np.array([0, 0, -length]))
+            initial_coordinate=np.array([0, 0, -length]), freeze_pos=[0,0,-length])
 
         second_connection = JointPoint(r=None, w=np.array([0, 1, 0]), name="Main_connection_2")
         # self.generator_dict[second_connection] = GeneratorInfo(MutationType.RELATIVE, None, mutation_range=[
@@ -692,3 +692,22 @@ def get_preset_by_index(idx: int):
         gm.build_6n4p_asymmetric([2, 1, 0])
         gm.set_mutation_ranges()
         return gm
+
+def scale_jp_graph(graph, scale):
+    for jp in graph.nodes:
+        jp.r = jp.r*scale
+    return graph
+
+def scale_graph_manager(graph_manager, scale):
+    for jp in graph_manager.graph.nodes:
+        generator_info:GeneratorInfo = graph_manager.generator_dict[jp]
+        if generator_info.initial_coordinate is not None:
+            generator_info.initial_coordinate = np.array(generator_info.initial_coordinate)*scale
+        if generator_info.mutation_type != MutationType.RELATIVE_PERCENTAGE:
+            for i, r in enumerate(generator_info.mutation_range):
+                if r is not None:
+                    generator_info.mutation_range[i] = (r[0]*scale, r[1]*scale)
+            for i, r in enumerate(generator_info.freeze_pos):
+                if r is not None:
+                    generator_info.freeze_pos[i] = r*scale
+    return graph_manager

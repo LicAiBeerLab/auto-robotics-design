@@ -33,7 +33,7 @@ def add_trajectory_to_vis(pin_vis, trajectory):
     for idx, point in enumerate(trajectory):
         if idx%2==0:
             ballID = "world/ball" + str(idx)
-            pin_vis.viewer[ballID].set_object(meshcat.geometry.Sphere(0.01), material)
+            pin_vis.viewer[ballID].set_object(meshcat.geometry.Sphere(0.0075), material)
             T = np.r_[np.c_[np.eye(3), point[:3]+np.array([0,-0.04,0])], np.array([[0, 0, 0, 1]])]
             pin_vis.viewer[ballID].set_transform(T)
 

@@ -91,7 +91,7 @@ def get_mesh_builder(manipulation=False):
     return builder
 
 
-def get_standard_builder():
+def get_standard_builder(thickness=None, density=None):
     thickness = MIT_CHEETAH_PARAMS_DICT["thickness"]
     actuator = MIT_CHEETAH_PARAMS_DICT["actuator"]
     density = MIT_CHEETAH_PARAMS_DICT["density"]

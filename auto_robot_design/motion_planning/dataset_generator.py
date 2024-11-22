@@ -404,21 +404,24 @@ def set_up_reward_manager(traj_6d, reward):
     )
 
     from auto_robot_design.pinokla.criterion_agregator import CriteriaAggregator
+    from auto_robot_design.utils.configs import get_standard_builder, get_mesh_builder, get_standard_crag, get_standard_rewards
+    # dict_trajectory_criteria = {
+    #     "MASS": NeutralPoseMass(),
+    #     "POS_ERR": TranslationErrorMSE()  # MSE of deviation from the trajectory
+    # }
+    # # criteria calculated for each point on the trajectory
+    # dict_point_criteria = {
+    #     # Impact mitigation factor along the axis
+    #     "IMF": ImfCompute(ImfProjections.Z),
+    #     "MANIP": ManipCompute(MovmentSurface.XZ),
+    #     "Effective_Inertia": EffectiveInertiaCompute(),
+    #     "Actuated_Mass": ActuatedMass(),
+    #     "Manip_Jacobian": ManipJacobian(MovmentSurface.XZ)
+    # }
+    # # special object that calculates the criteria for a robot and a trajectory
 
-    dict_trajectory_criteria = {
-        "MASS": NeutralPoseMass(),
-    }
-    # criteria calculated for each point on the trajectory
-
-    dict_point_criteria = {
-        "Effective_Inertia": EffectiveInertiaCompute(),
-        "Actuated_Mass": ActuatedMass(),
-        "Manip_Jacobian": ManipJacobian(MovmentSurface.XZ),
-    }
-    # special object that calculates the criteria for a robot and a trajectory
-
-    crag = CriteriaAggregator(dict_point_criteria, dict_trajectory_criteria)
-
+    # crag = CriteriaAggregator(dict_point_criteria, dict_trajectory_criteria)
+    crag = get_standard_crag()
     # set the rewards and weights for the optimization task
 
     # acceleration_capability = MinAccelerationCapability(
