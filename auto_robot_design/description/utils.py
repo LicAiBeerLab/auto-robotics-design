@@ -208,8 +208,9 @@ def draw_joint_point(graph: nx.Graph, labels=0, draw_legend=True, draw_lines=Fal
     )
     #pos_labels = {g:np.array(p) + np.array([-0.2, 0.2])*la.norm(EE_pos)/5 for g, p in pos.items()}
     pos_labels = {}
-    pos_additions = [np.array([0.2, 0.2])*la.norm(EE_pos)/5, np.array([0.2, -0.2])*la.norm(EE_pos)/5, 
-                     np.array([0.2,-0.2])*la.norm(EE_pos)/5, np.array([-0.2, -0.2])*la.norm(EE_pos)/5]
+    coef = 1000
+    pos_additions = [np.array([0.2, 0.2])*la.norm(EE_pos)/coef, np.array([0.2, -0.2])*la.norm(EE_pos)/coef, 
+                     np.array([0.2,-0.2])*la.norm(EE_pos)/coef, np.array([-0.2, -0.2])*la.norm(EE_pos)/coef]
     for g,p in pos.items():
         pos_flag = False
         for pos_addition in pos_additions:
@@ -220,15 +221,16 @@ def draw_joint_point(graph: nx.Graph, labels=0, draw_legend=True, draw_lines=Fal
                 break
         if not pos_flag:
             pos_labels[g] = np.array(p)
-
     nx.draw_networkx_labels(
         graph,
         pos_labels,
         labels,
-        font_color = "r",
+        font_color = "g",
         font_family = "monospace",
-        font_size=18
+        font_size=14
     )
+
+    #"#fe8a18"
     if nx.is_weighted(graph):
         edge_labels = nx.get_edge_attributes(graph, "weight")
         nx.draw_networkx_edge_labels(

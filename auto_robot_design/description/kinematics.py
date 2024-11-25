@@ -390,15 +390,16 @@ def get_endeffector_joints(graph: nx.Graph):
 if __name__ == "__main__":
     # print("Kinematic description of the mechanism")
     # Define the joint points
-    joint_points = [
-        JointPoint(r=np.array([0, 0, 0]), attach_ground=True),
-        JointPoint(r=np.array([1, 0, 0])),
-        JointPoint(r=np.array([0, 1, 0])),
-        JointPoint(r=np.array([0, 0, 1])),
-        JointPoint(r=np.array([1, 1, 0])),
-        JointPoint(r=np.array([1, 0, 1])),
-        JointPoint(r=np.array([0, 1, 1])),
-        JointPoint(r=np.array([1, 1, 1]), attach_endeffector=True),
-    ]
+    # joint_points = [
+    #     JointPoint(r=np.array([0, 0, 0]), attach_ground=True),
+    #     JointPoint(r=np.array([1, 0, 0])),
+    #     JointPoint(r=np.array([0, 1, 0])),
+    #     JointPoint(r=np.array([0, 0, 1])),
+    #     JointPoint(r=np.array([1, 1, 0])),
+    #     JointPoint(r=np.array([1, 0, 1])),
+    #     JointPoint(r=np.array([0, 1, 1])),
+    #     JointPoint(r=np.array([1, 1, 1]), attach_endeffector=True),
+    # ]
     # print(joint_points[0] == joint_points[1])
     # print(joint_points[0] == joint_points[0])
+    pass

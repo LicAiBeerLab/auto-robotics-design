@@ -79,8 +79,8 @@ manipulator_reward_keys = [
     "dexterity",
     "min_acceleration",
 ]
-dataset_paths = ["./top_0", "./top_1","./top_2", "./top_3","top_4","./top_5","./top_6", "./top_7", "./top_8"]
-# dataset_paths = ["./datasets/top_0", "./datasets/top_1","./datasets/top_2", "./datasets/top_3","./datasets/top_4","./datasets/top_5","./datasets/top_6", "./datasets/top_7", "./datasets/top_8"]
+# dataset_paths = ["./top_0", "./top_1","./top_2", "./top_3","top_4","./top_5","./top_6", "./top_7", "./top_8"]
+dataset_paths = ["./datasets/top_0", "./datasets/top_1","./datasets/top_2", "./datasets/top_3","./datasets/top_4","./datasets/top_5","./datasets/top_6", "./datasets/top_7", "./datasets/top_8"]
 # dataset_paths = [
 #     "/run/media/yefim-work/Samsung_data1/top_0",
 #     "/run/media/yefim-work/Samsung_data1/top_1",

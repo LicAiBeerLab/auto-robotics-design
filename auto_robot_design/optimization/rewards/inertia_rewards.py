@@ -69,7 +69,7 @@ class ActuatedMassReward(Reward):
             return 0, []
         
         mass = np.linalg.det(point_criteria[self.mass_key])
-        return np.mean(mass), mass
+        return 1/np.mean(mass), mass
 
 
 class TrajectoryIMFReward(Reward):

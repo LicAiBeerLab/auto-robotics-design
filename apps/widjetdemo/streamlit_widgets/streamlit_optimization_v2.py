@@ -12,16 +12,14 @@ from forward_init import (add_trajectory_to_vis, build_constant_objects,
                           get_russian_reward_description)
 from pymoo.decomposition.asf import ASF
 from streamlit_widget_auxiliary import get_visualizer, send_graph_to_visualizer
-
+from pathlib import Path
 from auto_robot_design.description.builder import (jps_graph2pinocchio_robot_3d_constraints)
 from auto_robot_design.description.mesh_builder.mesh_builder import (
     MeshBuilder, jps_graph2pinocchio_meshes_robot)
 from auto_robot_design.description.utils import draw_joint_point
 from auto_robot_design.generator.topologies.bounds_preset import \
     get_preset_by_index_with_bounds
-from auto_robot_design.generator.topologies.graph_manager_2l import (
-    GraphManager2L, MutationType, plot_2d_bounds, plot_one_jp_bounds)
-from auto_robot_design.motion_planning.bfs_ws import BreadthFirstSearchPlanner
+from auto_robot_design.generator.topologies.graph_manager_2l import plot_one_jp_bounds
 from auto_robot_design.motion_planning.trajectory_ik_manager import \
     TrajectoryIKManager
 from auto_robot_design.optimization.optimizer import PymooOptimizer
@@ -32,8 +30,7 @@ from auto_robot_design.optimization.rewards.reward_base import (
 from auto_robot_design.optimization.saver import load_checkpoint
 from auto_robot_design.pinokla.default_traj import (
     add_auxilary_points_to_trajectory, convert_x_y_to_6d_traj_xz,
-    create_simple_step_trajectory, get_vertical_trajectory,
-    get_workspace_trajectory)
+    create_simple_step_trajectory, get_vertical_trajectory)
 
 graph_managers, optimization_builder, _,visualization_builder, crag, reward_dict = build_constant_objects()
 reward_description = get_russian_reward_description()
@@ -87,14 +84,14 @@ if st.session_state.stage == "topology_choice":
     values = gm.generate_central_from_mutation_range()
     graph = st.session_state.gm.get_graph(values)
     send_graph_to_visualizer(graph, visualization_builder)
-    col_1, col_2 = st.columns(2, gap="medium")
+    col_1, col_2 = st.columns([0.7, 0.3], gap="medium")
     with col_1:
-        st.text("Графовое представление выбранной структуры:")
-        draw_joint_point(graph, labels=2)
-        plt.gcf().set_size_inches(4, 4)
+        st.markdown("Графовое представление выбранной структуры:")
+        draw_joint_point(graph, labels=2,draw_lines=True, draw_legend=True)
+        plt.gcf().set_size_inches(5, 5)
         st.pyplot(plt.gcf(), clear_figure=True)
     with col_2:
-        st.header("Визуализация робота")
+        st.markdown("Визуализация робота")
         components.iframe(get_visualizer(visualization_builder).viewer.url(), width=400,
                           height=400, scrolling=True)
 
@@ -124,6 +121,14 @@ def joint_choice():
 
 # second stage
 if st.session_state.stage == "ranges_choice":
+    st.markdown("""Для выбранной топологии необходимо задать диапазоны оптимизации. В нашей системе есть 4 типа сочленений:
+                1. Неподвижное сочленение - неизменяемое положение.  
+                2. Cочленение в абсолютных координатах - положение задаётся в абсолютной системе координат в метрах.  
+                3. Сочленение в относительных координатах - положение задаётся относительно другого сочленения в метрах.  
+                4. Сочленени задаваемое относительно звена - положение задаётся относительно центра звена в процентах от длины звена.  
+                Для каждого сочленения на боковой панели указан его тип.  
+                x - горизонтальные координаты, z - вертикальные координаты. Размеры указаны в метрах. Для изменения высоты конструкции необходимо изменять общий масштаб.  
+                В начальном состоянии активированы все оптимизируемые величины, если отключить оптимизацию величины, то её значение будет постоянным и его можно задать в соответствующем окне на боковой панели. Значение должно быть в максимальном диапазоне оптимизации""")
     # form for optimization ranges. All changes affects the gm_clone and it should be used for optimization
     # initial nodes
     initial_generator_info = st.session_state.gm.generator_dict
@@ -132,6 +137,7 @@ if st.session_state.stage == "ranges_choice":
     generator_info = gm.generator_dict
     graph = gm.graph
     labels = {n:i for i,n in enumerate(graph.nodes())}
+    
     with st.sidebar:
         # return button
         st.button(label="Назад к выбору топологии",
@@ -141,7 +147,7 @@ if st.session_state.stage == "ranges_choice":
         
         mutable_jps = [key[0] for  key in initial_mutation_ranges.keys()]
         options = [(jp, idx) for jp, idx in labels.items() if jp in mutable_jps]
-        current_jp = st.radio(label="Выбор сочленения для установки границ", options=options, index=0, format_func=lambda x:x[1],key='joint_choice', on_change=joint_choice)
+        current_jp = st.radio(label="Выбор сочленения для установки диапазона оптимизации", options=options, index=0, format_func=lambda x:x[1],key='joint_choice', on_change=joint_choice)
         # we can get current jp generator info in the cloned gm which contains all the changes
         current_generator_info = generator_info[current_jp[0]]
         for i, mut_range in enumerate(current_generator_info.mutation_range):
@@ -176,19 +182,18 @@ if st.session_state.stage == "ranges_choice":
     graph = gm.get_graph(center)
     # here I can insert the visualization for jp bounds
 
-    draw_joint_point(graph, labels=1, draw_legend=False,draw_lines=True)
+    draw_joint_point(graph, labels=1, draw_legend=True,draw_lines=True)
     # here gm is a clone
     
     # plot_2d_bounds(gm)
     st.pyplot(plt.gcf(), clear_figure=True)
     # this way we set ranges after each step, but without freezing joints
     some_text = """Диапазоны оптимизации определяют границы пространства поиска механизмов в процессе 
-оптимизации. x - горизонтальные координаты, z - вертикальные координаты.
+оптимизации. 
 Отключенные координаты не будут участвовать в оптимизации и будут иметь постоянные 
 значения во всех механизмах."""
     st.text(some_text)
     # st.text("x - горизонтальные координаты, z - вертикальные координаты")
-
 
 
 def add_trajectory(trajectory, idx):
@@ -247,7 +252,7 @@ def start_optimization(rewards_tf):
     sf = deepcopy(st.session_state.soft_constraint)
     builder = deepcopy(optimization_builder)
     data = (graph_manager, builder, crag, reward_manager, sf)
-    with open("./results/buffer/data.pkl", "wb+") as f:
+    with open(Path("./results/buffer/data.pkl"), "wb+") as f:
         dill.dump(data, f)
 
 
@@ -394,8 +399,8 @@ if st.session_state.stage == "optimization":
     graph = st.session_state.gm.graph
     col_1, col_2 = st.columns([0.7, 0.3], gap="medium")
     with col_1:
-        st.header("Графовое представление:")
-        draw_joint_point(graph, labels=2, draw_legend=False)
+        # st.header("Графовое представление:")
+        draw_joint_point(graph, labels=2, draw_legend=False, draw_lines=True)
         plt.gcf().set_size_inches(4, 4)
         st.pyplot(plt.gcf(), clear_figure=True)
     with col_2:
@@ -539,10 +544,11 @@ if st.session_state.stage == "results":
         else:
             idx_pair = [0,1]
             labels = []
-            for trajectory_idx, rewards in problem.rewards_and_trajectories.rewards.items():
+            for trajectory_idx, rewards in st.session_state.problem.rewards_and_trajectories.rewards.items():
                 for reward in rewards:
                     if reward[0].reward_name not in labels:
                         labels.append(reward[0].reward_name)
+
         st.markdown("""Результатом оптимизации является набор механизмов, которые образуют Парето фронт по заданным группам критериев. """)
         res = st.session_state.res
         optimizer = st.session_state.optimizer
@@ -551,8 +557,8 @@ if st.session_state.stage == "results":
         approx_ideal = F.min(axis=0)
         approx_nadir = F.max(axis=0)
         nF = (F - approx_ideal) / (approx_nadir - approx_ideal)
-        w1 = st.slider(label="Выбор решения из Парето фронта при помощи указания относительного веса:", min_value=0.1,
-                       max_value=0.9, value=0.5)
+        w1 = st.slider(label="Выбор решения из Парето фронта при помощи указания относительного веса:", min_value=0.05,
+                       max_value=0.95, value=0.5)
         weights = np.array([w1, 1-w1])
         decomp = ASF()
         b = decomp.do(nF, 1/weights).argmin()

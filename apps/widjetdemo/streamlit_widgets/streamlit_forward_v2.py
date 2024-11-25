@@ -30,7 +30,7 @@ from auto_robot_design.optimization.rewards.reward_base import NotReacablePoints
 from auto_robot_design.generator.topologies.graph_manager_2l import scale_graph_manager, scale_jp_graph, plot_one_jp_bounds
 
 
-graph_managers, optimization_builder, _, visualization_builder, crag, reward_dict = build_constant_objects()
+graph_managers, optimization_builder, _, _, crag, reward_dict = build_constant_objects()
 reward_description = get_russian_reward_description()
 
 
@@ -192,7 +192,7 @@ if st.session_state.stage == 'joint_point_choice':
                   on_click=evaluate_construction, key="get_workspace", args=[[lower, upper]])
     # draw the graph
     graph = gm.get_graph(st.session_state.jp_positions)
-    send_graph_to_visualizer(graph, visualization_builder)
+    send_graph_to_visualizer(graph, st.session_state.visualization_builder)
     draw_joint_point(graph, labels=1, draw_lines=True)
     plot_one_jp_bounds(gm, jp.name)
 
@@ -343,8 +343,8 @@ if st.session_state.stage == 'workspace_visualization':
     with col_2:
         if trajectory_type is not None:
             add_trajectory_to_vis(get_visualizer(
-                visualization_builder), trajectory[50:])
-        components.iframe(get_visualizer(visualization_builder).viewer.url(), width=400,
+                st.session_state.visualization_builder), trajectory[50:])
+        components.iframe(get_visualizer(st.session_state.visualization_builder).viewer.url(), width=400,
                           height=400, scrolling=True)
 
     if trajectory_type is not None:
@@ -369,6 +369,6 @@ if st.session_state.stage == 'workspace_visualization':
             trajectory, viz=get_visualizer(st.session_state.visualization_builder)
         )
         time.sleep(1)
-        get_visualizer(visualization_builder).display(
+        get_visualizer(st.session_state.visualization_builder).display(
             pin.neutral(fixed_robot.model))
         st.session_state.run_simulation_flag = False
