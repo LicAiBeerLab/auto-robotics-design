@@ -32,10 +32,12 @@ def is_in_subdirectory(file_path, current_directory):
     # Check if file_path is in a subdirectory of current_directory
     return file_path.is_relative_to(current_directory)
 
-def get_mesh_builder(manipulation=False):
-    thickness = MIT_CHEETAH_PARAMS_DICT["thickness"]
+def get_mesh_builder(manipulation=False, thickness=None, density=None):
+    if thickness is None:
+        thickness = MIT_CHEETAH_PARAMS_DICT["thickness"]
     actuator = MIT_CHEETAH_PARAMS_DICT["actuator"]
-    density = MIT_CHEETAH_PARAMS_DICT["density"]
+    if density is None:
+        density = MIT_CHEETAH_PARAMS_DICT["density"]
     body_density = MIT_CHEETAH_PARAMS_DICT["body_density"]
 
     if manipulation:

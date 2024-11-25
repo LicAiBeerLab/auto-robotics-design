@@ -37,7 +37,6 @@ reward_description = get_russian_reward_description()
 st.title("Расчёт характеристик рычажных механизмов")
 # create gm variable that will be used to store the current graph manager and set it to be update for a session
 if 'gm' not in st.session_state:
-    # st.session_state.gm = get_preset_by_index_with_bounds(-1)
     # the session variable for chosen topology, it gets a value after topology confirmation button is clicked
     st.session_state.stage = 'topology_choice'
     st.session_state.run_simulation_flag = False
@@ -64,12 +63,18 @@ if st.session_state.stage == 'topology_choice':
         st.button(label='Подтвердить выбор структуры', key='confirm_topology',
                   on_click=confirm_topology)
 
+    st.markdown(
+    """Для управления инерциальными характеристиками механизма можно задать плотность и сечение элементов конструкции.""")
+    density = st.slider(label="Плотность [кг/м^3]", min_value=250, max_value=8000,
+                        value=int(MIT_CHEETAH_PARAMS_DICT["density"]), step=50, key='density')
+    thickness = st.slider(label="Толщина [м]", min_value=0.01, max_value=0.1,
+                          value=MIT_CHEETAH_PARAMS_DICT["thickness"], step=0.01, key='thickness')
+    st.session_state.visualization_builder = get_mesh_builder(thickness=thickness, density=density)
     st.session_state.gm = graph_managers[st.session_state.topology_choice]
-
     gm = st.session_state.gm
     values = gm.generate_central_from_mutation_range()
     graph = st.session_state.gm.get_graph(values)
-    send_graph_to_visualizer(graph, visualization_builder)
+    send_graph_to_visualizer(graph, st.session_state.visualization_builder)
     col_1, col_2 = st.columns([0.7, 0.3], gap="medium")
     with col_1:
         st.markdown("Граф выбранной структуры:")
@@ -78,23 +83,16 @@ if st.session_state.stage == 'topology_choice':
         st.pyplot(plt.gcf(), clear_figure=True)
     with col_2:
         st.markdown("Визуализация мехнизма:")
-        components.iframe(get_visualizer(visualization_builder).viewer.url(), width=400,
+        components.iframe(get_visualizer(st.session_state.visualization_builder).viewer.url(), width=400,
                           height=400, scrolling=True)
-
-    st.markdown(
-        """Для управления инерциальными характеристиками механизма можно задать плотность и сечение элементов конструкции.""")
-    density = st.slider(label="Плотность [кг/м^3]", min_value=250.0, max_value=2000.0,
-                        value=MIT_CHEETAH_PARAMS_DICT["density"], step=1.0, key='density')
-    thickness = st.slider(label="толщина [м]", min_value=0.01, max_value=0.1,
-                          value=MIT_CHEETAH_PARAMS_DICT["thickness"], step=0.01, key='thickness')
-    st.session_state.optimization_builder = get_standard_builder(
-        thickness, density)
+    st.session_state.optimization_builder = get_standard_builder(thickness, density)
 
 
 def evaluate_construction(tolerance):
     """Calculate the workspace of the robot and display it"""
     st.session_state.stage = 'workspace_visualization'
-    gm = st.session_state.gm
+    st.session_state.slider_constants = deepcopy(st.session_state.jp_positions)
+    gm = st.session_state.current_gm
     graph = gm.graph
     robo, __ = jps_graph2pinocchio_robot_3d_constraints(
         graph, builder=st.session_state.optimization_builder)
@@ -116,24 +114,7 @@ def evaluate_construction(tolerance):
     ws_bfs = BreadthFirstSearchPlanner(
         workspace_obj, 0, dexterous_tolerance=tolerance)
     workspace = ws_bfs.find_workspace(start_pos, q)
-    points = []
-    point = workspace.bounds[:, 0]
-    k, m = 0, 0
-    while point[1] <= workspace.bounds[1, 1]:
-
-        while point[0] <= workspace.bounds[0, 1]:
-            points.append(point)
-            m += 1
-            point = workspace.bounds[:, 0] + np.array(
-                workspace.resolution) * np.array([m, k])
-        k += 1
-        m = 0
-        point = workspace.bounds[:, 0] + np.array(
-            workspace.resolution) * np.array([m, k])
-
-    points = np.array(points)
     st.session_state.workspace = workspace
-    st.session_state.points = points
 
 
 def slider_change():
@@ -141,15 +122,13 @@ def slider_change():
 
 
 def scale_change():
-    # graph_scale = st.session_state.scaler/st.session_state.scale
+    graph_scale = st.session_state.scaler/st.session_state.scale
     st.session_state.scale = st.session_state.scaler
     tmp = deepcopy(st.session_state.jp_positions.copy())
-
-    st.session_state.jp_positions = [i*st.session_state.scale for i in tmp]
+    st.session_state.jp_positions = [i*graph_scale for i in tmp]
     st.session_state.slider_constants = deepcopy(st.session_state.jp_positions)
-
     current_gm = deepcopy(st.session_state.gm)
-    current_gm = scale_graph_manager(current_gm, st.session_state.scaler)
+    current_gm = scale_graph_manager(current_gm, st.session_state.scale)
     current_gm.set_mutation_ranges()
     st.session_state.current_gm = current_gm
 
@@ -172,7 +151,6 @@ if st.session_state.stage == 'joint_point_choice':
     with st.sidebar:
         st.button(label='Вернуться к выбору топологии', key='return_to_topology_choice',
                   on_click=lambda: st.session_state.__setitem__('stage', 'topology_choice'))
-
     with st.sidebar:
         st.header('Выбор положений сочленений')
         jp_label = st.radio(label='Сочленение', options=labels.values(
@@ -381,15 +359,14 @@ if st.session_state.stage == 'workspace_visualization':
     )
     if st.session_state.run_simulation_flag:
         ik_manager = TrajectoryIKManager()
-        # fixed_robot, free_robot = jps_graph2pinocchio_robot(gm.graph, builder)
         fixed_robot, _ = jps_graph2pinocchio_meshes_robot(
-            graph, visualization_builder)
+            graph, st.session_state.visualization_builder)
         ik_manager.register_model(
             fixed_robot.model, fixed_robot.constraint_models, fixed_robot.visual_model
         )
         ik_manager.set_solver("Closed_Loop_PI")
         _ = ik_manager.follow_trajectory(
-            trajectory, viz=get_visualizer(visualization_builder)
+            trajectory, viz=get_visualizer(st.session_state.visualization_builder)
         )
         time.sleep(1)
         get_visualizer(visualization_builder).display(
