@@ -200,11 +200,12 @@ def draw_joint_point(graph: nx.Graph, labels=0, draw_legend=True, draw_lines=Fal
         graph,
         pos,
         node_color="w",
-        linewidths=3.5,
+        linewidths=3,
         edgecolors="k",
         node_shape="o",
         node_size=150,
         with_labels=False,
+        width=2,
     )
     #pos_labels = {g:np.array(p) + np.array([-0.2, 0.2])*la.norm(EE_pos)/5 for g, p in pos.items()}
     pos_labels = {}
@@ -225,7 +226,7 @@ def draw_joint_point(graph: nx.Graph, labels=0, draw_legend=True, draw_lines=Fal
         graph,
         pos_labels,
         labels,
-        font_color = "g",
+        font_color = "#ff5A00",
         font_family = "monospace",
         font_size=14
     )

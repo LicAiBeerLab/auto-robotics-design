@@ -31,15 +31,16 @@ from auto_robot_design.optimization.saver import load_checkpoint
 from auto_robot_design.pinokla.default_traj import (
     add_auxilary_points_to_trajectory, convert_x_y_to_6d_traj_xz,
     create_simple_step_trajectory, get_vertical_trajectory)
-
-graph_managers, optimization_builder, _,visualization_builder, crag, reward_dict = build_constant_objects()
+from auto_robot_design.utils.configs import get_standard_builder, get_mesh_builder, get_standard_crag, get_standard_rewards
+from auto_robot_design.description.builder import ParametrizedBuilder, DetailedURDFCreatorFixedEE, MIT_CHEETAH_PARAMS_DICT
+graph_managers, _, _,_, crag, reward_dict = build_constant_objects()
 reward_description = get_russian_reward_description()
 axis = ['x', 'y', 'z']
 
 st.title("Оптимизация рычажных механизмов")
 
 # gm is the first value that gets set. List of all values that should be update for each session
-if 'gm' not in st.session_state:
+if 'stage' not in st.session_state:
     st.session_state.gm = get_preset_by_index_with_bounds(0)
     st.session_state.reward_manager = RewardManager(crag=crag)
     error_calculator = PositioningErrorCalculator(jacobian_key="Manip_Jacobian")
@@ -79,11 +80,17 @@ if st.session_state.stage == "topology_choice":
                  index=0, key='topology_choice', on_change=topology_choice)
         st.button(label='Подтвердить выбор структуры', key='confirm_topology',
                   on_click=confirm_topology)
-
+    st.markdown(
+    """Для управления инерциальными характеристиками механизма можно задать плотность и сечение элементов конструкции.""")
+    density = st.slider(label="Плотность [кг/м^3]", min_value=250, max_value=8000,
+                        value=int(MIT_CHEETAH_PARAMS_DICT["density"]), step=50, key='density')
+    thickness = st.slider(label="Толщина [м]", min_value=0.01, max_value=0.1,
+                          value=MIT_CHEETAH_PARAMS_DICT["thickness"], step=0.01, key='thickness')
+    st.session_state.visualization_builder = get_mesh_builder(thickness=thickness, density=density)
     gm = st.session_state.gm
     values = gm.generate_central_from_mutation_range()
     graph = st.session_state.gm.get_graph(values)
-    send_graph_to_visualizer(graph, visualization_builder)
+    send_graph_to_visualizer(graph, st.session_state.visualization_builder )
     col_1, col_2 = st.columns([0.7, 0.3], gap="medium")
     with col_1:
         st.markdown("Графовое представление выбранной структуры:")
@@ -92,7 +99,7 @@ if st.session_state.stage == "topology_choice":
         st.pyplot(plt.gcf(), clear_figure=True)
     with col_2:
         st.markdown("Визуализация робота")
-        components.iframe(get_visualizer(visualization_builder).viewer.url(), width=400,
+        components.iframe(get_visualizer(st.session_state.visualization_builder ).viewer.url(), width=400,
                           height=400, scrolling=True)
 
 
@@ -621,6 +628,7 @@ if st.session_state.stage == "results":
         file_name="robot_optimization.urdf",
         mime="robot/urdf",
     )
+    
     # We need a flag to run the simulation in the frame that was just created
     if st.session_state.run_simulation_flag:
         ik_manager = TrajectoryIKManager()
