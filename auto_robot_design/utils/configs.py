@@ -60,7 +60,7 @@ def get_mesh_builder(manipulation=False, thickness=None, density=None):
         builder = MeshBuilder(urdf_creator,
                             mesh_creator,
                             density={"default": density, "G": density},
-                            thickness={"default": 0.01},
+                            thickness={"default": thickness},
                             actuator={"default": actuator},
                             size_ground=np.array(
                                 [0.1,0.1,0.1]),

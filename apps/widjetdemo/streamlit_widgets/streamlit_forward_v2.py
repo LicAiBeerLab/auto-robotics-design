@@ -16,7 +16,7 @@ from streamlit_widget_auxiliary import get_visualizer, send_graph_to_visualizer
 from auto_robot_design.description.builder import jps_graph2pinocchio_robot_3d_constraints
 from auto_robot_design.description.mesh_builder.mesh_builder import (
     jps_graph2pinocchio_meshes_robot)
-from auto_robot_design.description.utils import draw_joint_point
+from auto_robot_design.description.utils import draw_joint_point, draw_joint_point_widjet
 from auto_robot_design.generator.topologies.bounds_preset import \
     get_preset_by_index_with_bounds
 from auto_robot_design.motion_planning.bfs_ws import (
@@ -99,10 +99,14 @@ if st.session_state.stage == 'topology_choice':
 
     st.markdown(
     """Для управления инерциальными характеристиками механизма можно задать плотность и сечение элементов конструкции.""")
-    density = st.number_input(label="Плотность [кг/м^3]", min_value=0.01, max_value=None,
-                        value=MIT_CHEETAH_PARAMS_DICT["density"], step=10.0, key='density')
-    thickness = st.number_input(label="Толщина [м]", min_value=0.01, max_value=None,
+    density = st.slider(label="Плотность [кг/м^3]", min_value=250, max_value=8000,
+                            value=int(MIT_CHEETAH_PARAMS_DICT["density"]), step=50, key='density')
+    thickness = st.slider(label="Толщина [м]", min_value=0.01, max_value=0.1,
                           value=MIT_CHEETAH_PARAMS_DICT["thickness"], step=0.01, key='thickness')
+    # density = st.number_input(label="Плотность [кг/м^3]", min_value=0.01, max_value=None,
+    #                     value=MIT_CHEETAH_PARAMS_DICT["density"], step=10.0, key='density')
+    # thickness = st.number_input(label="Толщина [м]", min_value=0.01, max_value=None,
+    #                       value=MIT_CHEETAH_PARAMS_DICT["thickness"], step=0.01, key='thickness')
     st.session_state.visualization_builder = get_mesh_builder(manipulation=True, thickness=thickness, density=density)
     st.session_state.gm = graph_managers[st.session_state.topology_choice]
     gm = st.session_state.gm
@@ -223,7 +227,8 @@ if st.session_state.stage == 'joint_point_choice':
         # if upper_toggle:
         #     upper = st.slider(label="верхний предел манипулируемости",min_value=10, max_value=100,value=100,step=10, key='upper')
     st.markdown("""Высоту механизма можно настроить при помощи изменения общего масштаба механизма.""")
-    st.number_input(label="Масштаб", min_value=0.1, max_value=None,value=1.0, step=0.1, key='scaler', on_change=scale_change)
+    st.slider(label="Масштаб", min_value=0.5, max_value=2.0,value=1.0, step=0.1, key='scaler', on_change=scale_change)
+    # st.number_input(label="Масштаб", min_value=0.1, max_value=None,value=1.0, step=0.1, key='scaler', on_change=scale_change)
     with st.sidebar:
         
         st.button(label="Рассчитать рабочее пространство",
@@ -231,7 +236,7 @@ if st.session_state.stage == 'joint_point_choice':
     # draw the graph
     graph = gm.get_graph(st.session_state.jp_positions)
     send_graph_to_visualizer(graph, st.session_state.visualization_builder)
-    draw_joint_point(graph, labels=1, draw_lines=True)
+    draw_joint_point_widjet(graph, labels=1, draw_lines=True)
     plot_one_jp_bounds(gm, jp.name)
 
     plt.gcf().set_size_inches(4, 4)
