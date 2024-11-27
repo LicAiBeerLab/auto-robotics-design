@@ -36,44 +36,23 @@ from auto_robot_design.generator.topologies.graph_manager_2l import scale_graph_
 graph_managers, optimization_builder, _, _, crag, reward_dict = build_constant_objects()
 reward_description = get_russian_reward_description()
 
-# REWARD_TITLES = {
-#     "det_mass_matrix.py":"Определитель матрицы инерции",
-#     "imf_z.py":"Фактор распределения вертикального удара",
-#     "min_payload.py":"Минимальная грузоподъёмность",
-#     "z_reduction_ration.py":"Вертикальное передаточное отношение",
-#     "potentinal_acc_traj.py":"Потенциальное ускорение вдоль траектории",
-#     "min_potentinal_acc.py":"Минимальное потенциальное ускорение",
-#     "min_manipulabilty.py":"Минимальная манипулируемость",
-#     "min_effort.py":"Минимальное усилие",
-#     "mean_payload.py":"Средняя грузоподъёмность",
-#     "manipulabilty.py":"Манипулируемость",
-#     "manipulabilty_traj.py":"Манипулируемость/Маневренность вдоль траектории",
-#     "index_movmnets.py":"Индекс подвижности",
-
-
-
-# }
-
-# path_to_reward_desc = "apps/widjetdemo/streamlit_widgets/reward_descriptions"
-# path_to_file = Path(os.path.abspath(__file__))
-# files_and_dirs = os.listdir(path_to_reward_desc)
-# # Filter to get only files
-# files = [file for file in files_and_dirs if not os.path.isdir(os.path.join(path_to_reward_desc, file))]
-
-# page_rew_description = []
-# # Print the file names
-# for file in files:
-#     print(os.path.join(path_to_file.parent, "reward_descriptions", file))
-#     page_rew_description.append(st.Page(os.path.join(path_to_file.parent, "reward_descriptions", file), title=REWARD_TITLES[file]))
-
-# pg = st.navigation({"Критерии":page_rew_description}, position="hidden")
-
+def font_size(size):
+    st.markdown("""
+<style>
+.big-font {
+    font-size:"""+str(size)+"""px !important;
+}
+</style>
+""", unsafe_allow_html=True)
+    
 st.title("Расчёт характеристик рычажных механизмов")
 # create gm variable that will be used to store the current graph manager and set it to be update for a session
 if 'gm' not in st.session_state:
     # the session variable for chosen topology, it gets a value after topology confirmation button is clicked
     st.session_state.stage = 'topology_choice'
     st.session_state.run_simulation_flag = False
+    font_size(16)
+
 
 
 def confirm_topology():
@@ -87,18 +66,18 @@ def confirm_topology():
 
 # the radio button and confirm button are only visible until the topology is selected
 if st.session_state.stage == 'topology_choice':
-    st.markdown("""В данном сценарии предлагается выбрать одну из девяти структур рычажных механизмов и задать положение сочленений кинематической схемы. 
-После этого будет рассчитано рабочее пространство кинематической схемы и предложены на выбор критерии, которые можно для неё рассчитать.
+    font_size(20)
+    st.markdown("""<p class="big-font"> В данном сценарии предлагается выбрать одну из девяти структур рычажных механизмов и задать положение сочленений кинематической схемы. 
+После этого будет рассчитано рабочее пространство кинематической схемы и предложены на выбор критерии, которые можно для неё рассчитать.</p>
 
-Первый шаг - выбор структуры механизма, выберите структуру при помощи кнопок на боковой панели. Для каждой структуры визуализируется пример графа и механизма.""")
+<p class="big-font"> Первый шаг - выбор структуры механизма, выберите структуру при помощи кнопок на боковой панели. Для каждой структуры визуализируется пример графа и механизма.</p>""",unsafe_allow_html=True)
     with st.sidebar:
         topology_choice = st.radio(label="Выбор структуры рычажного механизма:",
                  options=graph_managers.keys(), index=0, key='topology_choice')
         st.button(label='Подтвердить выбор структуры', key='confirm_topology',
                   on_click=confirm_topology)
-
     st.markdown(
-    """Для управления инерциальными характеристиками механизма можно задать плотность и сечение элементов конструкции.""")
+    """<p class="big-font"> Для управления инерциальными характеристиками механизма можно задать плотность и сечение элементов конструкции.</p>""",unsafe_allow_html=True)
     density = st.slider(label="Плотность [кг/м^3]", min_value=250, max_value=8000,
                             value=int(MIT_CHEETAH_PARAMS_DICT["density"]), step=50, key='density')
     thickness = st.slider(label="Толщина [м]", min_value=0.01, max_value=0.1,
