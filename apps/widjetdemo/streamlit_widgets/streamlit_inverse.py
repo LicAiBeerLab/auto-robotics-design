@@ -482,7 +482,7 @@ if st.session_state.stage == "rewards":
             chosen_reward_idx = st.radio(label='Выбор целевой функции', options=range(len(reward_keys)), index=0, format_func=lambda x: reward_description[reward_keys[x]][0])
             st.session_state.chosen_reward = reward_dict[reward_keys[chosen_reward_idx]]
             st.session_state.reward_name = reward_description[reward_keys[chosen_reward_idx]][0]
-        st.button(label="Сгенерировать механизмы", key="generate", on_click=generate)
+        st.button(label="Сгенерировать механизмы", key="generate", on_click=generate, type="primary")
     st.session_state.point = [x_p, y_p]
 
     Drawing_colored_circle = Circle((x_p, y_p), radius=0.01, color="r")
@@ -490,7 +490,7 @@ if st.session_state.stage == "rewards":
     plt.gcf().set_size_inches(4, 4)
     plt.gca().axes.set_aspect(1)
     st.pyplot(plt.gcf(), clear_figure=True)
-    st.button(label="Посмотреть подробное описание критериев", key="show_reward_description",on_click=lambda: st.session_state.__setitem__('stage', 'reward_description'))
+    st.sidebar.button(label="Посмотреть подробное описание критериев", key="show_reward_description",on_click=lambda: st.session_state.__setitem__('stage', 'reward_description'))
 
 def show_results():
     st.session_state.stage = "results"
@@ -502,6 +502,7 @@ def reset():
 
 if st.session_state.stage == "generate":
     empt = st.empty()
+    st.text("Происходит генерация")
     with empt:
         st.image(str(Path("./apps/widjetdemo/loading.gif").absolute()))
     dataset_api = ManyDatasetAPI(st.session_state.datasets)
@@ -565,7 +566,7 @@ if st.session_state.stage == "results":
     )
     graph = st.session_state.graphs[idx - 1][0]
     reward = st.session_state.graphs[idx - 1][1]
-    st.text(f"Значение критерия {st.session_state.reward_name} для дизайна {np.round(reward, 2)}")
+    st.text(f"Значение критерия {st.session_state.reward_name} для дизайна {reward:.2f}")
     send_graph_to_visualizer(graph, vis_builder)
     robot_urdf_str = jps_graph2pinocchio_robot_3d_constraints(graph, optimization_builder, True)
     path_to_robots = Path().parent.absolute().joinpath("robots")
