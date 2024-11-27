@@ -26,7 +26,7 @@ def get_visualizer(_visualization_builder):
     visualizer.viewer["/Grid"].set_property("visible", False)
     visualizer.viewer["/Axes"].set_property("visible", False)
     visualizer.viewer["/Cameras/default/rotated/<object>"].set_property(
-        "position", [0, 0.0, 0.8]
+        "position", [0, 0.0, 0.6]
     )
     # load a model to the visualizer and set it into the neutral position
     visualizer.clean()

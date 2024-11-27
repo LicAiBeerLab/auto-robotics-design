@@ -7,6 +7,7 @@ import numpy as np
 import pinocchio as pin
 import streamlit as st
 import streamlit.components.v1 as components
+from apps.widjetdemo.streamlit_widgets.reward_descriptions.md_rawards import MD_REWARD_DESCRIPTION
 from forward_init import (
     add_trajectory_to_vis,
     build_constant_objects,
@@ -59,7 +60,6 @@ general_reward_keys = [
     "manipulability",
     "min_manipulability",
     "min_force",
-    "trajectory_zrr",
     "dexterity",
     "min_acceleration",
     "mean_heavy_lifting",
@@ -67,7 +67,6 @@ general_reward_keys = [
 ]
 suspension_reward_keys = [
     "z_imf",
-    "trajectory_zrr",
     "min_acceleration",
     "mean_heavy_lifting",
     "min_heavy_lifting",
@@ -79,19 +78,9 @@ manipulator_reward_keys = [
     "dexterity",
     "min_acceleration",
 ]
-# dataset_paths = ["./top_0", "./top_1","./top_2", "./top_3","top_4","./top_5","./top_6", "./top_7", "./top_8"]
+
 dataset_paths = ["./datasets/top_0", "./datasets/top_1","./datasets/top_2", "./datasets/top_3","./datasets/top_4","./datasets/top_5","./datasets/top_6", "./datasets/top_7", "./datasets/top_8"]
-# dataset_paths = [
-#     "/run/media/yefim-work/Samsung_data1/top_0",
-#     "/run/media/yefim-work/Samsung_data1/top_1",
-#     "/run/media/yefim-work/Samsung_data1/top_2",
-#     "/run/media/yefim-work/Samsung_data1/top_3",
-#     "/run/media/yefim-work/Samsung_data1/top_4",
-#     "/run/media/yefim-work/Samsung_data1/top_5",
-#     "/run/media/yefim-work/Samsung_data1/top_6",
-#     "/run/media/yefim-work/Samsung_data1/top_7",
-#     "/run/media/yefim-work/Samsung_data1/top_8",
-# ]
+
 
 st.title("Генерация механизмов по заданной рабочей области")
 # starting stage
@@ -122,7 +111,7 @@ if st.session_state.stage == "class_choice":
     some_text = """В данном сценарии происходит генерация механизмов по заданной рабочей области. Предлагается выбрать один из трёх типов механизмов: замкнутая кинематическая структура, 
 подвеска колёсного робота, робот манипулятор. Для каждого типа предлагается свой набор критериев, используемых при генерации механизма и модель визуализации."""
     st.markdown(some_text)
-    col_1, col_2, col_3 = st.columns(3, gap="medium")
+    col_1, col_2, col_3 = st.columns(3, gap="medium",  vertical_alignment= 'bottom')
     with col_1:
         st.button(
             label="замкнутая кинематическая структура",
@@ -130,7 +119,7 @@ if st.session_state.stage == "class_choice":
             on_click=type_choice,
             args=["free"],
         )
-        st.image("./apps/rogue.jpg")
+        st.image("./apps/kin_struct.png")
     with col_2:
         st.button(
             label="подвеска",
@@ -138,7 +127,7 @@ if st.session_state.stage == "class_choice":
             on_click=type_choice,
             args=["suspension"],
         )
-        st.image("./apps/wizard.jpg")
+        st.image("./apps/hybrid_loco.png")
     with col_3:
         st.button(
             label="манипулятор",
@@ -146,7 +135,7 @@ if st.session_state.stage == "class_choice":
             on_click=type_choice,
             args=["manipulator"],
         )
-        st.image("./apps/warrior.jpg")
+        st.image("./apps/manipulator.png")
 
 
 def confirm_topology(topology_list, topology_mask):
@@ -320,7 +309,7 @@ if st.session_state.stage == "jp_ranges":
     graph = gm.get_graph(center)
     # here I can insert the visualization for jp bounds
 
-    draw_joint_point(graph, labels=1, draw_legend=False, draw_lines=True)
+    draw_joint_point(graph, labels=1, draw_legend=False, draw_lines=True, offset_lim=0.05)
     # here gm is a clone
 
     # plot_2d_bounds(gm)
@@ -413,13 +402,14 @@ if st.session_state.stage == "ellipsoid":
     mask = check_points_in_ellips(points, ellipse, 0.02)
     rev_mask = np.array(1 - mask, dtype="bool")
     plt.figure(figsize=(10, 10))
-    plt.plot(point_ellipse[0, :], point_ellipse[1, :], "g", linewidth=1)
-    plt.scatter(points[rev_mask, :][:, 0], points[rev_mask, :][:, 1], s=2)
-    plt.scatter(points[mask, :][:, 0], points[mask, :][:, 1], s=2)
+    plt.scatter(points[rev_mask, :][:, 0], points[rev_mask, :][:, 1], s=2, marker="s")
+    plt.scatter(points[mask, :][:, 0], points[mask, :][:, 1], s=2, marker="s")
+
+    # plt.plot(point_ellipse[0, :], point_ellipse[1, :], "g", linewidth=1)
     graph = st.session_state.gm.get_graph(
         st.session_state.gm.generate_central_from_mutation_range()
     )
-    draw_joint_point(graph, labels=2, draw_legend=False)
+    draw_joint_point(graph, labels=2, draw_legend=False, draw_lines=True, offset_lim=0.05)
     plt.gcf().set_size_inches(4, 4)
     st.pyplot(plt.gcf(), clear_figure=True)
 
@@ -437,7 +427,7 @@ def generate():
 
 
 if st.session_state.stage == "rewards":
-    some_text = """Укажите критерий оценки для обтбора лучших механизмов.
+    some_text = """Укажите критерий оценки для отбора лучших механизмов.
 Необходимо задать точку рассчёта критерия в рабочей области механизма.
 Используйте боковую панель для установки точки расчёта."""
     st.text(some_text)
@@ -461,9 +451,9 @@ if st.session_state.stage == "rewards":
     mask = check_points_in_ellips(points, ellipse, 0.02)
     rev_mask = np.array(1 - mask, dtype="bool")
     plt.figure(figsize=(10, 10))
-    plt.plot(point_ellipse[0, :], point_ellipse[1, :], "g", linewidth=1)
-    plt.scatter(points[rev_mask, :][:, 0], points[rev_mask, :][:, 1], s=2)
-    plt.scatter(points[mask, :][:, 0], points[mask, :][:, 1], s=2)
+    plt.scatter(points[rev_mask, :][:, 0], points[rev_mask, :][:, 1], s=2, marker="s")
+    plt.scatter(points[mask, :][:, 0], points[mask, :][:, 1], s=2, marker="s")
+    # plt.plot(point_ellipse[0, :], point_ellipse[1, :], "g", linewidth=1)
     with st.sidebar:
         st.header("Выбор точки вычисления")
         x_p = st.slider(
@@ -473,30 +463,34 @@ if st.session_state.stage == "rewards":
             label="y координата", min_value=-0.42, max_value=0.0, value=-0.3
         )
         if st.session_state.type == "free":
-            rewards = list(reward_dict.items())
+            reward_keys = general_reward_keys
             chosen_reward_idx = st.radio(
                 label="Выбор целевой функции",
-                options=range(len(rewards)),
+                options=range(len(reward_keys)),
                 index=0,
-                format_func=lambda x: reward_description[rewards[x][0]][0],
+                format_func=lambda x: reward_description[reward_keys[x]][0],
             )
-            st.session_state.chosen_reward = rewards[chosen_reward_idx][1]
+            st.session_state.chosen_reward = reward_dict[reward_keys[chosen_reward_idx]]
+            st.session_state.reward_name = reward_description[reward_keys[chosen_reward_idx]][0]
         if st.session_state.type == 'suspension':
-            rewards = list(reward_dict.items())
-            chosen_reward_idx = st.radio(label='Выбор целевой функции', options=range(len(rewards)), index=0, format_func=lambda x: reward_description[rewards[x][0]][0])
-            st.session_state.chosen_reward = rewards[chosen_reward_idx][1]
+            reward_keys = suspension_reward_keys
+            chosen_reward_idx = st.radio(label='Выбор целевой функции', options=range(len(reward_keys)), index=0, format_func=lambda x: reward_description[reward_keys[x]][0])
+            st.session_state.chosen_reward = reward_dict[reward_keys[chosen_reward_idx]]
+            st.session_state.reward_name = reward_description[reward_keys[chosen_reward_idx]][0]
         if st.session_state.type == "manipulator":
-            rewards = list(reward_dict.items())
-            chosen_reward_idx = st.radio(label='Выбор целевой функции', options=range(len(rewards)), index=0, format_func=lambda x: reward_description[rewards[x][0]][0])
-            st.session_state.chosen_reward = rewards[chosen_reward_idx][1]
+            reward_keys = manipulator_reward_keys
+            chosen_reward_idx = st.radio(label='Выбор целевой функции', options=range(len(reward_keys)), index=0, format_func=lambda x: reward_description[reward_keys[x]][0])
+            st.session_state.chosen_reward = reward_dict[reward_keys[chosen_reward_idx]]
+            st.session_state.reward_name = reward_description[reward_keys[chosen_reward_idx]][0]
         st.button(label="Сгенерировать механизмы", key="generate", on_click=generate)
     st.session_state.point = [x_p, y_p]
+
     Drawing_colored_circle = Circle((x_p, y_p), radius=0.01, color="r")
     plt.gca().add_artist(Drawing_colored_circle)
     plt.gcf().set_size_inches(4, 4)
     plt.gca().axes.set_aspect(1)
     st.pyplot(plt.gcf(), clear_figure=True)
-
+    st.button(label="Посмотреть подробное описание критериев", key="show_reward_description",on_click=lambda: st.session_state.__setitem__('stage', 'reward_description'))
 
 def show_results():
     st.session_state.stage = "results"
@@ -544,7 +538,7 @@ if st.session_state.stage == "generate":
                 [index]
             )
             graph = gm.get_graph(x[0])
-            graphs.append(deepcopy(graph))
+            graphs.append((deepcopy(graph),value))
         st.session_state.graphs = graphs
         with empt:
             st.button(
@@ -569,14 +563,16 @@ if st.session_state.stage == "results":
         value=1,
         help="Перемещайте ползунок для выбора одного из 10 лучших дизайнов",
     )
-    graph = st.session_state.graphs[idx - 1]
+    graph = st.session_state.graphs[idx - 1][0]
+    reward = st.session_state.graphs[idx - 1][1]
+    st.text(f"Значение критерия {st.session_state.reward_name} для дизайна {np.round(reward, 2)}")
     send_graph_to_visualizer(graph, vis_builder)
     robot_urdf_str = jps_graph2pinocchio_robot_3d_constraints(graph, optimization_builder, True)
     path_to_robots = Path().parent.absolute().joinpath("robots")
     path_to_urdf = path_to_robots / "robot_1.urdf"
     with open(path_to_urdf, "w") as f:
         f.write(robot_urdf_str)
-    col_1, col_2 = st.columns(2, gap="medium")
+    col_1, col_2 = st.columns(2, gap="medium", vertical_alignment= 'center')
     x, y, x_rad, y_rad, angle = st.session_state.ellipsoid_params
     ellipse = Ellipse(np.array([x, y]), np.deg2rad(angle), np.array([x_rad, y_rad]))
     points_on_ellps = ellipse.get_points(0.1).T
@@ -595,27 +591,28 @@ if st.session_state.stage == "results":
     )
 
     with col_1:
-        st.header("Графовое представление")
-        draw_joint_point(graph, labels=2, draw_legend=False)
+        st.header("Cхема мезанизма")
+        draw_joint_point(graph, labels=2, draw_legend=False, draw_lines=True, offset_lim=0.05)
         rev_mask = np.array(1 - mask_ws_n_ellps, dtype="bool")
-        plt.plot(points_on_ellps[:, 0], points_on_ellps[:, 1], "g")
+        # plt.plot(points_on_ellps[:, 0], points_on_ellps[:, 1], "g")
         plt.scatter(
-            reach_ws_points[rev_mask, :][:, 0], reach_ws_points[rev_mask, :][:, 1], s=2
+            reach_ws_points[rev_mask, :][:, 0], reach_ws_points[rev_mask, :][:, 1], s=2, marker="s"
         )
         plt.scatter(
             reach_ws_points[mask_ws_n_ellps, :][:, 0],
             reach_ws_points[mask_ws_n_ellps, :][:, 1],
+            marker="s"
         )
         plt.plot(traj[:, 0], traj[:, 1], "r")
-        plt.gcf().set_size_inches(4, 4)
+        plt.gcf().set_size_inches(7, 7)
         st.pyplot(plt.gcf(), clear_figure=True)
     with col_2:
         st.header("Робот")
         add_trajectory_to_vis(get_visualizer(vis_builder), final_trajectory)
         components.iframe(
             get_visualizer(vis_builder).viewer.url(),
-            width=400,
-            height=400,
+            width=310,
+            height=310,
             scrolling=True,
         )
     st.button(
@@ -673,3 +670,7 @@ if st.session_state.stage == "results":
             time.sleep(1)
             get_visualizer(vis_builder).display(pin.neutral(fixed_robot.model))
             st.session_state.run_simulation_flag = False
+
+if st.session_state.stage == 'reward_description':
+    st.button(label="Вернуться к выбору критериев", key="return_to_criteria_calculation",on_click=lambda: st.session_state.__setitem__('stage', 'rewards'))
+    st.markdown(MD_REWARD_DESCRIPTION)
