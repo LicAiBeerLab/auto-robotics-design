@@ -19,7 +19,7 @@ from auto_robot_design.description.mesh_builder.mesh_builder import (
 from auto_robot_design.description.utils import draw_joint_point
 from auto_robot_design.generator.topologies.bounds_preset import \
     get_preset_by_index_with_bounds
-from auto_robot_design.generator.topologies.graph_manager_2l import plot_one_jp_bounds
+from auto_robot_design.generator.topologies.graph_manager_2l import plot_one_jp_bounds, scale_graph_manager
 from auto_robot_design.motion_planning.trajectory_ik_manager import \
     TrajectoryIKManager
 from auto_robot_design.optimization.optimizer import PymooOptimizer
@@ -33,6 +33,9 @@ from auto_robot_design.pinokla.default_traj import (
     create_simple_step_trajectory, get_vertical_trajectory)
 from auto_robot_design.utils.configs import get_standard_builder, get_mesh_builder, get_standard_crag, get_standard_rewards
 from auto_robot_design.description.builder import ParametrizedBuilder, DetailedURDFCreatorFixedEE, MIT_CHEETAH_PARAMS_DICT
+from auto_robot_design.optimization.rewards.reward_base import NotReacablePoints
+
+
 graph_managers, _, _,_, crag, reward_dict = build_constant_objects()
 reward_description = get_russian_reward_description()
 axis = ['x', 'y', 'z']
@@ -53,15 +56,19 @@ if 'stage' not in st.session_state:
     st.session_state.trajectory_groups = []
     st.session_state.trajectory_buffer = {}
     st.session_state.opt_rewards_dict = {}
+    st.session_state.results_exist = False 
 
 
 def confirm_topology():
     """Confirm the selected topology and move to the next stage."""
+    #next stage
     st.session_state.stage = "ranges_choice"
     # create a deep copy of the graph manager for further updates
     st.session_state.gm.set_mutation_ranges()
     st.session_state.gm_clone = deepcopy(st.session_state.gm)
+    st.session_state.current_gm = deepcopy(st.session_state.gm)
     st.session_state.current_generator_dict = deepcopy(st.session_state.gm.generator_dict)
+    st.session_state.scale = 1
 
 def topology_choice():
     """Update the graph manager based on the selected topology."""
@@ -101,22 +108,22 @@ if st.session_state.stage == "topology_choice":
         st.markdown("Визуализация робота")
         components.iframe(get_visualizer(st.session_state.visualization_builder ).viewer.url(), width=400,
                           height=400, scrolling=True)
-
+    st.session_state.optimization_builder = get_standard_builder(thickness, density)
 
 def confirm_ranges():
     """Confirm the selected ranges and move to the next stage."""
     st.session_state.stage = "trajectory_choice"
-    gm_clone = st.session_state.gm_clone
-    for key, value in gm_clone.generator_dict.items():
+    current_gm = st.session_state.current_gm
+    for key, value in current_gm.generator_dict.items():
         for i, values in enumerate(value.mutation_range):
             if values is None:
                 continue
             if values[0] == values[1]:
                 current_fp = gm.generator_dict[key].freeze_pos
                 current_fp[i] = values[0]
-                gm_clone.freeze_joint(key, current_fp)
+                current_gm.freeze_joint(key, current_fp)
 
-    gm_clone.set_mutation_ranges()
+    current_gm.set_mutation_ranges()
 
 
 def return_to_topology():
@@ -124,7 +131,19 @@ def return_to_topology():
     st.session_state.stage = "topology_choice"
 
 def joint_choice():
-    st.session_state.current_generator_dict = deepcopy(st.session_state.gm_clone.generator_dict)
+    st.session_state.current_generator_dict = deepcopy(st.session_state.current_gm.generator_dict)
+
+def scale_change():
+    graph_scale = st.session_state.scaler/st.session_state.scale
+    st.session_state.scale = st.session_state.scaler
+    tmp = deepcopy(st.session_state.gm)
+    st.session_state.gm_clone = scale_graph_manager(tmp, st.session_state.scale)
+    st.session_state.gm_clone.set_mutation_ranges()
+    current_gm = deepcopy(st.session_state.current_gm)
+    st.session_state.current_gm  = scale_graph_manager(current_gm, graph_scale)
+    st.session_state.current_gm.set_mutation_ranges()
+    st.session_state.current_generator_dict = deepcopy(st.session_state.current_gm.generator_dict)
+
 
 # second stage
 if st.session_state.stage == "ranges_choice":
@@ -136,15 +155,18 @@ if st.session_state.stage == "ranges_choice":
                 Для каждого сочленения на боковой панели указан его тип.  
                 x - горизонтальные координаты, z - вертикальные координаты. Размеры указаны в метрах. Для изменения высоты конструкции необходимо изменять общий масштаб.  
                 В начальном состоянии активированы все оптимизируемые величины, если отключить оптимизацию величины, то её значение будет постоянным и его можно задать в соответствующем окне на боковой панели. Значение должно быть в максимальном диапазоне оптимизации""")
+    
     # form for optimization ranges. All changes affects the gm_clone and it should be used for optimization
     # initial nodes
-    initial_generator_info = st.session_state.gm.generator_dict
-    initial_mutation_ranges = st.session_state.gm.mutation_ranges
-    gm = st.session_state.gm_clone
+    st.markdown("""Высоту механизма можно настроить при помощи изменения общего масштаба механизма.""")
+    st.slider(label="Масштаб", min_value=0.5, max_value=2.0,value=1.0, step=0.1, key='scaler', on_change=scale_change)
+    # gm is initial graph, gm_clone is scaled gm so it has scaled initial ranges, current_gm is scaled current gm with current ranges
+    initial_generator_info = st.session_state.gm_clone.generator_dict
+    initial_mutation_ranges = st.session_state.gm_clone.mutation_ranges
+    gm = st.session_state.current_gm
     generator_info = gm.generator_dict
-    graph = gm.graph
+    graph = gm.get_graph(gm.generate_central_from_mutation_range())
     labels = {n:i for i,n in enumerate(graph.nodes())}
-    
     with st.sidebar:
         # return button
         st.button(label="Назад к выбору топологии",
@@ -161,7 +183,7 @@ if st.session_state.stage == "ranges_choice":
             if mut_range is None:
                 continue
             # we can get mutation range from previous activation of the corresponding radio button
-            left_value, right_value = st.session_state.current_generator_dict[current_jp[0]].mutation_range[i] 
+            left_value, right_value = st.session_state.current_generator_dict[current_jp[0]].mutation_range[i]
             name = f"{labels[current_jp[0]]}_{axis[i]}"
             toggle_value = not left_value == right_value
             current_on = st.toggle(f"Отключить оптимизацию "+name, value=toggle_value)
@@ -190,17 +212,14 @@ if st.session_state.stage == "ranges_choice":
     # here I can insert the visualization for jp bounds
 
     draw_joint_point(graph, labels=1, draw_legend=True,draw_lines=True)
-    # here gm is a clone
-    
-    # plot_2d_bounds(gm)
     st.pyplot(plt.gcf(), clear_figure=True)
     # this way we set ranges after each step, but without freezing joints
-    some_text = """Диапазоны оптимизации определяют границы пространства поиска механизмов в процессе 
-оптимизации. 
-Отключенные координаты не будут участвовать в оптимизации и будут иметь постоянные 
-значения во всех механизмах."""
-    st.text(some_text)
-    # st.text("x - горизонтальные координаты, z - вертикальные координаты")
+#     some_text = """Диапазоны оптимизации определяют границы пространства поиска механизмов в процессе 
+# оптимизации. 
+# Отключенные координаты не будут участвовать в оптимизации и будут иметь постоянные 
+# значения во всех механизмах."""
+#     st.text(some_text)
+#     # st.text("x - горизонтальные координаты, z - вертикальные координаты")
 
 
 def add_trajectory(trajectory, idx):
@@ -254,10 +273,10 @@ def start_optimization(rewards_tf):
         st.session_state.reward_manager.add_trajectory_aggregator(
             trajectory_list, 'mean')
     # add all necessary objects to a buffer folder for the optimization script
-    graph_manager = deepcopy(st.session_state.gm_clone)
+    graph_manager = deepcopy(st.session_state.current_gm)
     reward_manager = deepcopy(st.session_state.reward_manager)
     sf = deepcopy(st.session_state.soft_constraint)
-    builder = deepcopy(optimization_builder)
+    builder = deepcopy(st.session_state.optimization_builder)
     data = (graph_manager, builder, crag, reward_manager, sf)
     with open(Path("./results/buffer/data.pkl"), "wb+") as f:
         dill.dump(data, f)
@@ -276,7 +295,7 @@ def return_to_ranges(reset=False):
     # each trajectory should be added to the manager
 if st.session_state.stage == "trajectory_choice":
     # graph is only for visualization so it still gm
-    graph = st.session_state.gm.graph
+    graph = st.session_state.current_gm.graph
     trajectory = None
     with st.sidebar:
         st.button(label="Назад к выбору диапазонов оптимизации",
@@ -288,23 +307,23 @@ if st.session_state.stage == "trajectory_choice":
             "вертикальная", "шаг"], index=1, key="trajectory_type")
         if trajectory_type == "вертикальная":
             height = st.slider(
-                label="высота", min_value=0.02, max_value=0.3, value=0.1)
-            x = st.slider(label="x", min_value=-0.3,
-                          max_value=0.3, value=0.0)
-            z = st.slider(label="z", min_value=-0.4,
-                          max_value=-0.2, value=-0.3)
+                label="высота", min_value=0.02*st.session_state.scale, max_value=0.3*st.session_state.scale, value=0.1*st.session_state.scale)
+            x = st.slider(label="x", min_value=-0.3*st.session_state.scale,
+                          max_value=0.3*st.session_state.scale, value=0.0*st.session_state.scale)
+            z = st.slider(label="z", min_value=-0.4*st.session_state.scale,
+                          max_value=-0.2*st.session_state.scale, value=-0.3*st.session_state.scale)
             trajectory = convert_x_y_to_6d_traj_xz(
                 *add_auxilary_points_to_trajectory(get_vertical_trajectory(z, height, x, 100)))
 
         if trajectory_type == "шаг":
             start_x = st.slider(
-                label="х координата начала", min_value=-0.3, max_value=0.3, value=-0.14)
+                label="х координата начала", min_value=-0.3*st.session_state.scale, max_value=0.3*st.session_state.scale, value=-0.14*st.session_state.scale)
             start_z = st.slider(
-                label="z координата начала", min_value=-0.4, max_value=-0.2, value=-0.34)
+                label="z координата начала", min_value=-0.4*st.session_state.scale, max_value=-0.2*st.session_state.scale, value=-0.34*st.session_state.scale)
             height = st.slider(
-                label="высота", min_value=0.02, max_value=0.3, value=0.1)
-            width = st.slider(label="ширина", min_value=0.1,
-                              max_value=0.6, value=0.28)
+                label="высота", min_value=0.02*st.session_state.scale, max_value=0.3*st.session_state.scale, value=0.1*st.session_state.scale)
+            width = st.slider(label="ширина", min_value=0.1*st.session_state.scale,
+                              max_value=0.6*st.session_state.scale, value=0.28*st.session_state.scale)
             trajectory = convert_x_y_to_6d_traj_xz(
                 *add_auxilary_points_to_trajectory(
                     create_simple_step_trajectory(
@@ -312,7 +331,7 @@ if st.session_state.stage == "trajectory_choice":
                         step_height=height,
                         step_width=width,
                         n_points=100,
-                    )
+                    ),initial_point=np.array([0,-0.4])*st.session_state.scale
                 )
             )
         # no more than 2 groups for now
@@ -331,16 +350,18 @@ if st.session_state.stage == "trajectory_choice":
 Если критерий нужно рассчитать вдоль более чем одной траектории необходимо создать группу траекторий. При помощи кнопок на боковой панели выберите траектории и соответствующие им критерии.
 """
     st.markdown(some_text)
+    st.button(label="Посмотреть подробное описание критериев", key="show_reward_description",on_click=lambda: st.session_state.__setitem__('stage', 'reward_description'))
     col_1, col_2 = st.columns([0.7, 0.3], gap="medium")
     with col_1:
-        draw_joint_point(graph,labels=2, draw_legend=False)
+        draw_joint_point(graph,labels=2, draw_legend=False, draw_lines=True)
         plt.gcf().set_size_inches(4, 4)
         plt.plot(trajectory[:, 0], trajectory[:, 2])
         st.pyplot(plt.gcf(), clear_figure=True)
     with col_2:
+        send_graph_to_visualizer(graph, st.session_state.visualization_builder)
         add_trajectory_to_vis(get_visualizer(
-            visualization_builder), trajectory)
-        components.iframe(get_visualizer(visualization_builder).viewer.url(), width=400,
+            st.session_state.visualization_builder), trajectory)
+        components.iframe(get_visualizer(st.session_state.visualization_builder).viewer.url(), width=400,
                           height=400, scrolling=True)
 
     trajectories = [[0]*len(list(reward_dict.keys()))]*len(st.session_state.trajectory_groups)
@@ -369,7 +390,7 @@ if st.session_state.stage == "trajectory_choice":
     # we only allow to start optimization if there is at least one group and all groups have at least one reward
     if st.session_state.trajectory_groups and all([r > 0 for r in rewards_counter]):
         st.button(label="Старт оптимизации",
-                  key="start_optimization", on_click=start_optimization, args=[trajectories])
+                  key="start_optimization", on_click=start_optimization, args=[trajectories], type='primary')
 
 
 def show_results():
@@ -403,7 +424,7 @@ if st.session_state.stage == "optimization":
         st.session_state.rerun = False
         st.rerun()
 
-    graph = st.session_state.gm.graph
+    graph = st.session_state.current_gm.graph
     col_1, col_2 = st.columns([0.7, 0.3], gap="medium")
     with col_1:
         # st.header("Графовое представление:")
@@ -411,15 +432,15 @@ if st.session_state.stage == "optimization":
         plt.gcf().set_size_inches(4, 4)
         st.pyplot(plt.gcf(), clear_figure=True)
     with col_2:
-        send_graph_to_visualizer(graph, visualization_builder)
-        components.iframe(get_visualizer(visualization_builder).viewer.url(), width=400,
+        send_graph_to_visualizer(graph, st.session_state.visualization_builder)
+        components.iframe(get_visualizer(st.session_state.visualization_builder).viewer.url(), width=400,
                           height=400, scrolling=True)
-    from pathlib import Path
+    st.text("Идёт процесс оптимизации, пожалуйста подождите...")
     empt = st.empty()
     with empt:
         st.image(str(Path('./apps/widjetdemo/loading.gif').absolute()))
     file = open(
-        f".\\results\\optimization_widget\\current_results\\out.txt", 'w')
+        Path("./results/optimization_widget/current_results/out.txt"), 'w')
     subprocess.run(
         ['python', "apps/widjetdemo/streamlit_widgets/run.py"], stdout=file)
     file.close()
@@ -442,36 +463,78 @@ def translate_reward_name(name, reward_dict, reward_description):
         for key, value in reward_dict.items():
             if value.reward_name == name:
                 return  reward_description[key][0]
-def calculate_and_display_rewards(graph, trajectory, reward_mask):
-    fixed_robot, free_robot = jps_graph2pinocchio_robot_3d_constraints(graph, optimization_builder)
+
+# def calculate_and_display_rewards(graph, trajectory, reward_mask):
+#     fixed_robot, free_robot = jps_graph2pinocchio_robot_3d_constraints(graph, st.session_state.optimization_builder)
+#     point_criteria_vector, trajectory_criteria, res_dict_fixed = crag.get_criteria_data(
+#         fixed_robot, free_robot, trajectory, viz=None)
+#     some_text = """ Критерии представлены в виде поточечных значений вдоль траектории. """
+#     st.text(some_text)
+#     for i, reward in enumerate(reward_dict.items()):
+#         if reward_mask[i]:
+#             try:
+#                 calculate_result = reward[1].calculate(
+#                     point_criteria_vector, trajectory_criteria, res_dict_fixed, Actuator=st.session_state.optimization_builder.actuator['default'])
+#                 # st.text(reward_description[reward[0]][0]+":\n   " )
+#                 reward_vector = np.array(calculate_result[1])
+#                 plt.gcf().set_figheight(2.5)
+#                 plt.gcf().set_figwidth(2.5)
+#                 plt.plot(reward_vector)
+#                 plt.xticks(fontsize=4)
+#                 plt.yticks(fontsize=4)
+#                 plt.xlabel('шаг траектории', fontsize=6)
+#                 plt.ylabel('значение критерия на шаге', fontsize=6)
+#                 plt.title(reward_description[reward[0]][0], fontsize=8)
+#                 plt.legend([f'Итоговое значение критерия: {calculate_result[0]:.2f}'], fontsize=4)
+
+#                 st.pyplot(plt.gcf(), clear_figure=True, use_container_width=False)
+#             except ValueError:
+#                 st.text_area(
+#                     label="", value="Траектория содержит точки за пределами рабочего пространства. Для рассчёта критериев укажите траекторию внутри рабочей области.")
+#                 break
+def calculate_and_display_rewards(graph,trajectory, reward_mask):
+    
+    fixed_robot, free_robot = jps_graph2pinocchio_robot_3d_constraints(
+        graph, st.session_state.optimization_builder)
     point_criteria_vector, trajectory_criteria, res_dict_fixed = crag.get_criteria_data(
         fixed_robot, free_robot, trajectory, viz=None)
-    some_text = """ Критерии представлены в виде поточечных значений вдоль траектории. """
-    st.text(some_text)
-    for i, reward in enumerate(reward_dict.items()):
-        if reward_mask[i]:
-            try:
-                calculate_result = reward[1].calculate(
-                    point_criteria_vector, trajectory_criteria, res_dict_fixed, Actuator=optimization_builder.actuator['default'])
-                # st.text(reward_description[reward[0]][0]+":\n   " )
-                reward_vector = np.array(calculate_result[1])
-                plt.gcf().set_figheight(2.5)
-                plt.gcf().set_figwidth(2.5)
-                plt.plot(reward_vector)
-                plt.xticks(fontsize=4)
-                plt.yticks(fontsize=4)
-                plt.xlabel('шаг траектории', fontsize=6)
-                plt.ylabel('значение критерия на шаге', fontsize=6)
-                plt.title(reward_description[reward[0]][0], fontsize=8)
-                plt.legend([f'Итоговое значение критерия: {calculate_result[0]:.2f}'], fontsize=4)
+    if sum(reward_mask)>0:
+        some_text = """Критерии представлены в виде поточечных значений вдоль траектории."""
+        st.text(some_text)
+    col_1, col_2 = st.columns([0.5, 0.5], gap="small")
+    counter = 0
+    try:
+        for i, reward in enumerate(reward_dict.items()):
+            if counter % 2 == 0:
+                col = col_1
+            else:
+                col = col_2
+            with col:
+                if reward_mask[i]:
+                    
+                        calculate_result = reward[1].calculate(
+                            point_criteria_vector, trajectory_criteria, res_dict_fixed, Actuator=st.session_state.optimization_builder.actuator['default'])
+                        # st.text(reward_description[reward[0]][0]+":\n   " )
+                        reward_vector = np.array(calculate_result[1])
+                        # plt.gcf().set_figheight(3)
+                        # plt.gcf().set_figwidth(3)
+                        plt.plot(reward_vector)
+                        plt.xticks(fontsize=10)
+                        plt.yticks(fontsize=10)
+                        plt.xlabel('шаг траектории', fontsize=12)
+                        plt.ylabel('значение критерия на шаге', fontsize=12)
+                        plt.title(reward_description[reward[0]][0], fontsize=12)
+                        plt.legend(
+                            [f'Итоговое значение критерия: {calculate_result[0]:.2f}'], fontsize=12)
+                        st.pyplot(plt.gcf(), clear_figure=True,
+                                use_container_width=True)
+                        counter += 1
+    except NotReacablePoints:
+        st.text_area(
+            label="", value="Траектория содержит точки за пределами рабочего пространства. Для рассчёта критериев укажите траекторию внутри рабочей области.")
 
-                st.pyplot(plt.gcf(), clear_figure=True, use_container_width=False)
-            except ValueError:
-                st.text_area(
-                    label="", value="Траектория содержит точки за пределами рабочего пространства. Для рассчёта критериев укажите траекторию внутри рабочей области.")
-                break
 def create_file(graph):
-    robot_urdf_str = jps_graph2pinocchio_robot_3d_constraints(graph, optimization_builder, True)
+    robot_urdf_str = jps_graph2pinocchio_robot_3d_constraints(graph, st.session_state.optimization_builder, True)
     path_to_robots = Path().parent.absolute().joinpath("robots")
     path_to_urdf = path_to_robots / "robot_forward.urdf"
     return robot_urdf_str
@@ -494,7 +557,7 @@ if st.session_state.stage == "results":
         best_id = ten_best[idx-1]
         best_x = optimizer.history["X"][best_id]
         graph = problem.graph_manager.get_graph(best_x)
-        send_graph_to_visualizer(graph, visualization_builder)
+        send_graph_to_visualizer(graph, st.session_state.visualization_builder)
         with st.sidebar:
             trajectories = problem.rewards_and_trajectories.trajectories
             trj_idx = st.radio(label="Select trajectory", options=trajectories.keys(
@@ -517,8 +580,8 @@ if st.session_state.stage == "results":
             st.pyplot(plt.gcf(), clear_figure=True)
         with col_2:
             add_trajectory_to_vis(get_visualizer(
-                visualization_builder), trajectory)
-            components.iframe(get_visualizer(visualization_builder).viewer.url(), width=400,
+                st.session_state.visualization_builder), trajectory)
+            components.iframe(get_visualizer(st.session_state.visualization_builder).viewer.url(), width=400,
                               height=400, scrolling=True)
 
         with st.sidebar:
@@ -538,13 +601,17 @@ if st.session_state.stage == "results":
             import itertools
             st.markdown("Для отображения результатов выберите пару критериев, для построения проекции Парето фронта")
             reward_manager:RewardManager = st.session_state.problem.rewards_and_trajectories
+            supp = [[x[0], True] for x in reward_manager.agg_list]
             choice_list = []
             for key, value in reward_manager.rewards.items():
-                for reward in value:
-                    choice_list.append((key,reward[0].reward_name))
+                for i, tp in enumerate(supp):
+                    if key in tp[0] and tp[1]:
+                        tp[1]=False
+                        for reward in value:
+                            choice_list.append((f'группы {i}',reward[0].reward_name))
             pairs = list(itertools.combinations(choice_list, 2))
             pairs_of_idx = list(itertools.combinations(list(range(len(choice_list))), 2))
-            choice = st.radio(label="Выберите пару критериев для построения графика Парето фронта", options=list(range(len(pairs))), index=0, key='pair_choice',format_func = lambda x:f'Траектория {pairs[x][0][0]} критерий {translate_reward_name(pairs[x][0][1], reward_dict, reward_description)} и Траектория {pairs[x][1][0]} критерий {translate_reward_name(pairs[x][1][1], reward_dict, reward_description)}')
+            choice = st.radio(label="Выберите пару критериев для построения графика Парето фронта", options=list(range(len(pairs))), index=0, key='pair_choice',format_func = lambda x:f'Траектории {pairs[x][0][0]}, критерий {translate_reward_name(pairs[x][0][1], reward_dict, reward_description)} и траектории {pairs[x][1][0]}, критерий {translate_reward_name(pairs[x][1][1], reward_dict, reward_description)}')
             idx_pair = pairs_of_idx[choice]
             labels = [choice_list[idx_pair[0]][1], choice_list[idx_pair[1]][1]]
             translate_labels(labels, reward_dict, reward_description)
@@ -555,6 +622,7 @@ if st.session_state.stage == "results":
                 for reward in rewards:
                     if reward[0].reward_name not in labels:
                         labels.append(reward[0].reward_name)
+            translate_labels(labels, reward_dict, reward_description)
 
         st.markdown("""Результатом оптимизации является набор механизмов, которые образуют Парето фронт по заданным группам критериев. """)
         res = st.session_state.res
@@ -584,19 +652,19 @@ if st.session_state.stage == "results":
                 current_checkbox = st.checkbox(
                     label=reward_description[reward[0]][0], value=False, key=reward[1].reward_name+str(reward_idx), help=reward_description[reward[0]][1])
                 reward_idxs[reward_idx] = current_checkbox
-        send_graph_to_visualizer(graph, visualization_builder)
-        col_1, col_2 = st.columns(2, gap="medium")
+        send_graph_to_visualizer(graph, st.session_state.visualization_builder)
+        col_1, col_2 = st.columns([0.7,0.3], gap="medium")
         with col_1:
-            st.header("Графовое представление")
-            draw_joint_point(graph, labels=2, draw_legend=False)
+            # st.header("Графовое представление")
+            draw_joint_point(graph, labels=2, draw_legend=False, draw_lines=True)
             plt.plot(trajectory[:, 0], trajectory[:, 2])
             plt.gcf().set_size_inches(4, 4)
             st.pyplot(plt.gcf(), clear_figure=True)
         with col_2:
-            st.header("Робот")
+            # st.header("Робот")
             add_trajectory_to_vis(get_visualizer(
-                visualization_builder), trajectory)
-            components.iframe(get_visualizer(visualization_builder).viewer.url(), width=400,
+                st.session_state.visualization_builder), trajectory)
+            components.iframe(get_visualizer(st.session_state.visualization_builder).viewer.url(), width=400,
                               height=400, scrolling=True)
         st.text('Красный маркер указывает точку соответствующую заданному весу')
 
@@ -618,7 +686,7 @@ if st.session_state.stage == "results":
         st.pyplot(plt.gcf(),clear_figure=True)
         
         with st.sidebar:
-            bc = st.button(label="Рассчитать значения выбранных критериев", key="calculate_rewards")
+            bc = st.button(label="Рассчитать значения выбранных критериев", key="calculate_rewards", type='primary')
         if bc:
             calculate_and_display_rewards(graph, trajectory, reward_idxs)
 
@@ -628,22 +696,137 @@ if st.session_state.stage == "results":
         file_name="robot_optimization.urdf",
         mime="robot/urdf",
     )
-    
+    st.markdown("""Вы можете скачать URDF модель полученного механизма для дальнейшего использования. Данный виджет служит для первичной оценки кинематических структур, вы можете использовать редакторы URDF для более точной настройки параметров и физические симуляторы для имитационного модеирования.""")
+
+    with st.sidebar:
+        st.button(label="Посмотреть подробное описание критериев", key="show_reward_description",on_click=lambda: st.session_state.__setitem__('stage', 'reward_description'))
+
     # We need a flag to run the simulation in the frame that was just created
     if st.session_state.run_simulation_flag:
         ik_manager = TrajectoryIKManager()
         # fixed_robot, free_robot = jps_graph2pinocchio_robot(gm.graph, builder)
         fixed_robot, _ = jps_graph2pinocchio_meshes_robot(
-            graph, visualization_builder)
+            graph, st.session_state.visualization_builder)
         ik_manager.register_model(
             fixed_robot.model, fixed_robot.constraint_models, fixed_robot.visual_model
         )
         ik_manager.set_solver("Closed_Loop_PI")
         #with st.status("simulation..."):
         _ = ik_manager.follow_trajectory(
-            trajectory, viz=get_visualizer(visualization_builder)
+            trajectory, viz=get_visualizer(st.session_state.visualization_builder)
         )
         time.sleep(1)
-        get_visualizer(visualization_builder).display(
+        get_visualizer(st.session_state.visualization_builder).display(
             pin.neutral(fixed_robot.model))
         st.session_state.run_simulation_flag = False
+
+
+if st.session_state.stage == 'reward_description':
+    if st.session_state.results_exist:
+        st.button(label="Вернуться", key="return_to_criteria_calculation",on_click=lambda: st.session_state.__setitem__('stage', 'results'),type='primary')
+    else:
+        st.button(label="Вернуться", key="return_to_criteria_calculation",on_click=lambda: st.session_state.__setitem__('stage', 'trajectory_choice'),type='primary')
+    st.markdown(r"""1. Определитель матрицы инерции.
+
+Рассматривается матрица инерции в пространстве актуаторов. Матрицей инерции называется квадратная матрица связывающая скорость изменения обобщённых координат с кинетической энергией:  
+    $$E_k=\dot{q}^TA(q)\dot{q}\space,$$  
+где $q$ - координаты актуированных сочленений. Матрица инерции зависит от конфигурации механизма и поэтому изменяется вдоль траектории. 
+Чем меньше определитель этой матрицы, тем меньше энергии нужно затратить для достижения заданной скорости. В качестве критерия используется величина:   
+    $$R = \frac{1}{\overline{\det{A(q)}}},$$  
+где усреднение проводится по всем точкам траектории. 
+
+O. Khatib, “Inertial properties in robotic manipulation: An object-level framework,” The international journal of robotics research, vol. 14, no. 1, pp. 19–36, 1995. [https://doi.org/10.1177/027836499501400103](https://doi.org/10.1177/027836499501400103)
+
+2. Фактор распределения вертикального удара.
+
+Данный критерий измеряет нормированною величину инерции концевого эффектора. Для этого используется матрица инерции в операционном пространстве: 
+    $$\Lambda(x)=(J(q(x))A(q(x))^{-1}J(q(x))^T)^{-1},$$  
+где $A$- матрица инерции в пространстве актуированных сочленений, $J$ - якобиан связывающий обобщённую скорость $\dot{q}$ и скорость в операционном пространстве $\dot{x}$
+Для нормировки используется значение матрицы инерции в операционном пространстве при условии, что каждое сочленение неподвижно $\Lambda_L$. Как критерий нас интересует только проекция на вертикальную ось, поэтому итоговое выражение имеет вид:  
+    $$R=\frac{1}{n}\sum_1^n(1-\frac{z^T\Lambda z}{z^T\Lambda_L z}),$$  
+где $z$ - единичный вектор вдоль оси $Z$, n - число точек на траектории.
+Для более подробной информации:
+P. M. Wensing, A. Wang, S. Seok, D. Otten, J. Lang and S. Kim, "Proprioceptive Actuator Design in the MIT Cheetah: Impact Mitigation and High-Bandwidth Physical Interaction for Dynamic Legged Robots," in _IEEE Transactions on Robotics_, vol. 33, no. 3, pp. 509-522, June 2017, doi: [10.1109/TRO.2016.2640183](https://doi.org/10.1109/TRO.2016.2640183)  
+V. Batto, T. Flayols, N. Mansard and M. Vulliez, "Comparative Metrics of Advanced Serial/Parallel Biped Design and Characterization of the Main Contemporary Architectures," _2023 IEEE-RAS 22nd International Conference on Humanoid Robots (Humanoids)_, Austin, TX, USA, 2023, pp. 1-7, doi: [10.1109/Humanoids57100.2023.10375224](https://doi.org/10.1109/Humanoids57100.2023.10375224)
+
+3. Манипулируемость/Маневренность вдоль траектории.
+
+Манипулируемость это кинематическая характеристика оценивающая связь между скоростью актуаторов и скоростью концевого эффектора. В данном критерии рассматривается связь между движением актуаторов и движением по касательной к траектории. Обозначиv $\vec{t}$ - единичный вектор касательной к траектории. Тогда критерий определяется как:  $$R=\frac{1}{n}\sum_1^n(1/\|J^{-1}\vec{t}\|),$$
+
+где $J$ - якобиан связывающий обобщённую скорость $\dot{q}$ и скорость в операционном пространстве $\dot{x}$, n - число точек на траектории. В отдельной точке данный критерий обозначает величину линейной скорости, которая получается при "единичной" скорости актуаторов $\|q\|=1$. 
+
+4. Манипулируемость.
+
+Манипулируемость это кинематическая характеристика оценивающая связь между скоростью актуаторов и скоростью концевого эффектора. Данный критерий характеризует полную манипулируемость по всем направлениям. Единичный круг в пространтсве скоростей актуаторов преобразуется Якобианом в эллипс манипулируемости:
+$$v^T(JJ^T)^-1v=1$$
+Объём(площадь) эллипса пропорционален определителю Якобиана. Чем больше объём, тем большие скорости концевого эффектора достижимы при "единичной" скорости актуаторов $\|q\|=1$. Критерий в точке равен определителю Якобиана, а полное значение вдоль траектории равно: $$R=\frac{1}{n}\sum_1^n(\det{J}),$$
+где $J$ - якобиан связывающий обобщённую скорость $\dot{q}$ и скорость в операционном пространстве $\dot{x}$, n - число точек на траектории.
+Для более подробной информации:
+V. Batto, T. Flayols, N. Mansard and M. Vulliez, "Comparative Metrics of Advanced Serial/Parallel Biped Design and Characterization of the Main Contemporary Architectures," _2023 IEEE-RAS 22nd International Conference on Humanoid Robots (Humanoids)_, Austin, TX, USA, 2023, pp. 1-7, doi: [10.1109/Humanoids57100.2023.10375224](https://doi.org/10.1109/Humanoids57100.2023.10375224)
+Spong, M.W.; Hutchinson, Seth; Vidyasagar, M. (2005). [_Robot Modeling and Control_](https://books.google.com/books?id=muCMAAAACAAJ). Wiley. Wiley. [ISBN](https://en.wikipedia.org/wiki/ISBN_(identifier) "ISBN (identifier)") [9780471765790](https://en.wikipedia.org/wiki/Special:BookSources/9780471765790 "Special:BookSources/9780471765790").
+
+5. Минимальная манипулируемость.
+
+Манипулируемость это кинематическая характеристика оценивающая связь между скоростью актуаторов и скоростью концевого эффектора. Данный критерий зависит от минимального значения скорости концевого эффектора при "единичной" скорости актуаторов $\|q\|=1$. Наименьшее значение определяется наименьшим сингулярным числом Якобиана скоростей. Значение критерия равно:
+$$R=\frac{1}{n}\sum_1^n\sigma_{min},$$
+где $\sigma_{min}$ - наименьшее сингулярное число Якобиана скоростей, n - число точек на траектории.
+M. Švejda, "New kinetostatic criterion for robot parametric optimization," _2017 IEEE 4th International Conference on Soft Computing & Machine Intelligence (ISCMI)_, Mauritius, 2017, pp. 66-70, doi: [10.1109/ISCMI.2017.8279599](https://doi.org/10.1109/ISCMI.2017.8279599
+
+6. Минимальное усилие.
+
+Транспонированный Якобиан скоростей определяет соотношение между моментами актуаторов и силой приложенной к концевому эффектору в стационарном состоянии:
+$$\tau=J^Tf,$$ где $\tau$ - моменты актуаторов, $J$ - якобиан связывающий обобщённую скорость $\dot{q}$ и скорость в операционном пространстве $\dot{x}$, $f$ - сила приложенная к концевому эффектору.
+Для каждой конфигурации существует наименьшая сила, которую могут создавать двигатели при  "единичном" моменте актуаторов $\|\tau \|=1$. Данная сила пропорциональна обратному значению наибольшего сингулярного числа Якобиана скоростей. Чем большее значение имеет данная характеристика, тем большие внешние силы способен выдерживать механизм. При использовании данного критерия максимизируется минимальное значение допустимой нагрузки. Итоговый критерий равен:
+$$R=\frac{1}{n}\sum_1^n\frac{1}{\sigma_{max}},$$где $\sigma_{max}$ - наибольшее сингулярное число Якобиана скоростей, n - число точек на траектории. 
+
+7. Вертикальное передаточное отношение.
+
+Транспонированный Якобиан скоростей определяет соотношение между моментами актуаторов и силой приложенной к концевому эффектору в стационарном состоянии:
+$$\tau=J^Tf,$$ где $\tau$ - моменты актуаторов, $J$ - якобиан связывающий обобщённую скорость $\dot{q}$ и скорость в операционном пространстве $\dot{x}$, $f$ - сила приложенная к концевому эффектору.
+Для механизмов ног роботов особое значение имеют внешние силы направленные по вертикали, так как они соответствуют контакту с поверхностью. В качестве критерия используется величина:
+$$R=\frac{1}{n}\sum_1^n\frac{1}{\|J^T z\|},$$
+где $z$ - единичный вектор вдоль оси $Z$, n - число точек на траектории, $J$ - Якобиан скоростей. Чем больше данное значение, тем меньшим моментом актуаторов можно добиться необходимой силы контакта с поверхностью.
+
+V. Batto, T. Flayols, N. Mansard and M. Vulliez, "Comparative Metrics of Advanced Serial/Parallel Biped Design and Characterization of the Main Contemporary Architectures," _2023 IEEE-RAS 22nd International Conference on Humanoid Robots (Humanoids)_, Austin, TX, USA, 2023, pp. 1-7, doi: [10.1109/Humanoids57100.2023.10375224](https://doi.org/10.1109/Humanoids57100.2023.10375224
+
+8. Индекс подвижности.
+
+Следствием закона сохранения энергии является тот факт, что силовые и скоростные характеристики механизма оказываются связаны - чем больше манипулируемость, тем меньше сила и наоборот. Индекс подвижности - это критерий, служащий для получения сбалансированных дизайнов через компромисс между силой и скоростью. Величина критерия равна:
+$$R=\frac{1}{n}\sum_1^n\frac{\sigma_{min}}{\sigma_{max}},$$
+где $\sigma_{min}$ - наименьшее сингулярное число Якобиана скоростей, $\sigma_{max}$ - наибольшее сингулярное число Якобиана скоростей, n - число точек на траектории.
+
+9. Потенциальное ускорение вдоль траектории.
+
+Ускорение концевого эффектора зависит от матрицы инерции механизма и моментов актуаторов. Связь моментов актуаторов и ускорения (при нулевой скорости и отбрасывая гравитацию): $$\tau = H(q)J^{-1} \ddot{x} $$ где $\tau$ - моменты актуаторов, $J$ - якобиан связывающий обобщённую скорость $\dot{q}$ и скорость в операционном пространстве $\dot{x}$, $\ddot{x}$ - ускорение в операционном пространстве. 
+Данный критерий направлен на минимизацию моментов необходимых для ускорения вдоль заданной траектории.  Обозначиv $\vec{t}$ - единичный вектор касательной к траектории. Тогда вектор моментов необходимых для единичного ускорения в данном направлении равен:
+$$\tau_u = H(q)J^{-1} \ddot{\vec t}$$ В качестве критерия используется величина $$R=\frac{1}{n}\sum_1^n\tau_m/max(tau_u),$$где $\tau_m$ - номинальный пиковый момент двигателя. Данный критерий показывает, какое ускорение вдоль траектории может быть получено из данной конфигурации механизма при подачи максимальных возможных моментов на двигатели.
+
+Более подробно данный критерий описан в статье: 
+M. Švejda, "New kinetostatic criterion for robot parametric optimization," _2017 IEEE 4th International Conference on Soft Computing & Machine Intelligence (ISCMI)_, Mauritius, 2017, pp. 66-70, doi: [10.1109/ISCMI.2017.8279599](https://doi.org/10.1109/ISCMI.2017.8279599)
+
+10. Минимальное потенциальное ускорение.
+
+Ускорение концевого эффектора зависит от матрицы инерции механизма и моментов актуаторов. Связь моментов актуаторов и ускорения (при нулевой скорости и отбрасывая гравитацию): $$J(q)H(q)^{-1} \tau = \ddot{x} $$где $\tau$ - моменты актуаторов, $J$ - якобиан связывающий обобщённую скорость $\dot{q}$ и скорость в операционном пространстве $\dot{x}$, $\ddot{x}$ - ускорение в операционном пространстве. 
+Данный критерий направлен на максимизацию минимального ускорения, получаемого при при  "единичном" моменте актуаторов $\|\tau \|=1$. Значение критерия равно:
+$$R=\frac{1}{n}\sum_1^n\sigma_{min},$$где $\sigma_{min}$ - наименьшее сингулярное число матрицы $J(q)H(q)^{-1}$, n - число точек на траектории.
+
+11. Средняя грузоподъёмность. 
+
+В квазистатическом приближении моменты актуаторов и внешняя сила связаны выражением:
+$$\tau=J^Tf,$$ где $\tau$ - моменты актуаторов, $J$ - якобиан связывающий обобщённую скорость $\dot{q}$ и скорость в операционном пространстве $\dot{x}$, $f$ - сила приложенная к концевому эффектору. Это выражение можно использовать для оценки грузоподъёмности механизма. Для заданной точки можно рассчитать максимальную вертикальную силу, которую можно получить при заданном пиковом значении момента:
+$$f_m = \tau_m / max(J^T z),$$ где $z$ - единичный вектор вдоль оси $Z$, n - число точек на траектории, $J$ - Якобиан скоростей, $\tau_m$ - номинальный пиковый момент двигателя. 
+В качестве критерия мы рассматриваем отношение данной величины к силе тяжести самого механизма, таким образом получая грузоподъёмность в единицах массы механизма. Итоговый критерий: 
+$$R=\frac{1}{n}\sum_1^n\frac{f_m}{mg},$$где $m$ - масса механизма,  $g$ - ускорение свободного падения, $n$ - число шагов на траектории.
+Данный критерий описан в работе:
+G. Kenneally, A. De and D. E. Koditschek, "Design Principles for a Family of Direct-Drive Legged Robots," in _IEEE Robotics and Automation Letters_, vol. 1, no. 2, pp. 900-907, July 2016, doi: [10.1109/LRA.2016.2528294](https://doi.org/10.1109/LRA.2016.2528294)
+
+12. Минимальная грузоподъёмность.
+
+В квазистатическом приближении моменты актуаторов и внешняя сила связаны выражением:
+$$\tau=J^Tf,$$ где $\tau$ - моменты актуаторов, $J$ - якобиан связывающий обобщённую скорость $\dot{q}$ и скорость в операционном пространстве $\dot{x}$, $f$ - сила приложенная к концевому эффектору. Это выражение можно использовать для оценки грузоподъёмности механизма. Для заданной точки можно рассчитать максимальную вертикальную силу, которую можно получить при заданном пиковом значении момента:
+$$f_m = \tau_m / max(J^T z),$$ где $z$ - единичный вектор вдоль оси $Z$, n - число точек на траектории, $J$ - Якобиан скоростей, $\tau_m$ - номинальный пиковый момент двигателя. 
+В качестве критерия мы рассматриваем отношение данной величины к силе тяжести самого механизма, таким образом получая грузоподъёмность в единицах массы механизма. При этом нас интересует наименьшее значение данного критерия на траектории. Мотивация данного критерия - механизм должен иметь возможность нести нагрузку во всех точках траектории, поэтому минимальное значение характеризует способность механизма пройти всю траекторию под нагрузкой. Итоговый критерий: 
+$$R=\min\left( \frac{f_m}{mg}\right),$$где $m$ - масса механизма,  $g$ - ускорение свободного падения, $n$ - число шагов на траектории.
+
+Данный критерий описан в работе:
+G. Kenneally, A. De and D. E. Koditschek, "Design Principles for a Family of Direct-Drive Legged Robots," in _IEEE Robotics and Automation Letters_, vol. 1, no. 2, pp. 900-907, July 2016, doi: [10.1109/LRA.2016.2528294](https://doi.org/10.1109/LRA.2016.2528294)""")
