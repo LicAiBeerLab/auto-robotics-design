@@ -162,8 +162,8 @@ def draw_joint_point(graph: nx.Graph, labels=0, draw_legend=True, draw_lines=Fal
     pos = get_pos(graph)
     pos_list = [p for p in pos.values()]
     pos_matrix = np.array(pos_list)
-    min_x, min_y = np.min(pos_matrix, axis=0)
-    max_x, max_y = np.max(pos_matrix, axis=0)
+    min_x, min_y = np.round(np.min(pos_matrix, axis=0),2)
+    max_x, max_y = np.round(np.max(pos_matrix, axis=0),2)
     for key, value in pos.items():
         value
     G_pos = np.array(
@@ -228,7 +228,7 @@ def draw_joint_point(graph: nx.Graph, labels=0, draw_legend=True, draw_lines=Fal
         labels,
         font_color = "#ff5A00",
         font_family = "monospace",
-        font_size=14
+        font_size=20
     )
 
     #"#fe8a18"
@@ -253,7 +253,7 @@ def draw_joint_point(graph: nx.Graph, labels=0, draw_legend=True, draw_lines=Fal
         ax.set_ylabel('z [м]')
         ax.set_xlabel('x [м]')
         ax.tick_params(left=True, bottom=True, labelleft=True, labelbottom=True)
-        ax.set_xticks(np.arange(min_x-0.1,max_x+0.1,0.1))
+        ax.set_xticks(np.arange(min_x-0.1,max_x+0.1))
         ax.set_yticks(np.arange(min_y-0.1,max_y+0.1,0.1))
         ax.set_xlim(min_x-0.1, max_x+0.1)
         ax.set_ylim(min_y-0.1, max_y+0.1)

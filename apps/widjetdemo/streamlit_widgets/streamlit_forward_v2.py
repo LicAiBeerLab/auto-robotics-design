@@ -171,7 +171,7 @@ if st.session_state.stage == 'joint_point_choice':
         if st.session_state.gm.generator_dict[list(labels.keys())[jp_label]].mutation_type.value == 3:
             st.write("Тип сочленения: Сочленение задаваемое относительно звена")
             st.write("координаты относительно звена: "+str(labels[st.session_state.gm.generator_dict[list(labels.keys())[
-                     jp_label]].relative_to[0]])+'->'+str(labels[st.session_state.gm.generator_dict[list(labels.keys())[jp_label]].relative_to[1]]))
+                     jp_label]].relative_to[0]])+':arrow_right:'+str(labels[st.session_state.gm.generator_dict[list(labels.keys())[jp_label]].relative_to[1]]))
 
         chosen_range = gm.generator_dict[list(labels.keys())[jp_label]].mutation_range
         for i, tpl in enumerate(mut_ranges.items()):
@@ -194,7 +194,7 @@ if st.session_state.stage == 'joint_point_choice':
     with st.sidebar:
         
         st.button(label="Рассчитать рабочее пространство",
-                  on_click=evaluate_construction, key="get_workspace", args=[[lower, upper]])
+                  on_click=evaluate_construction, key="get_workspace", args=[[lower, upper]], type='primary')
     # draw the graph
     graph = gm.get_graph(st.session_state.jp_positions)
     send_graph_to_visualizer(graph, st.session_state.visualization_builder)
@@ -208,7 +208,7 @@ if st.session_state.stage == 'joint_point_choice':
         for edge in graph.edges():
             vector = edge[0].r - edge[1].r
             st.write(
-                f"Ребро {labels[edge[0]]}->{labels[edge[1]]} имеет длину {np.linalg.norm(vector):.3f} метров")
+                f"Ребро {labels[edge[0]]}:heavy_minus_sign:{labels[edge[1]]} имеет длину {np.linalg.norm(vector):.3f} метров")
 
 
 def to_trajectory_choice():
@@ -225,8 +225,9 @@ def calculate_and_display_rewards(trajectory, reward_mask):
         gm.graph, st.session_state.optimization_builder)
     point_criteria_vector, trajectory_criteria, res_dict_fixed = crag.get_criteria_data(
         fixed_robot, free_robot, trajectory, viz=None)
-    some_text = """Критерии представлены в виде поточечных значений вдоль траектории."""
-    st.text(some_text)
+    if sum(reward_mask)>0:
+        some_text = """Критерии представлены в виде поточечных значений вдоль траектории."""
+        st.text(some_text)
     col_1, col_2 = st.columns([0.5, 0.5], gap="small")
     counter = 0
     try:
@@ -331,13 +332,14 @@ if st.session_state.stage == 'workspace_visualization':
             st.button(label="Симуляция движения по траектории", key="run_simulation",
                       on_click=run_simulation)
             with st.form(key="rewards"):
+                cr = st.form_submit_button(
+                    "Рассчитать значения выбранных критериев", type='primary')
                 st.header("Критерии")
                 reward_mask = []
                 for key, reward in reward_dict.items():
                     reward_mask.append(st.checkbox(
                         label=reward_description[key][0], value=False, help=reward_description[key][1]))
-                cr = st.form_submit_button(
-                    "Рассчитать значения выбранных критериев")
+
 
     col_1, col_2 = st.columns([0.7, 0.3], gap="medium")
     with col_1:
@@ -373,8 +375,9 @@ if st.session_state.stage == 'workspace_visualization':
         file_name="robot_forward.urdf",
         mime="robot/urdf",
     )
-    st.markdown("""||.j4||Вы можете скачать URDF модель полученного механизма для дальнейшего использования. Данный виджет служит для первичной оценки кинематических структур, вы можете использовать редакторы URDF для более точной настройки параметров и физические симуляторы для имитационного модеирования.""")
-    st.button(label="Посмотреть подробное описание критериев", key="show_reward_description",on_click=lambda: st.session_state.__setitem__('stage', 'reward_description'))
+    st.markdown("""Вы можете скачать URDF модель полученного механизма для дальнейшего использования. Данный виджет служит для первичной оценки кинематических структур, вы можете использовать редакторы URDF для более точной настройки параметров и физические симуляторы для имитационного модеирования.""")
+    with st.sidebar:
+        st.button(label="Посмотреть подробное описание критериев", key="show_reward_description",on_click=lambda: st.session_state.__setitem__('stage', 'reward_description'))
     if st.session_state.run_simulation_flag:
         ik_manager = TrajectoryIKManager()
         fixed_robot, _ = jps_graph2pinocchio_meshes_robot(
@@ -392,7 +395,7 @@ if st.session_state.stage == 'workspace_visualization':
         st.session_state.run_simulation_flag = False
 
 if st.session_state.stage == 'reward_description':
-    st.button(label="Вернуться к расчёту критериев", key="return_to_criteria_calculation",on_click=lambda: st.session_state.__setitem__('stage', 'workspace_visualization'))
+    st.button(label="Вернуться к расчёту критериев", key="return_to_criteria_calculation",on_click=lambda: st.session_state.__setitem__('stage', 'workspace_visualization'),type='primary')
     st.markdown(r"""1. Определитель матрицы инерции.
 
 Рассматривается матрица инерции в пространстве актуаторов. Матрицей инерции называется квадратная матрица связывающая скорость изменения обобщённых координат с кинетической энергией:  
