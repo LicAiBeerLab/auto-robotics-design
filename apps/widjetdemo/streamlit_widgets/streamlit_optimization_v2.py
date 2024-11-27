@@ -35,10 +35,19 @@ from auto_robot_design.utils.configs import get_standard_builder, get_mesh_build
 from auto_robot_design.description.builder import ParametrizedBuilder, DetailedURDFCreatorFixedEE, MIT_CHEETAH_PARAMS_DICT
 from auto_robot_design.optimization.rewards.reward_base import NotReacablePoints
 
-
+# st.set_page_config(layout = "wide", initial_sidebar_state = "expanded")
 graph_managers, _, _,_, crag, reward_dict = build_constant_objects()
 reward_description = get_russian_reward_description()
 axis = ['x', 'y', 'z']
+
+
+def ChangeWidgetFontSize(wgt_txt, wch_font_size = '12px'):
+    htmlstr = """<script>var elements = window.parent.document.querySelectorAll('*'), i;
+                    for (i = 0; i < elements.length; ++i) { if (elements[i].innerText == |wgt_txt|) 
+                        { elements[i].style.fontSize='""" + wch_font_size + """';} } </script>  """
+
+    htmlstr = htmlstr.replace('|wgt_txt|', "'" + wgt_txt + "'")
+    components.html(f"{htmlstr}", height=0, width=0)
 
 st.title("Оптимизация рычажных механизмов")
 
@@ -87,12 +96,15 @@ if st.session_state.stage == "topology_choice":
                  index=0, key='topology_choice', on_change=topology_choice)
         st.button(label='Подтвердить выбор структуры', key='confirm_topology',
                   on_click=confirm_topology)
+        ChangeWidgetFontSize("Выбор структруры для оптимизации:", "16px")
     st.markdown(
     """Для управления инерциальными характеристиками механизма можно задать плотность и сечение элементов конструкции.""")
     density = st.slider(label="Плотность [кг/м^3]", min_value=250, max_value=8000,
                         value=int(MIT_CHEETAH_PARAMS_DICT["density"]), step=50, key='density')
     thickness = st.slider(label="Толщина [м]", min_value=0.01, max_value=0.1,
                           value=MIT_CHEETAH_PARAMS_DICT["thickness"], step=0.01, key='thickness')
+    ChangeWidgetFontSize("Плотность [кг/м^3]", "16px")
+    ChangeWidgetFontSize("Толщина [м]", "16px")
     st.session_state.visualization_builder = get_mesh_builder(thickness=thickness, density=density)
     gm = st.session_state.gm
     values = gm.generate_central_from_mutation_range()
@@ -148,7 +160,7 @@ def scale_change():
 # second stage
 if st.session_state.stage == "ranges_choice":
     st.markdown("""Для выбранной топологии необходимо задать диапазоны оптимизации. В нашей системе есть 4 типа сочленений:
-                1. Неподвижное сочленение - неизменяемое положение.  
+                1. Неподвижное сочленение - неизменяемое положение. Нельзя выбрать для изменения.
                 2. Cочленение в абсолютных координатах - положение задаётся в абсолютной системе координат в метрах.  
                 3. Сочленение в относительных координатах - положение задаётся относительно другого сочленения в метрах.  
                 4. Сочленени задаваемое относительно звена - положение задаётся относительно центра звена в процентах от длины звена.  
@@ -177,6 +189,23 @@ if st.session_state.stage == "ranges_choice":
         mutable_jps = [key[0] for  key in initial_mutation_ranges.keys()]
         options = [(jp, idx) for jp, idx in labels.items() if jp in mutable_jps]
         current_jp = st.radio(label="Выбор сочленения для установки диапазона оптимизации", options=options, index=0, format_func=lambda x:x[1],key='joint_choice', on_change=joint_choice)
+        jp_label = current_jp[1]
+        if st.session_state.gm.generator_dict[list(labels.keys())[jp_label]].mutation_type.value == 1:
+            if None in st.session_state.gm.generator_dict[list(labels.keys())[jp_label]].freeze_pos:
+                st.write("Тип сочленения: Сочленение в абсолютных координатах")
+            else:
+                st.write("Тип сочленения: Неподвижное сочленение")
+        if st.session_state.gm.generator_dict[list(labels.keys())[jp_label]].mutation_type.value == 2:
+            st.write("Тип сочленения: Сочленение в относительных координатах")
+            st.write("координаты относительно сочленения: "+str(
+                labels[st.session_state.gm.generator_dict[list(labels.keys())[jp_label]].relative_to]))
+        if st.session_state.gm.generator_dict[list(labels.keys())[jp_label]].mutation_type.value == 3:
+            st.write("Тип сочленения: Сочленение задаваемое относительно звена")
+            st.write("координаты относительно звена: "+str(labels[st.session_state.gm.generator_dict[list(labels.keys())[
+                     jp_label]].relative_to[0]])+':arrow_right:'+str(labels[st.session_state.gm.generator_dict[list(labels.keys())[jp_label]].relative_to[1]]))
+
+
+        
         # we can get current jp generator info in the cloned gm which contains all the changes
         current_generator_info = generator_info[current_jp[0]]
         for i, mut_range in enumerate(current_generator_info.mutation_range):
@@ -313,7 +342,7 @@ if st.session_state.stage == "trajectory_choice":
             z = st.slider(label="z", min_value=-0.4*st.session_state.scale,
                           max_value=-0.2*st.session_state.scale, value=-0.3*st.session_state.scale)
             trajectory = convert_x_y_to_6d_traj_xz(
-                *add_auxilary_points_to_trajectory(get_vertical_trajectory(z, height, x, 100)))
+                *add_auxilary_points_to_trajectory(get_vertical_trajectory(z, height, x, 100),initial_point=np.array([0,-0.4])*st.session_state.scale))
 
         if trajectory_type == "шаг":
             start_x = st.slider(
@@ -395,6 +424,7 @@ if st.session_state.stage == "trajectory_choice":
 
 def show_results():
     st.session_state.stage = "results"
+    st.session_state.results_exist = True
     n_obj = st.session_state.reward_manager.close_trajectories()
     selected_directory = "./results/optimization_widget/current_results"
     st.session_state.n_obj = n_obj
@@ -423,7 +453,7 @@ if st.session_state.stage == "optimization":
     if st.session_state.rerun:
         st.session_state.rerun = False
         st.rerun()
-
+    
     graph = st.session_state.current_gm.graph
     col_1, col_2 = st.columns([0.7, 0.3], gap="medium")
     with col_1:
@@ -560,7 +590,7 @@ if st.session_state.stage == "results":
         send_graph_to_visualizer(graph, st.session_state.visualization_builder)
         with st.sidebar:
             trajectories = problem.rewards_and_trajectories.trajectories
-            trj_idx = st.radio(label="Select trajectory", options=trajectories.keys(
+            trj_idx = st.radio(label="Выбор траектории:", options=trajectories.keys(
             ), index=0, key='opt_trajectory_choice')
             trajectory = trajectories[trj_idx]
 
@@ -585,7 +615,7 @@ if st.session_state.stage == "results":
                               height=400, scrolling=True)
 
         with st.sidebar:
-            bc = st.button(label="Подсчёт критериев", key="calculate_rewards")
+            bc = st.button(label="Рассчитать значения выбранных критериев", key="calculate_rewards", type='primary')
         
         plt.figure(figsize=(3,3))
         plt.scatter(x,np.array(y))
@@ -696,7 +726,7 @@ if st.session_state.stage == "results":
         file_name="robot_optimization.urdf",
         mime="robot/urdf",
     )
-    st.markdown("""Вы можете скачать URDF модель полученного механизма для дальнейшего использования. Данный виджет служит для первичной оценки кинематических структур, вы можете использовать редакторы URDF для более точной настройки параметров и физические симуляторы для имитационного модеирования.""")
+    st.markdown("""Вы можете скачать URDF модель полученного механизма для дальнейшего использования. Данный виджет служит для оптимизации кинематических структур в рамках заданных ограничений, вы можете использовать редакторы URDF для более точной настройки параметров и физические симуляторы для имитационного модеирования.""")
 
     with st.sidebar:
         st.button(label="Посмотреть подробное описание критериев", key="show_reward_description",on_click=lambda: st.session_state.__setitem__('stage', 'reward_description'))
