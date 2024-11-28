@@ -108,8 +108,13 @@ def type_choice(t):
 
 # chose the class of optimization
 if st.session_state.stage == "class_choice":
-    some_text = """В данном сценарии происходит генерация механизмов по заданной рабочей области. Предлагается выбрать один из трёх типов механизмов: замкнутая кинематическая структура, 
-подвеска колёсного робота, робот манипулятор. Для каждого типа предлагается свой набор критериев, используемых при генерации механизма и модель визуализации."""
+    some_text = r"""В данном сценарии происходит генерация механизмов по заданной рабочей области. Предлагается выбрать один из трёх типов задач для синтеза механизма:
+
+- замкнутая кинематическая структура общего назначения,
+- подвеска колёсного робота,
+- робот-манипулятор.
+
+Для каждого типа подготовлен свой набор критериев, используемых при генерации механизма и модель визуализации."""
     st.markdown(some_text)
     col_1, col_2, col_3 = st.columns(3, gap="medium",  vertical_alignment= 'bottom')
     with col_1:
@@ -168,6 +173,7 @@ if st.session_state.stage == "topology_choice":
 В процессе генерации будут учитываться только выбранные топологические структуры.
 Для визуализации выбора предлагаются примеры механизмов каждой структуры."""
     st.text(some_text)
+    topology_name = lambda x:  f"Топология {x}"
     with st.sidebar:
         st.header("Выбор структуры")
         st.write(
@@ -175,7 +181,7 @@ if st.session_state.stage == "topology_choice":
         )
         topology_mask = []
         for i, gm in enumerate(graph_managers.items()):
-            topology_mask.append(st.checkbox(label=gm[0], value=True))
+            topology_mask.append(st.checkbox(label=topology_name(i), value=True))
         chosen_topology_list = [
             x for i, x in enumerate(graph_managers.items()) if topology_mask[i] is True
         ]
@@ -186,6 +192,7 @@ if st.session_state.stage == "topology_choice":
                 key="confirm_topology",
                 on_click=confirm_topology,
                 args=[chosen_topology_list, topology_mask],
+                type="primary"
             )
 
     plt.figure(figsize=(10, 10))
@@ -195,7 +202,7 @@ if st.session_state.stage == "topology_choice":
             plt.subplot(3, 3, i + 1)
             gm.get_graph(gm.generate_central_from_mutation_range())
             draw_joint_point(gm.graph, labels=2, draw_legend=False)
-            plt.title(chosen_topology_list[i][0])
+            plt.title(topology_name(chosen_topology_list[i][0][-1]))
         else:
             plt.subplot(3, 3, i + 1)
             plt.axis("off")
@@ -372,15 +379,15 @@ if st.session_state.stage == "ellipsoid":
                 label="х координата центра", min_value=-0.3, max_value=0.3, value=0.0
             )
             y = st.slider(
-                label="y координата центра", min_value=-0.4, max_value=-0.2, value=-0.33
+                label="z координата центра", min_value=-0.4, max_value=-0.2, value=-0.33
             )
             x_rad = st.slider(
                 label="х радиус", min_value=0.02, max_value=0.3, value=0.06
             )
             y_rad = st.slider(
-                label="y радиус", min_value=0.02, max_value=0.3, value=0.05
+                label="z радиус", min_value=0.02, max_value=0.3, value=0.05
             )
-            angle = st.slider(label="наклон", min_value=0, max_value=180, value=0)
+            angle = st.slider(label="наклон", min_value=0, max_value=180, value=33)
             st.form_submit_button(label="Задать рабочее пространство")
     st.session_state.ellipsoid_params = [x, y, x_rad, y_rad, angle]
     ellipse = Ellipse(np.array([x, y]), np.deg2rad(angle), np.array([x_rad, y_rad]))
@@ -418,7 +425,7 @@ if st.session_state.stage == "ellipsoid":
     else:
         with st.sidebar:
             st.button(
-            label="Перейти к целевой функции", key="rewards", on_click=reward_choice
+            label="Перейти к целевой функции", key="rewards", on_click=reward_choice, type="primary"
         )
 
 
@@ -460,7 +467,7 @@ if st.session_state.stage == "rewards":
             label="х координата", min_value=-0.25, max_value=0.25, value=0.0
         )
         y_p = st.slider(
-            label="y координата", min_value=-0.42, max_value=0.0, value=-0.3
+            label="z координата", min_value=-0.42, max_value=0.0, value=-0.3
         )
         if st.session_state.type == "free":
             reward_keys = general_reward_keys
@@ -502,7 +509,7 @@ def reset():
 
 if st.session_state.stage == "generate":
     empt = st.empty()
-    st.text("Происходит генерация")
+    st.text("Начался процесс генерации. Подождите пару минут...")
     with empt:
         st.image(str(Path("./apps/widjetdemo/loading.gif").absolute()))
     dataset_api = ManyDatasetAPI(st.session_state.datasets)
@@ -557,6 +564,11 @@ def create_file(graph):
 
 
 if st.session_state.stage == "results":
+    description_text = r"""Были сгенерированы механизмы и отобраны 10 с наибольшим значением критерия в указанной точке в рабочем пространстве.
+    Для верификации механизма можно провизуализировать движение по рабочему пространству. На схеме механизма показан траектория движения по рабочей области. Вы можете скачать URDF модель полученного механизма для дальнейшего использования. Данный виджет служит для первичной генерации кинематических структур,
+    вы можете использовать редакторы URDF для детализации робота и физические симуляторы для имитационного модеирования.
+    """
+    st.markdown(description_text)
     vis_builder = st.session_state.visualization_builder
     idx = st.select_slider(
         label="Лучшие по заданному критерию механизмы:",
@@ -592,7 +604,7 @@ if st.session_state.stage == "results":
     )
 
     with col_1:
-        st.header("Cхема мезанизма")
+        st.header("Cхема механизма")
         draw_joint_point(graph, labels=2, draw_legend=False, draw_lines=True, offset_lim=0.05)
         rev_mask = np.array(1 - mask_ws_n_ellps, dtype="bool")
         # plt.plot(points_on_ellps[:, 0], points_on_ellps[:, 1], "g")
@@ -605,6 +617,8 @@ if st.session_state.stage == "results":
             marker="s"
         )
         plt.plot(traj[:, 0], traj[:, 1], "r")
+        Drawing_colored_circle = Circle(st.session_state.point, radius=0.01, color="r")
+        plt.gca().add_artist(Drawing_colored_circle)
         plt.gcf().set_size_inches(7, 7)
         st.pyplot(plt.gcf(), clear_figure=True)
     with col_2:
