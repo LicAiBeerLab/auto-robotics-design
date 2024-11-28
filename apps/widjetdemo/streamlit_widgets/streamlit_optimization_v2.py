@@ -34,7 +34,7 @@ from auto_robot_design.pinokla.default_traj import (
 from auto_robot_design.utils.configs import get_standard_builder, get_mesh_builder, get_standard_crag, get_standard_rewards
 from auto_robot_design.description.builder import ParametrizedBuilder, DetailedURDFCreatorFixedEE, MIT_CHEETAH_PARAMS_DICT
 from auto_robot_design.optimization.rewards.reward_base import NotReacablePoints
-
+from apps.widjetdemo.streamlit_widgets.reward_descriptions.md_rawards import MD_REWARD_DESCRIPTION
 # st.set_page_config(layout = "wide", initial_sidebar_state = "expanded")
 graph_managers, _, _,_, crag, reward_dict = build_constant_objects()
 reward_description = get_russian_reward_description()
@@ -49,8 +49,11 @@ def ChangeWidgetFontSize(wgt_txt, wch_font_size = '12px'):
     htmlstr = htmlstr.replace('|wgt_txt|', "'" + wgt_txt + "'")
     components.html(f"{htmlstr}", height=0, width=0)
 
-st.title("Оптимизация рычажных механизмов")
+def font_size(size):
+    st.markdown("""<style>.big-font {font-size:"""+str(size)+"""px !important;}</style>""", unsafe_allow_html=True)
 
+st.title("Оптимизация рычажных механизмов")
+font_size(20)
 # gm is the first value that gets set. List of all values that should be update for each session
 if 'stage' not in st.session_state:
     st.session_state.gm = get_preset_by_index_with_bounds(0)
@@ -85,26 +88,25 @@ def topology_choice():
 
 # the radio button and confirm button are only visible until the topology is selected
 if st.session_state.stage == "topology_choice":
-    some_text = """Данный сценарий предназначен для оптимизации рычажных механизмов.
+    some_text = """<p class="big-font"> Данный сценарий предназначен для оптимизации рычажных механизмов.
 Первый шаг - выбор структуры механизма для оптимизации. Структура определяет звенья 
 и сочленения механизма. Рёбра графа соответствуют твердотельным звеньям, 
 а вершины - сочленениям и концевому эффектору.
-Предлагается выбор из девяти структур, основанных на двухзвенной главной цепи."""
-    st.markdown(some_text)
+Предлагается выбор из девяти структур, основанных на двухзвенной главной цепи.</p>"""
+    st.markdown(some_text, unsafe_allow_html=True)
     with st.sidebar:
         st.radio(label="Выбор структруры для оптимизации:", options=graph_managers.keys(),
                  index=0, key='topology_choice', on_change=topology_choice)
         st.button(label='Подтвердить выбор структуры', key='confirm_topology',
-                  on_click=confirm_topology)
+                  on_click=confirm_topology,type='primary')
         ChangeWidgetFontSize("Выбор структруры для оптимизации:", "16px")
     st.markdown(
-    """Для управления инерциальными характеристиками механизма можно задать плотность и сечение элементов конструкции.""")
+    """<p class="big-font">Для управления инерциальными характеристиками механизма можно задать плотность и сечение элементов конструкции.</p>""", unsafe_allow_html=True)
     density = st.slider(label="Плотность [кг/м^3]", min_value=250, max_value=8000,
                         value=int(MIT_CHEETAH_PARAMS_DICT["density"]), step=50, key='density')
     thickness = st.slider(label="Толщина [м]", min_value=0.01, max_value=0.1,
                           value=MIT_CHEETAH_PARAMS_DICT["thickness"], step=0.01, key='thickness')
-    ChangeWidgetFontSize("Плотность [кг/м^3]", "16px")
-    ChangeWidgetFontSize("Толщина [м]", "16px")
+
     st.session_state.visualization_builder = get_mesh_builder(thickness=thickness, density=density)
     gm = st.session_state.gm
     values = gm.generate_central_from_mutation_range()
@@ -121,6 +123,9 @@ if st.session_state.stage == "topology_choice":
         components.iframe(get_visualizer(st.session_state.visualization_builder ).viewer.url(), width=400,
                           height=400, scrolling=True)
     st.session_state.optimization_builder = get_standard_builder(thickness, density)
+    ChangeWidgetFontSize('Подтвердить выбор структуры', "16px")
+    ChangeWidgetFontSize("Плотность [кг/м^3]", "16px")
+    ChangeWidgetFontSize("Толщина [м]", "16px")
 
 def confirm_ranges():
     """Confirm the selected ranges and move to the next stage."""
@@ -159,14 +164,14 @@ def scale_change():
 
 # second stage
 if st.session_state.stage == "ranges_choice":
-    st.markdown("""Для выбранной топологии необходимо задать диапазоны оптимизации. В нашей системе есть 4 типа сочленений:
-                1. Неподвижное сочленение - неизменяемое положение. Нельзя выбрать для изменения.
+    st.markdown("""Для выбранной топологии необходимо задать диапазоны оптимизации. В нашей системе есть 4 типа сочленений:  
+                1. Неподвижное сочленение - неизменяемое положение. Нельзя выбрать для изменения.  
                 2. Cочленение в абсолютных координатах - положение задаётся в абсолютной системе координат в метрах.  
-                3. Сочленение в относительных координатах - положение задаётся относительно другого сочленения в метрах.  
+                3. Сочленение в относительных координатах - положение задаётся относительно другого сочленения в метрах.   
                 4. Сочленени задаваемое относительно звена - положение задаётся относительно центра звена в процентах от длины звена.  
                 Для каждого сочленения на боковой панели указан его тип.  
                 x - горизонтальные координаты, z - вертикальные координаты. Размеры указаны в метрах. Для изменения высоты конструкции необходимо изменять общий масштаб.  
-                В начальном состоянии активированы все оптимизируемые величины, если отключить оптимизацию величины, то её значение будет постоянным и его можно задать в соответствующем окне на боковой панели. Значение должно быть в максимальном диапазоне оптимизации""")
+                В начальном состоянии активированы все оптимизируемые величины, если отключить оптимизацию величины, то её значение будет постоянным и его можно задать в соответствующем окне на боковой панели. Значение должно быть в максимальном диапазоне оптимизации""", unsafe_allow_html=True)
     
     # form for optimization ranges. All changes affects the gm_clone and it should be used for optimization
     # initial nodes
@@ -232,7 +237,7 @@ if st.session_state.stage == "ranges_choice":
                 generator_info[current_jp[0]].mutation_range[i] = mut_range
 
         st.button(label="подтвердить диапазоны оптимизации",
-                  key='ranges_confirm', on_click=confirm_ranges)
+                  key='ranges_confirm', on_click=confirm_ranges, type='primary')
     # here should be some kind of visualization for ranges
     gm.set_mutation_ranges()
     plot_one_jp_bounds(gm, current_jp[0].name)
@@ -529,8 +534,8 @@ def calculate_and_display_rewards(graph,trajectory, reward_mask):
     point_criteria_vector, trajectory_criteria, res_dict_fixed = crag.get_criteria_data(
         fixed_robot, free_robot, trajectory, viz=None)
     if sum(reward_mask)>0:
-        some_text = """Критерии представлены в виде поточечных значений вдоль траектории."""
-        st.text(some_text)
+        some_text = """<p class="big-font"> Критерии представлены в виде поточечных значений вдоль траектории.</p>"""
+        st.markdown(some_text,unsafe_allow_html=True)
     col_1, col_2 = st.columns([0.5, 0.5], gap="small")
     counter = 0
     try:
@@ -576,8 +581,8 @@ if st.session_state.stage == "results":
         optimizer = st.session_state.optimizer
         problem = st.session_state.problem
         ten_best = np.argsort(np.array(optimizer.history["F"]).flatten())[:10]
-        st.markdown("""Результатом оптимизации является набор механизмов с наилучшими значениями заданного критерия, найденными в процессе оптимизации. 
-Для каждого полученного механизма можно рассчитать критерии вдоль траекторий использованных в процессе оптмизации""")
+        st.markdown("""<p class="big-font"> Результатом оптимизации является набор механизмов с наилучшими значениями заданного критерия, найденными в процессе оптимизации. 
+Для каждого полученного механизма можно рассчитать критерии вдоль траекторий использованных в процессе оптмизации</p>""",unsafe_allow_html=True)
         idx = st.select_slider(label="Лучшие по заданному критерию механизмы:", options=[
                                1, 2, 3, 4, 5, 6, 7, 8, 9, 10], value=1, help='10 механизмов с наибольшими значением выбранного критерия, 1 соответствует максимальному значению критерия')
         x = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
@@ -676,12 +681,14 @@ if st.session_state.stage == "results":
             trajectory = trajectories[trj_idx]
             st.button(label='Визуализация движения', key='run_simulation', on_click=run_simulation, kwargs={
                       "graph": graph, "trajectory": trajectory})
-            st.header("Характеристики:")
-            reward_idxs = [0]*len(list(reward_dict.values()))
-            for reward_idx, reward in enumerate(reward_dict.items()):
-                current_checkbox = st.checkbox(
-                    label=reward_description[reward[0]][0], value=False, key=reward[1].reward_name+str(reward_idx), help=reward_description[reward[0]][1])
-                reward_idxs[reward_idx] = current_checkbox
+            with st.form("reward_form_mlt"):
+                st.header("Характеристики:")
+                reward_idxs = [0]*len(list(reward_dict.values()))
+                for reward_idx, reward in enumerate(reward_dict.items()):
+                    current_checkbox = st.checkbox(
+                        label=reward_description[reward[0]][0], value=False, key=reward[1].reward_name+str(reward_idx), help=reward_description[reward[0]][1])
+                    reward_idxs[reward_idx] = current_checkbox
+                bc = st.form_submit_button(label="Рассчитать значения выбранных критериев",  type='primary')
         send_graph_to_visualizer(graph, st.session_state.visualization_builder)
         col_1, col_2 = st.columns([0.7,0.3], gap="medium")
         with col_1:
@@ -715,8 +722,7 @@ if st.session_state.stage == "results":
             plt.title('Проекция Парето фронта на плоскость выбранных критериев')
         st.pyplot(plt.gcf(),clear_figure=True)
         
-        with st.sidebar:
-            bc = st.button(label="Рассчитать значения выбранных критериев", key="calculate_rewards", type='primary')
+
         if bc:
             calculate_and_display_rewards(graph, trajectory, reward_idxs)
 
@@ -756,107 +762,4 @@ if st.session_state.stage == 'reward_description':
         st.button(label="Вернуться", key="return_to_criteria_calculation",on_click=lambda: st.session_state.__setitem__('stage', 'results'),type='primary')
     else:
         st.button(label="Вернуться", key="return_to_criteria_calculation",on_click=lambda: st.session_state.__setitem__('stage', 'trajectory_choice'),type='primary')
-    st.markdown(r"""1. Определитель матрицы инерции.
-
-Рассматривается матрица инерции в пространстве актуаторов. Матрицей инерции называется квадратная матрица связывающая скорость изменения обобщённых координат с кинетической энергией:  
-    $$E_k=\dot{q}^TA(q)\dot{q}\space,$$  
-где $q$ - координаты актуированных сочленений. Матрица инерции зависит от конфигурации механизма и поэтому изменяется вдоль траектории. 
-Чем меньше определитель этой матрицы, тем меньше энергии нужно затратить для достижения заданной скорости. В качестве критерия используется величина:   
-    $$R = \frac{1}{\overline{\det{A(q)}}},$$  
-где усреднение проводится по всем точкам траектории. 
-
-O. Khatib, “Inertial properties in robotic manipulation: An object-level framework,” The international journal of robotics research, vol. 14, no. 1, pp. 19–36, 1995. [https://doi.org/10.1177/027836499501400103](https://doi.org/10.1177/027836499501400103)
-
-2. Фактор распределения вертикального удара.
-
-Данный критерий измеряет нормированною величину инерции концевого эффектора. Для этого используется матрица инерции в операционном пространстве: 
-    $$\Lambda(x)=(J(q(x))A(q(x))^{-1}J(q(x))^T)^{-1},$$  
-где $A$- матрица инерции в пространстве актуированных сочленений, $J$ - якобиан связывающий обобщённую скорость $\dot{q}$ и скорость в операционном пространстве $\dot{x}$
-Для нормировки используется значение матрицы инерции в операционном пространстве при условии, что каждое сочленение неподвижно $\Lambda_L$. Как критерий нас интересует только проекция на вертикальную ось, поэтому итоговое выражение имеет вид:  
-    $$R=\frac{1}{n}\sum_1^n(1-\frac{z^T\Lambda z}{z^T\Lambda_L z}),$$  
-где $z$ - единичный вектор вдоль оси $Z$, n - число точек на траектории.
-Для более подробной информации:
-P. M. Wensing, A. Wang, S. Seok, D. Otten, J. Lang and S. Kim, "Proprioceptive Actuator Design in the MIT Cheetah: Impact Mitigation and High-Bandwidth Physical Interaction for Dynamic Legged Robots," in _IEEE Transactions on Robotics_, vol. 33, no. 3, pp. 509-522, June 2017, doi: [10.1109/TRO.2016.2640183](https://doi.org/10.1109/TRO.2016.2640183)  
-V. Batto, T. Flayols, N. Mansard and M. Vulliez, "Comparative Metrics of Advanced Serial/Parallel Biped Design and Characterization of the Main Contemporary Architectures," _2023 IEEE-RAS 22nd International Conference on Humanoid Robots (Humanoids)_, Austin, TX, USA, 2023, pp. 1-7, doi: [10.1109/Humanoids57100.2023.10375224](https://doi.org/10.1109/Humanoids57100.2023.10375224)
-
-3. Манипулируемость/Маневренность вдоль траектории.
-
-Манипулируемость это кинематическая характеристика оценивающая связь между скоростью актуаторов и скоростью концевого эффектора. В данном критерии рассматривается связь между движением актуаторов и движением по касательной к траектории. Обозначиv $\vec{t}$ - единичный вектор касательной к траектории. Тогда критерий определяется как:  $$R=\frac{1}{n}\sum_1^n(1/\|J^{-1}\vec{t}\|),$$
-
-где $J$ - якобиан связывающий обобщённую скорость $\dot{q}$ и скорость в операционном пространстве $\dot{x}$, n - число точек на траектории. В отдельной точке данный критерий обозначает величину линейной скорости, которая получается при "единичной" скорости актуаторов $\|q\|=1$. 
-
-4. Манипулируемость.
-
-Манипулируемость это кинематическая характеристика оценивающая связь между скоростью актуаторов и скоростью концевого эффектора. Данный критерий характеризует полную манипулируемость по всем направлениям. Единичный круг в пространтсве скоростей актуаторов преобразуется Якобианом в эллипс манипулируемости:
-$$v^T(JJ^T)^-1v=1$$
-Объём(площадь) эллипса пропорционален определителю Якобиана. Чем больше объём, тем большие скорости концевого эффектора достижимы при "единичной" скорости актуаторов $\|q\|=1$. Критерий в точке равен определителю Якобиана, а полное значение вдоль траектории равно: $$R=\frac{1}{n}\sum_1^n(\det{J}),$$
-где $J$ - якобиан связывающий обобщённую скорость $\dot{q}$ и скорость в операционном пространстве $\dot{x}$, n - число точек на траектории.
-Для более подробной информации:
-V. Batto, T. Flayols, N. Mansard and M. Vulliez, "Comparative Metrics of Advanced Serial/Parallel Biped Design and Characterization of the Main Contemporary Architectures," _2023 IEEE-RAS 22nd International Conference on Humanoid Robots (Humanoids)_, Austin, TX, USA, 2023, pp. 1-7, doi: [10.1109/Humanoids57100.2023.10375224](https://doi.org/10.1109/Humanoids57100.2023.10375224)
-Spong, M.W.; Hutchinson, Seth; Vidyasagar, M. (2005). [_Robot Modeling and Control_](https://books.google.com/books?id=muCMAAAACAAJ). Wiley. Wiley. [ISBN](https://en.wikipedia.org/wiki/ISBN_(identifier) "ISBN (identifier)") [9780471765790](https://en.wikipedia.org/wiki/Special:BookSources/9780471765790 "Special:BookSources/9780471765790").
-
-5. Минимальная манипулируемость.
-
-Манипулируемость это кинематическая характеристика оценивающая связь между скоростью актуаторов и скоростью концевого эффектора. Данный критерий зависит от минимального значения скорости концевого эффектора при "единичной" скорости актуаторов $\|q\|=1$. Наименьшее значение определяется наименьшим сингулярным числом Якобиана скоростей. Значение критерия равно:
-$$R=\frac{1}{n}\sum_1^n\sigma_{min},$$
-где $\sigma_{min}$ - наименьшее сингулярное число Якобиана скоростей, n - число точек на траектории.
-M. Švejda, "New kinetostatic criterion for robot parametric optimization," _2017 IEEE 4th International Conference on Soft Computing & Machine Intelligence (ISCMI)_, Mauritius, 2017, pp. 66-70, doi: [10.1109/ISCMI.2017.8279599](https://doi.org/10.1109/ISCMI.2017.8279599
-
-6. Минимальное усилие.
-
-Транспонированный Якобиан скоростей определяет соотношение между моментами актуаторов и силой приложенной к концевому эффектору в стационарном состоянии:
-$$\tau=J^Tf,$$ где $\tau$ - моменты актуаторов, $J$ - якобиан связывающий обобщённую скорость $\dot{q}$ и скорость в операционном пространстве $\dot{x}$, $f$ - сила приложенная к концевому эффектору.
-Для каждой конфигурации существует наименьшая сила, которую могут создавать двигатели при  "единичном" моменте актуаторов $\|\tau \|=1$. Данная сила пропорциональна обратному значению наибольшего сингулярного числа Якобиана скоростей. Чем большее значение имеет данная характеристика, тем большие внешние силы способен выдерживать механизм. При использовании данного критерия максимизируется минимальное значение допустимой нагрузки. Итоговый критерий равен:
-$$R=\frac{1}{n}\sum_1^n\frac{1}{\sigma_{max}},$$где $\sigma_{max}$ - наибольшее сингулярное число Якобиана скоростей, n - число точек на траектории. 
-
-7. Вертикальное передаточное отношение.
-
-Транспонированный Якобиан скоростей определяет соотношение между моментами актуаторов и силой приложенной к концевому эффектору в стационарном состоянии:
-$$\tau=J^Tf,$$ где $\tau$ - моменты актуаторов, $J$ - якобиан связывающий обобщённую скорость $\dot{q}$ и скорость в операционном пространстве $\dot{x}$, $f$ - сила приложенная к концевому эффектору.
-Для механизмов ног роботов особое значение имеют внешние силы направленные по вертикали, так как они соответствуют контакту с поверхностью. В качестве критерия используется величина:
-$$R=\frac{1}{n}\sum_1^n\frac{1}{\|J^T z\|},$$
-где $z$ - единичный вектор вдоль оси $Z$, n - число точек на траектории, $J$ - Якобиан скоростей. Чем больше данное значение, тем меньшим моментом актуаторов можно добиться необходимой силы контакта с поверхностью.
-
-V. Batto, T. Flayols, N. Mansard and M. Vulliez, "Comparative Metrics of Advanced Serial/Parallel Biped Design and Characterization of the Main Contemporary Architectures," _2023 IEEE-RAS 22nd International Conference on Humanoid Robots (Humanoids)_, Austin, TX, USA, 2023, pp. 1-7, doi: [10.1109/Humanoids57100.2023.10375224](https://doi.org/10.1109/Humanoids57100.2023.10375224
-
-8. Индекс подвижности.
-
-Следствием закона сохранения энергии является тот факт, что силовые и скоростные характеристики механизма оказываются связаны - чем больше манипулируемость, тем меньше сила и наоборот. Индекс подвижности - это критерий, служащий для получения сбалансированных дизайнов через компромисс между силой и скоростью. Величина критерия равна:
-$$R=\frac{1}{n}\sum_1^n\frac{\sigma_{min}}{\sigma_{max}},$$
-где $\sigma_{min}$ - наименьшее сингулярное число Якобиана скоростей, $\sigma_{max}$ - наибольшее сингулярное число Якобиана скоростей, n - число точек на траектории.
-
-9. Потенциальное ускорение вдоль траектории.
-
-Ускорение концевого эффектора зависит от матрицы инерции механизма и моментов актуаторов. Связь моментов актуаторов и ускорения (при нулевой скорости и отбрасывая гравитацию): $$\tau = H(q)J^{-1} \ddot{x} $$ где $\tau$ - моменты актуаторов, $J$ - якобиан связывающий обобщённую скорость $\dot{q}$ и скорость в операционном пространстве $\dot{x}$, $\ddot{x}$ - ускорение в операционном пространстве. 
-Данный критерий направлен на минимизацию моментов необходимых для ускорения вдоль заданной траектории.  Обозначиv $\vec{t}$ - единичный вектор касательной к траектории. Тогда вектор моментов необходимых для единичного ускорения в данном направлении равен:
-$$\tau_u = H(q)J^{-1} \ddot{\vec t}$$ В качестве критерия используется величина $$R=\frac{1}{n}\sum_1^n\tau_m/max(tau_u),$$где $\tau_m$ - номинальный пиковый момент двигателя. Данный критерий показывает, какое ускорение вдоль траектории может быть получено из данной конфигурации механизма при подачи максимальных возможных моментов на двигатели.
-
-Более подробно данный критерий описан в статье: 
-M. Švejda, "New kinetostatic criterion for robot parametric optimization," _2017 IEEE 4th International Conference on Soft Computing & Machine Intelligence (ISCMI)_, Mauritius, 2017, pp. 66-70, doi: [10.1109/ISCMI.2017.8279599](https://doi.org/10.1109/ISCMI.2017.8279599)
-
-10. Минимальное потенциальное ускорение.
-
-Ускорение концевого эффектора зависит от матрицы инерции механизма и моментов актуаторов. Связь моментов актуаторов и ускорения (при нулевой скорости и отбрасывая гравитацию): $$J(q)H(q)^{-1} \tau = \ddot{x} $$где $\tau$ - моменты актуаторов, $J$ - якобиан связывающий обобщённую скорость $\dot{q}$ и скорость в операционном пространстве $\dot{x}$, $\ddot{x}$ - ускорение в операционном пространстве. 
-Данный критерий направлен на максимизацию минимального ускорения, получаемого при при  "единичном" моменте актуаторов $\|\tau \|=1$. Значение критерия равно:
-$$R=\frac{1}{n}\sum_1^n\sigma_{min},$$где $\sigma_{min}$ - наименьшее сингулярное число матрицы $J(q)H(q)^{-1}$, n - число точек на траектории.
-
-11. Средняя грузоподъёмность. 
-
-В квазистатическом приближении моменты актуаторов и внешняя сила связаны выражением:
-$$\tau=J^Tf,$$ где $\tau$ - моменты актуаторов, $J$ - якобиан связывающий обобщённую скорость $\dot{q}$ и скорость в операционном пространстве $\dot{x}$, $f$ - сила приложенная к концевому эффектору. Это выражение можно использовать для оценки грузоподъёмности механизма. Для заданной точки можно рассчитать максимальную вертикальную силу, которую можно получить при заданном пиковом значении момента:
-$$f_m = \tau_m / max(J^T z),$$ где $z$ - единичный вектор вдоль оси $Z$, n - число точек на траектории, $J$ - Якобиан скоростей, $\tau_m$ - номинальный пиковый момент двигателя. 
-В качестве критерия мы рассматриваем отношение данной величины к силе тяжести самого механизма, таким образом получая грузоподъёмность в единицах массы механизма. Итоговый критерий: 
-$$R=\frac{1}{n}\sum_1^n\frac{f_m}{mg},$$где $m$ - масса механизма,  $g$ - ускорение свободного падения, $n$ - число шагов на траектории.
-Данный критерий описан в работе:
-G. Kenneally, A. De and D. E. Koditschek, "Design Principles for a Family of Direct-Drive Legged Robots," in _IEEE Robotics and Automation Letters_, vol. 1, no. 2, pp. 900-907, July 2016, doi: [10.1109/LRA.2016.2528294](https://doi.org/10.1109/LRA.2016.2528294)
-
-12. Минимальная грузоподъёмность.
-
-В квазистатическом приближении моменты актуаторов и внешняя сила связаны выражением:
-$$\tau=J^Tf,$$ где $\tau$ - моменты актуаторов, $J$ - якобиан связывающий обобщённую скорость $\dot{q}$ и скорость в операционном пространстве $\dot{x}$, $f$ - сила приложенная к концевому эффектору. Это выражение можно использовать для оценки грузоподъёмности механизма. Для заданной точки можно рассчитать максимальную вертикальную силу, которую можно получить при заданном пиковом значении момента:
-$$f_m = \tau_m / max(J^T z),$$ где $z$ - единичный вектор вдоль оси $Z$, n - число точек на траектории, $J$ - Якобиан скоростей, $\tau_m$ - номинальный пиковый момент двигателя. 
-В качестве критерия мы рассматриваем отношение данной величины к силе тяжести самого механизма, таким образом получая грузоподъёмность в единицах массы механизма. При этом нас интересует наименьшее значение данного критерия на траектории. Мотивация данного критерия - механизм должен иметь возможность нести нагрузку во всех точках траектории, поэтому минимальное значение характеризует способность механизма пройти всю траекторию под нагрузкой. Итоговый критерий: 
-$$R=\min\left( \frac{f_m}{mg}\right),$$где $m$ - масса механизма,  $g$ - ускорение свободного падения, $n$ - число шагов на траектории.
-
-Данный критерий описан в работе:
-G. Kenneally, A. De and D. E. Koditschek, "Design Principles for a Family of Direct-Drive Legged Robots," in _IEEE Robotics and Automation Letters_, vol. 1, no. 2, pp. 900-907, July 2016, doi: [10.1109/LRA.2016.2528294](https://doi.org/10.1109/LRA.2016.2528294)""")
+    st.markdown(MD_REWARD_DESCRIPTION)

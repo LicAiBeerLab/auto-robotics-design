@@ -17,7 +17,7 @@ if __name__ == "__main__":
     pool = multiprocessing.Pool(N_PROCESS)
     runner = StarmapParallelization(pool.starmap)
     population_size = 64
-    n_generations = 20
+    n_generations = 30
     graph_manager = data[0]
     builder = data[1]
     reward_manager = data[3]

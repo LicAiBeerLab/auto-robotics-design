@@ -8,7 +8,6 @@ import pinocchio as pin
 import streamlit as st
 import streamlit.components.v1 as components
 
-
 from apps.widjetdemo.streamlit_widgets.reward_descriptions.md_rawards import MD_REWARD_DESCRIPTION
 from forward_init import add_trajectory_to_vis, build_constant_objects, get_russian_reward_description
 from streamlit_widget_auxiliary import get_visualizer, send_graph_to_visualizer
@@ -31,28 +30,29 @@ from auto_robot_design.utils.configs import get_standard_builder, get_mesh_build
 from auto_robot_design.description.builder import ParametrizedBuilder, DetailedURDFCreatorFixedEE, MIT_CHEETAH_PARAMS_DICT
 from auto_robot_design.optimization.rewards.reward_base import NotReacablePoints
 from auto_robot_design.generator.topologies.graph_manager_2l import scale_graph_manager, scale_jp_graph, plot_one_jp_bounds
+from auto_robot_design.pinokla.criterion_math import calculate_mass
 
 
 graph_managers, optimization_builder, _, _, crag, reward_dict = build_constant_objects()
 reward_description = get_russian_reward_description()
 
 def font_size(size):
-    st.markdown("""
-<style>
-.big-font {
-    font-size:"""+str(size)+"""px !important;
-}
-</style>
-""", unsafe_allow_html=True)
-    
+    st.markdown("""<style>.big-font {font-size:"""+str(size)+"""px !important;}</style>""", unsafe_allow_html=True)
+font_size(20)
+def ChangeWidgetFontSize(wgt_txt, wch_font_size = '12px'):
+    htmlstr = """<script>var elements = window.parent.document.querySelectorAll('*'), i;
+                    for (i = 0; i < elements.length; ++i) { if (elements[i].innerText == |wgt_txt|) 
+                        { elements[i].style.fontSize='""" + wch_font_size + """';} } </script>  """
+
+    htmlstr = htmlstr.replace('|wgt_txt|', "'" + wgt_txt + "'")
+    components.html(f"{htmlstr}", height=0, width=0)
+
 st.title("Расчёт характеристик рычажных механизмов")
 # create gm variable that will be used to store the current graph manager and set it to be update for a session
 if 'gm' not in st.session_state:
     # the session variable for chosen topology, it gets a value after topology confirmation button is clicked
     st.session_state.stage = 'topology_choice'
     st.session_state.run_simulation_flag = False
-    font_size(16)
-
 
 
 def confirm_topology():
@@ -66,7 +66,7 @@ def confirm_topology():
 
 # the radio button and confirm button are only visible until the topology is selected
 if st.session_state.stage == 'topology_choice':
-    font_size(20)
+
     st.markdown("""<p class="big-font"> В данном сценарии предлагается выбрать одну из девяти структур рычажных механизмов и задать положение сочленений кинематической схемы. 
 После этого будет рассчитано рабочее пространство кинематической схемы и предложены на выбор критерии, которые можно для неё рассчитать.</p>
 
@@ -75,7 +75,7 @@ if st.session_state.stage == 'topology_choice':
         topology_choice = st.radio(label="Выбор структуры рычажного механизма:",
                  options=graph_managers.keys(), index=0, key='topology_choice')
         st.button(label='Подтвердить выбор структуры', key='confirm_topology',
-                  on_click=confirm_topology)
+                  on_click=confirm_topology,type='primary')
     st.markdown(
     """<p class="big-font"> Для управления инерциальными характеристиками механизма можно задать плотность и сечение элементов конструкции.</p>""",unsafe_allow_html=True)
     density = st.slider(label="Плотность [кг/м^3]", min_value=250, max_value=8000,
@@ -99,13 +99,16 @@ if st.session_state.stage == 'topology_choice':
         plt.gcf().set_size_inches(4, 4)
         st.pyplot(plt.gcf(), clear_figure=True)
     with col_2:
-        st.markdown("Визуализация мехнизма:")
+        st.markdown("Визуализация механизма:")
         components.iframe(get_visualizer(st.session_state.visualization_builder).viewer.url(), width=400,
                           height=400, scrolling=True)
+    st.markdown("Используйте мышь для вращения, сдвига и масштабирования модели.")
     st.session_state.optimization_builder = get_standard_builder(thickness, density)
+    ChangeWidgetFontSize("Выбор структуры рычажного механизма:", "16px")
+    ChangeWidgetFontSize("Плотность [кг/м^3]", "16px")
+    ChangeWidgetFontSize("Толщина [м]", "16px")
 
-from auto_robot_design.optimization.rewards.inertia_rewards import MassReward
-from auto_robot_design.pinokla.criterion_math import calculate_mass
+
 def evaluate_construction(tolerance):
     """Calculate the workspace of the robot and display it"""
     st.session_state.stage = 'workspace_visualization'
@@ -154,9 +157,9 @@ def scale_change():
 
 # choose the mechanism for optimization
 if st.session_state.stage == 'joint_point_choice':
-    st.write("""Установите необходимые положения для координат центров сочленений.
+    st.markdown("""<p class="big-font">Установите необходимые положения для координат центров сочленений.
 Каждое сочленение выбирается отдельно при помощи кнопок и слайдеров на боковой панели.
-Если для сочленения нет слайдеров, то данное сочленение в соответствующей структуре является неизменяемым.""")
+Если для сочленения нет слайдеров, то данное сочленение в соответствующей структуре является неизменяемым.</p>""", unsafe_allow_html=True)
     st.markdown("""Каждое сочленение относится к одному из четырёх типов:  
                 1. Неподвижное сочленение - неизменяемое положение.  
                 2. Cочленение в абсолютных координатах - положение задаётся в абсолютной системе координат в метрах.  
@@ -172,7 +175,7 @@ if st.session_state.stage == 'joint_point_choice':
                   on_click=lambda: st.session_state.__setitem__('stage', 'topology_choice'))
     with st.sidebar:
         st.header('Выбор положений сочленений')
-        jp_label = st.radio(label='Сочленение', options=labels.values(
+        jp_label = st.radio(label='Сочленение:', options=labels.values(
         ), index=0, key='joint_point_choice', horizontal=True, on_change=slider_change)
         jp = list(labels.keys())[jp_label]
         if st.session_state.gm.generator_dict[list(labels.keys())[jp_label]].mutation_type.value == 1:
@@ -227,6 +230,8 @@ if st.session_state.stage == 'joint_point_choice':
             st.write(
                 f"Ребро {labels[edge[0]]}:heavy_minus_sign:{labels[edge[1]]} имеет длину {np.linalg.norm(vector):.3f} метров")
 
+    ChangeWidgetFontSize("Масштаб", "16px")
+    ChangeWidgetFontSize("Сочленение:", "16px")
 
 def to_trajectory_choice():
     st.session_state.stage = 'trajectory_choice'
@@ -292,7 +297,7 @@ if st.session_state.stage == 'workspace_visualization':
 :large_yellow_square: Жёлтая область - рабочее пространство механизма.  
 :large_red_square: Красные область - недостижимые точки.  
 Для выбранной кинематической схемы можно рассчитать набор критериев. Для успешного вычисления критериев необходимо задать желаемую траекторию лежащую внутри рабочего пространства механизма.""")
-    st.text("Выберите траекторию и критерии при помощи конопок на боковой панели:")
+    st.markdown("Выберите траекторию и критерии при помощи конопок на боковой панели!")
     gm = st.session_state.current_gm
     graph = gm.graph
     # points = st.session_state.points
@@ -315,8 +320,9 @@ if st.session_state.stage == 'workspace_visualization':
     with st.sidebar:
         st.button(label="Вернуться к выбору механизма", key="return_to_joint_point_choice",
                   on_click=lambda: st.session_state.__setitem__('stage', 'joint_point_choice'))
-        trajectory_type = st.radio(label='Выберите тип траектории', options=[
+        trajectory_type = st.radio(label='Выберите тип траектории:', options=[
             "вертикальная", "шаг"], index=None, key="trajectory_type")
+        ChangeWidgetFontSize("Выберите тип траектории:", "16px")
         if trajectory_type == "вертикальная":
             height = st.slider(
                 label="высота", min_value=0.02*st.session_state.scale, max_value=0.3*st.session_state.scale, value=0.1*st.session_state.scale)
@@ -334,7 +340,7 @@ if st.session_state.stage == 'workspace_visualization':
             height = st.slider(
                 label="высота", min_value=0.02*st.session_state.scale, max_value=0.3*st.session_state.scale, value=0.1*st.session_state.scale)
             width = st.slider(label="width", min_value=0.1*st.session_state.scale,
-                              max_value=0.6*st.session_state.scale, value=0.2*st.session_state.scale)
+                              max_value=0.6*st.session_state.scale, value=0.28*st.session_state.scale)
             trajectory = convert_x_y_to_6d_traj_xz(
                 *add_auxilary_points_to_trajectory(
                     create_simple_step_trajectory(
@@ -346,6 +352,7 @@ if st.session_state.stage == 'workspace_visualization':
                 )
             )
         if trajectory_type is not None:
+
             st.button(label="Симуляция движения по траектории", key="run_simulation",
                       on_click=run_simulation)
             with st.form(key="rewards"):
@@ -357,7 +364,8 @@ if st.session_state.stage == 'workspace_visualization':
                     reward_mask.append(st.checkbox(
                         label=reward_description[key][0], value=False, help=reward_description[key][1]))
 
-
+    if trajectory_type is not None:
+        st.markdown("Траектория отображается на графе и визуализации механизма в виде зелёной линии.")
     col_1, col_2 = st.columns([0.7, 0.3], gap="medium")
     with col_1:
         draw_joint_point(graph, labels=2, draw_legend=True, draw_lines=True)
@@ -410,6 +418,8 @@ if st.session_state.stage == 'workspace_visualization':
         get_visualizer(st.session_state.visualization_builder).display(
             pin.neutral(fixed_robot.model))
         st.session_state.run_simulation_flag = False
+    
+
 if st.session_state.stage == 'reward_description':
     st.button(label="Вернуться к расчёту критериев", key="return_to_criteria_calculation",on_click=lambda: st.session_state.__setitem__('stage', 'workspace_visualization'),type='primary')
     st.markdown(MD_REWARD_DESCRIPTION)
