@@ -16,7 +16,7 @@ from pathlib import Path
 from auto_robot_design.description.builder import (jps_graph2pinocchio_robot_3d_constraints)
 from auto_robot_design.description.mesh_builder.mesh_builder import (
     MeshBuilder, jps_graph2pinocchio_meshes_robot)
-from auto_robot_design.description.utils import draw_joint_point
+from auto_robot_design.description.utils import draw_joint_point, draw_joint_point_widjet
 from auto_robot_design.generator.topologies.bounds_preset import \
     get_preset_by_index_with_bounds
 from auto_robot_design.generator.topologies.graph_manager_2l import plot_one_jp_bounds, scale_graph_manager
@@ -122,6 +122,7 @@ if st.session_state.stage == "topology_choice":
         st.markdown("Визуализация робота")
         components.iframe(get_visualizer(st.session_state.visualization_builder ).viewer.url(), width=400,
                           height=400, scrolling=True)
+    st.markdown("Используйте мышь для вращения, сдвига и масштабирования модели.")
     st.session_state.optimization_builder = get_standard_builder(thickness, density)
     ChangeWidgetFontSize('Подтвердить выбор структуры', "16px")
     ChangeWidgetFontSize("Плотность [кг/м^3]", "16px")
@@ -244,8 +245,8 @@ if st.session_state.stage == "ranges_choice":
     center = gm.generate_central_from_mutation_range()
     graph = gm.get_graph(center)
     # here I can insert the visualization for jp bounds
-
-    draw_joint_point(graph, labels=1, draw_legend=True,draw_lines=True)
+    draw_joint_point_widjet(graph, labels=1, draw_lines=True)
+    # draw_joint_point(graph, labels=1, draw_legend=True,draw_lines=True)
     st.pyplot(plt.gcf(), clear_figure=True)
     # this way we set ranges after each step, but without freezing joints
 #     some_text = """Диапазоны оптимизации определяют границы пространства поиска механизмов в процессе 
@@ -380,10 +381,10 @@ if st.session_state.stage == "trajectory_choice":
                       on_click=remove_trajectory_group)
         # for each reward trajectories should be assigned
     # top visualization of current trajectory
-    some_text = """Для оптимизации используются кинематические критерии, рассчитываемые вдоль траекторий. Траектория определяет множество точек в котором будут рассчитаны выбранные критерии.
-Если критерий нужно рассчитать вдоль более чем одной траектории необходимо создать группу траекторий. При помощи кнопок на боковой панели выберите траектории и соответствующие им критерии.
-"""
-    st.markdown(some_text)
+
+    st.markdown("""<p class="big-font">Для оптимизации используются кинематические критерии, рассчитываемые вдоль траекторий. Траектория определяет множество точек в котором будут рассчитаны выбранные критерии.
+Если критерий нужно рассчитать вдоль более чем одной траектории необходимо создать группу траекторий. При помощи кнопок на боковой панели выберите траектории и соответствующие им критерии.</p>
+""", unsafe_allow_html=True)
     st.button(label="Посмотреть подробное описание критериев", key="show_reward_description",on_click=lambda: st.session_state.__setitem__('stage', 'reward_description'))
     col_1, col_2 = st.columns([0.7, 0.3], gap="medium")
     with col_1:
