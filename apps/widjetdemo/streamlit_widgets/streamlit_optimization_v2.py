@@ -14,11 +14,9 @@ from pymoo.decomposition.asf import ASF
 from streamlit_widget_auxiliary import get_visualizer, send_graph_to_visualizer
 from pathlib import Path
 from auto_robot_design.description.builder import (jps_graph2pinocchio_robot_3d_constraints)
-from auto_robot_design.description.mesh_builder.mesh_builder import (
-    MeshBuilder, jps_graph2pinocchio_meshes_robot)
+from auto_robot_design.description.mesh_builder.mesh_builder import jps_graph2pinocchio_meshes_robot
 from auto_robot_design.description.utils import draw_joint_point, draw_joint_point_widjet
-from auto_robot_design.generator.topologies.bounds_preset import \
-    get_preset_by_index_with_bounds
+from auto_robot_design.generator.topologies.bounds_preset import get_preset_by_index_with_bounds
 from auto_robot_design.generator.topologies.graph_manager_2l import plot_one_jp_bounds, scale_graph_manager
 from auto_robot_design.motion_planning.trajectory_ik_manager import \
     TrajectoryIKManager
@@ -36,11 +34,52 @@ from auto_robot_design.description.builder import ParametrizedBuilder, DetailedU
 from auto_robot_design.optimization.rewards.reward_base import NotReacablePoints
 from apps.widjetdemo.streamlit_widgets.reward_descriptions.md_rawards import MD_REWARD_DESCRIPTION
 # st.set_page_config(layout = "wide", initial_sidebar_state = "expanded")
-graph_managers, _, _,_, crag, reward_dict = build_constant_objects()
+graph_managers, default_optimization_builder, default_mesh_builder,_, crag, reward_dict = build_constant_objects()
 reward_description = get_russian_reward_description()
 axis = ['x', 'y', 'z']
 
+def show_loaded_results(dir="./results/optimization_widget/current_results (copy_2)"):
+    st.session_state.stage = "results"
+    st.session_state.results_exist = True
+    st.session_state.run_simulation_flag = False
+    selected_directory = dir
+    with open(Path(dir).absolute().joinpath("out.txt"),'r')as file:
+        n_obj = int(file.readline())
+    # n_obj = st.session_state.reward_manager.close_trajectories()
+    st.session_state.n_obj = n_obj
+    if n_obj == 1:
+        problem = SingleCriterionProblem.load(selected_directory)
+        checkpoint = load_checkpoint(selected_directory)
+        optimizer = PymooOptimizer(problem, checkpoint)
+        optimizer.load_history(selected_directory)
+        res = optimizer.run()
+        st.session_state.optimizer = optimizer
+        st.session_state.problem = problem
+        st.session_state.res = res
+        st.session_state.reward_manager=problem.rewards_and_trajectories
+        st.session_state.optimization_builder = problem.builder
+        st.session_state.visualization_builder = default_mesh_builder
+        st.session_state.gm = problem.graph_manager
+    if n_obj >= 2:
+        problem = MultiCriteriaProblem.load(selected_directory)
+        checkpoint = load_checkpoint(selected_directory)
+        optimizer = PymooOptimizer(problem, checkpoint)
+        optimizer.load_history(selected_directory)
+        res = optimizer.run()
+        st.session_state.optimizer = optimizer
+        st.session_state.problem = problem
+        st.session_state.res = res
+        st.session_state.reward_manager=problem.rewards_and_trajectories
+        st.session_state.optimization_builder = problem.builder
+        st.session_state.visualization_builder = default_mesh_builder
+        st.session_state.gm = problem.graph_manager
+        
 
+load_results = True
+if load_results:
+    show_loaded_results()
+    load_results = False
+    
 def ChangeWidgetFontSize(wgt_txt, wch_font_size = '12px'):
     htmlstr = """<script>var elements = window.parent.document.querySelectorAll('*'), i;
                     for (i = 0; i < elements.length; ++i) { if (elements[i].innerText == |wgt_txt|) 
@@ -68,7 +107,7 @@ if 'stage' not in st.session_state:
     st.session_state.trajectory_groups = []
     st.session_state.trajectory_buffer = {}
     st.session_state.opt_rewards_dict = {}
-    st.session_state.results_exist = False 
+    st.session_state.results_exist = False
 
 
 def confirm_topology():
@@ -660,7 +699,7 @@ if st.session_state.stage == "results":
                         labels.append(reward[0].reward_name)
             translate_labels(labels, reward_dict, reward_description)
 
-        st.markdown("""Результатом оптимизации является набор механизмов, которые образуют Парето фронт по заданным группам критериев. """)
+        st.markdown("""Результатом оптимизации является набор механизмов, которые образуют Парето фронт по заданным группам критериев. Вы можете """)
         res = st.session_state.res
         optimizer = st.session_state.optimizer
         problem = st.session_state.problem
