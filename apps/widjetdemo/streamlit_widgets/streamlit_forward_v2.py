@@ -10,7 +10,7 @@ import streamlit.components.v1 as components
 
 from apps.widjetdemo.streamlit_widgets.reward_descriptions.md_rawards import MD_REWARD_DESCRIPTION
 from forward_init import add_trajectory_to_vis, build_constant_objects, get_russian_reward_description
-from streamlit_widget_auxiliary import get_visualizer, send_graph_to_visualizer
+from streamlit_widget_auxiliary import get_visualizer, send_graph_to_visualizer, graph_mesh_visualization, send_robot_to_visualizer, robot_move_visualization
 
 from auto_robot_design.description.builder import jps_graph2pinocchio_robot_3d_constraints
 from auto_robot_design.description.mesh_builder.mesh_builder import (
@@ -20,8 +20,7 @@ from auto_robot_design.generator.topologies.bounds_preset import \
     get_preset_by_index_with_bounds
 from auto_robot_design.motion_planning.bfs_ws import (
     BreadthFirstSearchPlanner, Workspace)
-from auto_robot_design.motion_planning.trajectory_ik_manager import \
-    TrajectoryIKManager
+
 from auto_robot_design.pinokla.default_traj import (
     add_auxilary_points_to_trajectory, convert_x_y_to_6d_traj_xz,
     create_simple_step_trajectory, get_vertical_trajectory)
@@ -31,23 +30,16 @@ from auto_robot_design.description.builder import ParametrizedBuilder, DetailedU
 from auto_robot_design.optimization.rewards.reward_base import NotReacablePoints
 from auto_robot_design.generator.topologies.graph_manager_2l import scale_graph_manager, scale_jp_graph, plot_one_jp_bounds
 from auto_robot_design.pinokla.criterion_math import calculate_mass
-
+from apps.widjetdemo.streamlit_widgets.trajectory_widget import set_step_trajectory, set_vertical_trajectory, user_trajectory
+from widget_html_tricks import ChangeWidgetFontSize, font_size
 
 graph_managers, optimization_builder, _, _, crag, reward_dict = build_constant_objects()
 reward_description = get_russian_reward_description()
-
-def font_size(size):
-    st.markdown("""<style>.big-font {font-size:"""+str(size)+"""px !important;}</style>""", unsafe_allow_html=True)
 font_size(20)
-def ChangeWidgetFontSize(wgt_txt, wch_font_size = '12px'):
-    htmlstr = """<script>var elements = window.parent.document.querySelectorAll('*'), i;
-                    for (i = 0; i < elements.length; ++i) { if (elements[i].innerText == |wgt_txt|) 
-                        { elements[i].style.fontSize='""" + wch_font_size + """';} } </script>  """
-
-    htmlstr = htmlstr.replace('|wgt_txt|', "'" + wgt_txt + "'")
-    components.html(f"{htmlstr}", height=0, width=0)
+user_visualizer, user_vis_url = get_visualizer()
 
 st.title("Расчёт характеристик рычажных механизмов")
+
 # create gm variable that will be used to store the current graph manager and set it to be update for a session
 if 'gm' not in st.session_state:
     # the session variable for chosen topology, it gets a value after topology confirmation button is clicked
@@ -57,9 +49,12 @@ if 'gm' not in st.session_state:
 
 def confirm_topology():
     st.session_state.stage = 'joint_point_choice'
+    # until confirmation I there is no graph mutations, but after that I may need to change something
+    # session_state.gm is at all stages a graph manager with initial parameters but it is a deepcopy in case I need to return
     st.session_state.gm = deepcopy(graph_managers[st.session_state.topology_choice])
     st.session_state.gm.set_mutation_ranges()
-    st.session_state.current_gm = st.session_state.gm
+    st.session_state.current_gm = deepcopy(st.session_state.gm)
+    # initial joint point positions are the same as slider constants. If stage returned to 'topology_choice' all choices are reset
     st.session_state.jp_positions = st.session_state.gm.generate_central_from_mutation_range()
     st.session_state.slider_constants = deepcopy(st.session_state.jp_positions)
     st.session_state.scale = 1
@@ -73,8 +68,10 @@ if st.session_state.stage == 'topology_choice':
     with st.sidebar:
         topology_choice = st.radio(label="Выбор структуры рычажного механизма:",
                  options=graph_managers.keys(), index=0, key='topology_choice')
+        st.session_state.gm = graph_managers[st.session_state.topology_choice]
         st.button(label='Подтвердить выбор структуры', key='confirm_topology',
                   on_click=confirm_topology,type='primary')
+
     st.markdown(
     """<p class="big-font"> Для управления инерциальными характеристиками механизма можно задать плотность и сечение элементов конструкции.</p>""",unsafe_allow_html=True)
     density = st.slider(label="Плотность [кг/м^3]", min_value=250, max_value=8000,
@@ -86,36 +83,35 @@ if st.session_state.stage == 'topology_choice':
     # thickness = st.number_input(label="Толщина [м]", min_value=0.01, max_value=None,
     #                       value=MIT_CHEETAH_PARAMS_DICT["thickness"], step=0.01, key='thickness')
     st.session_state.visualization_builder = get_mesh_builder(manipulation=True, thickness=thickness, density=density)
-    st.session_state.gm = graph_managers[st.session_state.topology_choice]
-    gm = st.session_state.gm
-    values = gm.generate_central_from_mutation_range()
-    graph = st.session_state.gm.get_graph(values)
-    send_graph_to_visualizer(graph, st.session_state.visualization_builder)
-    col_1, col_2 = st.columns([0.7, 0.3], gap="medium")
-    with col_1:
-        st.markdown("Граф выбранной структуры:")
-        draw_joint_point(graph, labels=2, draw_lines=True)
-        plt.gcf().set_size_inches(4, 4)
-        st.pyplot(plt.gcf(), clear_figure=True)
-    with col_2:
-        st.markdown("Визуализация механизма:")
-        components.iframe(get_visualizer(st.session_state.visualization_builder).viewer.url(), width=400,
-                          height=400, scrolling=True)
-    st.markdown("Используйте мышь для вращения, сдвига и масштабирования модели.")
     st.session_state.optimization_builder = get_standard_builder(thickness, density)
+    # getting cental graph of the current topology and send it to duo visualization
+    values = st.session_state.gm.generate_central_from_mutation_range()
+    graph = st.session_state.gm.get_graph(values)
+    graph_mesh_visualization(graph,user_visualizer,user_vis_url, labels=2, draw_lines=True, draw_legend=False)
+    # font tricks
     ChangeWidgetFontSize("Выбор структуры рычажного механизма:", "16px")
     ChangeWidgetFontSize("Плотность [кг/м^3]", "16px")
     ChangeWidgetFontSize("Толщина [м]", "16px")
 
 
 def evaluate_construction(tolerance):
-    """Calculate the workspace of the robot and display it"""
+    """Calculate the workspace of the robot and create workspace object. Also calculate the mass of the robot"""
     st.session_state.stage = 'workspace_visualization'
     st.session_state.slider_constants = deepcopy(st.session_state.jp_positions)
     gm = st.session_state.current_gm
     graph = gm.graph
     fixed_robot, free_robot= jps_graph2pinocchio_robot_3d_constraints(
         graph, builder=st.session_state.optimization_builder)
+    # from this point I will change robot only if stage is returned to 'joint_point_choice'
+    st.session_state.fixed_robot = fixed_robot
+    st.session_state.free_robot = free_robot
+
+    
+    fixed_robot_vis, _= jps_graph2pinocchio_meshes_robot(
+        graph, builder=st.session_state.visualization_builder)
+    st.session_state.fixed_robot_vis = fixed_robot_vis
+
+
     size_box_bound = np.array([0.5, 0.42])*st.session_state.scale
     center_bound = np.array([0, -0.21])*st.session_state.scale
     bounds = np.array(
@@ -129,16 +125,19 @@ def evaluate_construction(tolerance):
     start_pos = np.array([0, -0.4])*st.session_state.scale
     q = np.zeros(fixed_robot.model.nq)
     workspace_obj = Workspace(fixed_robot, bounds, np.array([0.01*st.session_state.scale, 0.01*st.session_state.scale]))
-
     # tolerance = [0.004, 400]
     ws_bfs = BreadthFirstSearchPlanner(
         workspace_obj, 0, dexterous_tolerance=tolerance)
     workspace = ws_bfs.find_workspace(start_pos, q)
     st.session_state.workspace = workspace
     st.session_state.mass = calculate_mass(fixed_robot)
+    # this object is used only for user trajectory
+    st.session_state.trajectory = None
+    st.session_state.trajectory_history = []
 
 
 def slider_change():
+    # when I change the jp I need to save current positions for new constants and dont fall for the python list trick, so I need to deepcopy
     st.session_state.slider_constants = deepcopy(st.session_state.jp_positions)
 
 
@@ -177,24 +176,26 @@ if st.session_state.stage == 'joint_point_choice':
         jp_label = st.radio(label='Сочленение:', options=labels.values(
         ), index=0, key='joint_point_choice', horizontal=True, on_change=slider_change)
         jp = list(labels.keys())[jp_label]
-        if st.session_state.gm.generator_dict[list(labels.keys())[jp_label]].mutation_type.value == 1:
-            if None in st.session_state.gm.generator_dict[list(labels.keys())[jp_label]].freeze_pos:
+        if st.session_state.gm.generator_dict[jp].mutation_type.value == 1:
+            if None in st.session_state.gm.generator_dict[jp].freeze_pos:
                 st.write("Тип сочленения: Сочленение в абсолютных координатах")
             else:
                 st.write("Тип сочленения: Неподвижное сочленение")
-        if st.session_state.gm.generator_dict[list(labels.keys())[jp_label]].mutation_type.value == 2:
+        if st.session_state.gm.generator_dict[jp].mutation_type.value == 2:
             st.write("Тип сочленения: Сочленение в относительных координатах")
             st.write("координаты относительно сочленения: "+str(
-                labels[st.session_state.gm.generator_dict[list(labels.keys())[jp_label]].relative_to]))
-        if st.session_state.gm.generator_dict[list(labels.keys())[jp_label]].mutation_type.value == 3:
+                labels[st.session_state.gm.generator_dict[jp].relative_to]))
+        if st.session_state.gm.generator_dict[jp].mutation_type.value == 3:
             st.write("Тип сочленения: Сочленение задаваемое относительно звена")
-            st.write("координаты относительно звена: "+str(labels[st.session_state.gm.generator_dict[list(labels.keys())[
-                     jp_label]].relative_to[0]])+':arrow_right:'+str(labels[st.session_state.gm.generator_dict[list(labels.keys())[jp_label]].relative_to[1]]))
+            st.write("координаты относительно звена: "+str(labels[st.session_state.gm.generator_dict[jp].relative_to[0]])+':heavy_minus_sign:'+str(labels[st.session_state.gm.generator_dict[jp].relative_to[1]]))
 
-        chosen_range = gm.generator_dict[list(labels.keys())[jp_label]].mutation_range
+        # here chosen range is from current_gm which is scaled
+        chosen_range = gm.generator_dict[jp].mutation_range
         for i, tpl in enumerate(mut_ranges.items()):
             key, value = tpl
-            if key[0] == list(labels.keys())[jp_label]:
+            # search for the jp in the mutation ranges. the slider changes the value in the jp_positions, which are used for get_graph
+            # positions are changed every slider move, but constants are changed only by other actions like scaling and jp change
+            if key[0] == jp:
                 slider = st.slider(
                     label=str(labels[key[0]])+'_'+key[1], min_value=value[0], max_value=value[1], value=st.session_state.slider_constants[i],
                     key="slider_"+str(labels[key[0]])+'_'+key[1])
@@ -216,7 +217,6 @@ if st.session_state.stage == 'joint_point_choice':
                   on_click=evaluate_construction, key="get_workspace", args=[[lower, upper]], type='primary')
     # draw the graph
     graph = gm.get_graph(st.session_state.jp_positions)
-    send_graph_to_visualizer(graph, st.session_state.visualization_builder)
     draw_joint_point_widjet(graph, labels=1, draw_lines=True)
     plot_one_jp_bounds(gm, jp.name)
 
@@ -227,13 +227,10 @@ if st.session_state.stage == 'joint_point_choice':
         for edge in graph.edges():
             vector = edge[0].r - edge[1].r
             st.write(
-                f"Ребро {labels[edge[0]]}:heavy_minus_sign:{labels[edge[1]]} имеет длину {np.linalg.norm(vector):.3f} метров")
+                f"Длина линка {labels[edge[0]]}:heavy_minus_sign:{labels[edge[1]]} составляет {np.linalg.norm(vector):.3f} [м]")
 
     ChangeWidgetFontSize("Масштаб", "16px")
     ChangeWidgetFontSize("Сочленение:", "16px")
-
-def to_trajectory_choice():
-    st.session_state.stage = 'trajectory_choice'
 
 
 def run_simulation():
@@ -241,11 +238,8 @@ def run_simulation():
 
 
 def calculate_and_display_rewards(trajectory, reward_mask):
-    gm = st.session_state.current_gm
-    fixed_robot, free_robot = jps_graph2pinocchio_robot_3d_constraints(
-        gm.graph, st.session_state.optimization_builder)
     point_criteria_vector, trajectory_criteria, res_dict_fixed = crag.get_criteria_data(
-        fixed_robot, free_robot, trajectory, viz=None)
+        st.session_state.fixed_robot, st.session_state.free_robot, trajectory, viz=None)
     if sum(reward_mask)>0:
         some_text = """Критерии представлены в виде поточечных значений вдоль траектории."""
         st.text(some_text)
@@ -282,7 +276,6 @@ def calculate_and_display_rewards(trajectory, reward_mask):
             label="", value="Траектория содержит точки за пределами рабочего пространства. Для рассчёта критериев укажите траекторию внутри рабочей области.")
 
 
-
 def create_file(graph):
     robot_urdf_str = jps_graph2pinocchio_robot_3d_constraints(
         graph, st.session_state.optimization_builder, True)
@@ -291,11 +284,16 @@ def create_file(graph):
     return robot_urdf_str
 
 
+def return_to_jp_choice():
+    st.session_state.stage = 'joint_point_choice'
+    st.session_state.current_gm = deepcopy(st.session_state.gm)
+
 if st.session_state.stage == 'workspace_visualization':
     st.markdown("""Рабочее пространство изображено совместно с графовым представлением механизма.   
 :large_yellow_square: Жёлтая область - рабочее пространство механизма.  
 :large_red_square: Красные область - недостижимые точки.  
-Для выбранной кинематической схемы можно рассчитать набор критериев. Для успешного вычисления критериев необходимо задать желаемую траекторию лежащую внутри рабочего пространства механизма.""")
+Для выбранной кинематической схемы можно рассчитать набор критериев. Для успешного вычисления критериев необходимо задать желаемую траекторию лежащую внутри рабочего пространства механизма.
+Для выбранной страектории достраивается вспомогательный участок ведущий от нейтрального положения к началу траектории.""")
     st.markdown("Выберите траекторию и критерии при помощи конопок на боковой панели!")
     gm = st.session_state.current_gm
     graph = gm.graph
@@ -310,48 +308,29 @@ if st.session_state.stage == 'workspace_visualization':
     x_1 = x[values == 1]
     y_1 = y[values == 1]
     # # Plot the points
-    plt.plot(x_0, y_0, "sr", markersize=3, label = "недостижимые точки",zorder=1)
+    plt.plot(x_0, y_0, "sr", markersize=3, label = "недостижимые точки", zorder=1)
     plt.legend()
-    plt.plot(x_1, y_1, "sy", markersize=3, label = "достижимые точки",zorder=1)
+    plt.plot(x_1, y_1, "sy", markersize=3, label = "достижимые точки", zorder=1)
     plt.legend()
     # trajectory setting script
     trajectory = None
     with st.sidebar:
         st.button(label="Вернуться к выбору механизма", key="return_to_joint_point_choice",
-                  on_click=lambda: st.session_state.__setitem__('stage', 'joint_point_choice'))
+                  on_click=return_to_jp_choice)
         trajectory_type = st.radio(label='Выберите тип траектории:', options=[
-            "вертикальная", "шаг"], index=None, key="trajectory_type")
+            "Тип 1 (линия)", "Тип 2 (дуга)", "Тип 3 (ломаная)"], index=None, key="trajectory_type")
         ChangeWidgetFontSize("Выберите тип траектории:", "16px")
-        if trajectory_type == "вертикальная":
-            height = st.slider(
-                label="высота", min_value=0.02*st.session_state.scale, max_value=0.3*st.session_state.scale, value=0.1*st.session_state.scale)
-            x = st.slider(label="x", min_value=-0.3*st.session_state.scale,
-                          max_value=0.3*st.session_state.scale, value=0.0*st.session_state.scale)
-            z = st.slider(label="z", min_value=-0.4*st.session_state.scale,
-                          max_value=-0.2*st.session_state.scale, value=-0.3*st.session_state.scale)
-            trajectory = convert_x_y_to_6d_traj_xz(
-                *add_auxilary_points_to_trajectory(get_vertical_trajectory(z, height, x, 100),initial_point=np.array([0,-0.4])*st.session_state.scale))
-        if trajectory_type == "шаг":
-            start_x = st.slider(
-                label="начало_x", min_value=-0.3*st.session_state.scale, max_value=0.3*st.session_state.scale, value=-0.14*st.session_state.scale)
-            start_z = st.slider(
-                label="начало_z", min_value=-0.4*st.session_state.scale, max_value=-0.2*st.session_state.scale, value=-0.34*st.session_state.scale)
-            height = st.slider(
-                label="высота", min_value=0.02*st.session_state.scale, max_value=0.3*st.session_state.scale, value=0.1*st.session_state.scale)
-            width = st.slider(label="width", min_value=0.1*st.session_state.scale,
-                              max_value=0.6*st.session_state.scale, value=0.28*st.session_state.scale)
-            trajectory = convert_x_y_to_6d_traj_xz(
-                *add_auxilary_points_to_trajectory(
-                    create_simple_step_trajectory(
-                        starting_point=[start_x, start_z],
-                        step_height=height,
-                        step_width=width,
-                        n_points=100,
-                    ),initial_point=np.array([0,-0.4])*st.session_state.scale
-                )
-            )
-        if trajectory_type is not None:
+        if trajectory_type == "Тип 1 (линия)":
+            trajectory = set_vertical_trajectory()
+        if trajectory_type == "Тип 2 (дуга)":
+            trajectory = set_step_trajectory()
+        if trajectory_type == "Тип 3 (ломаная)":
+            st.markdown('Добавляйте точки для построения траектории. Слайдеры задают положение следующей точки.')
+            trajectory = user_trajectory(st.session_state.workspace.bounds[0],st.session_state.workspace.bounds[1],initial_point=np.array([0,-0.4])*st.session_state.scale)
+            if trajectory is not None:
+                trajectory = convert_x_y_to_6d_traj_xz(*add_auxilary_points_to_trajectory(trajectory,initial_point=np.array([0,-0.4])*st.session_state.scale))
 
+        if trajectory_type is not None and (trajectory_type != "Тип 3 (ломаная)" or (trajectory_type == "Тип 3 (ломаная)" and len(st.session_state.trajectory_history)>1)):
             st.button(label="Симуляция движения по траектории", key="run_simulation",
                       on_click=run_simulation)
             with st.form(key="rewards"):
@@ -363,13 +342,13 @@ if st.session_state.stage == 'workspace_visualization':
                     reward_mask.append(st.checkbox(
                         label=reward_description[key][0], value=False, help=reward_description[key][1]))
 
-    if trajectory_type is not None:
+    if trajectory is not None:
         st.markdown("Траектория отображается на графе и визуализации механизма в виде зелёной линии.")
     col_1, col_2 = st.columns([0.7, 0.3], gap="medium")
     with col_1:
-        draw_joint_point(graph, labels=2, draw_legend=True, draw_lines=True)
+        draw_joint_point_widjet(graph, labels=2, draw_legend=True, draw_lines=True)
         plt.gcf().set_size_inches(6, 6)
-        if trajectory_type is not None:
+        if trajectory is not None:
             # plt.plot(trajectory[50:, 0], trajectory[50:, 2], 'green', markersize=2)
             plt.plot(trajectory[:, 0], trajectory[:, 2], 'green', markersize=2)
         plt.legend(loc="lower left", bbox_to_anchor=(0, 1.02))
@@ -383,13 +362,14 @@ if st.session_state.stage == 'workspace_visualization':
         st.text("\n ")
         st.text("\n ")
         st.text("\n ")
-        if trajectory_type is not None:
-            add_trajectory_to_vis(get_visualizer(
-                st.session_state.visualization_builder), trajectory[50:])
-        components.iframe(get_visualizer(st.session_state.visualization_builder).viewer.url(), width=400,
+        send_robot_to_visualizer(st.session_state.fixed_robot_vis, user_visualizer)
+        # if trajectory is not None:
+        #     add_trajectory_to_vis(get_visualizer()[0], trajectory[50:])
+
+        components.iframe(user_vis_url, width=400,
                           height=400, scrolling=True)
 
-    if trajectory_type is not None:
+    if trajectory_type is not None and (trajectory_type != "Тип 3 (ломаная)" or (trajectory_type == "Тип 3 (ломаная)" and len(st.session_state.trajectory_history)>1)):
         if st.session_state.run_simulation_flag or cr:
             calculate_and_display_rewards(trajectory, reward_mask)
 
@@ -399,26 +379,18 @@ if st.session_state.stage == 'workspace_visualization':
         file_name="robot_forward.urdf",
         mime="robot/urdf",
     )
-    st.markdown("""Вы можете скачать URDF модель полученного механизма для дальнейшего использования. Данный виджет служит для первичной оценки кинематических структур, вы можете использовать редакторы URDF для более точной настройки параметров и физические симуляторы для имитационного модеирования.""")
+    st.markdown("""Вы можете скачать URDF модель полученного механизма для дальнейшего использования. Данный виджет служит для первичной оценки кинематических структур, вы можете использовать редакторы URDF для более точной настройки параметров и физические симуляторы для имитационного моделирования.""")
     with st.sidebar:
         st.button(label="Посмотреть подробное описание критериев", key="show_reward_description",on_click=lambda: st.session_state.__setitem__('stage', 'reward_description'))
+
     if st.session_state.run_simulation_flag:
-        ik_manager = TrajectoryIKManager()
-        fixed_robot, _ = jps_graph2pinocchio_meshes_robot(
-            graph, st.session_state.visualization_builder)
-        ik_manager.register_model(
-            fixed_robot.model, fixed_robot.constraint_models, fixed_robot.visual_model
-        )
-        ik_manager.set_solver("Closed_Loop_PI")
-        _ = ik_manager.follow_trajectory(
-            trajectory, viz=get_visualizer(st.session_state.visualization_builder)
-        )
-        time.sleep(1)
-        get_visualizer(st.session_state.visualization_builder).display(
-            pin.neutral(fixed_robot.model))
-        st.session_state.run_simulation_flag = False
-    
+        robot_move_visualization(st.session_state.fixed_robot_vis, trajectory,user_visualizer)
+
+def return_to_workspace():
+    st.session_state.stage = 'workspace_visualization'
+    st.session_state.trajectory = None
+    st.session_state.trajectory_history = []
 
 if st.session_state.stage == 'reward_description':
-    st.button(label="Вернуться к расчёту критериев", key="return_to_criteria_calculation",on_click=lambda: st.session_state.__setitem__('stage', 'workspace_visualization'),type='primary')
+    st.button(label="Вернуться к расчёту критериев", key="return_to_criteria_calculation",on_click=return_to_workspace,type='primary')
     st.markdown(MD_REWARD_DESCRIPTION)
