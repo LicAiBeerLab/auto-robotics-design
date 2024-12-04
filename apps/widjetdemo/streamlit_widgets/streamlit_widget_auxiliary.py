@@ -18,7 +18,7 @@ from auto_robot_design.generator.topologies.bounds_preset import get_preset_by_i
 
 @st.cache_resource
 def get_visualizer(user_key=0):
-    _gm = get_preset_by_index_with_bounds(-1)
+    _gm = get_preset_by_index_with_bounds(8)
     base_graph = _gm.get_graph(_gm.generate_central_from_mutation_range())
     builder = get_mesh_builder(manipulation=False)
     fixed_robot, _ = jps_graph2pinocchio_meshes_robot(base_graph, builder)

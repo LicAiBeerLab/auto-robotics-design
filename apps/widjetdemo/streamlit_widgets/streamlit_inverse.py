@@ -22,7 +22,7 @@ from auto_robot_design.description.builder import (
 from auto_robot_design.description.mesh_builder.mesh_builder import (
     jps_graph2pinocchio_meshes_robot,
 )
-from auto_robot_design.description.utils import draw_joint_point
+from auto_robot_design.description.utils import draw_joint_point, draw_joint_point_widjet
 from auto_robot_design.generator.topologies.bounds_preset import (
     get_preset_by_index_with_bounds,
 )
@@ -80,7 +80,7 @@ manipulator_reward_keys = [
 ]
 
 dataset_paths = ["./datasets/top_0", "./datasets/top_1","./datasets/top_2", "./datasets/top_3","./datasets/top_4","./datasets/top_5","./datasets/top_6", "./datasets/top_7", "./datasets/top_8"]
-
+user_visualizer, user_vis_url = get_visualizer()
 
 st.title("Генерация механизмов по заданной рабочей области")
 # starting stage
@@ -110,9 +110,9 @@ def type_choice(t):
 if st.session_state.stage == "class_choice":
     some_text = r"""В данном сценарии происходит генерация механизмов по заданной рабочей области. Предлагается выбрать один из трёх типов задач для синтеза механизма:
 
-- замкнутая кинематическая структура общего назначения,
-- подвеска колёсного робота,
-- робот-манипулятор.
+- Абстрактная кинематическая структура,
+- Подвеска колёсного робота,
+- Робот-манипулятор.
 
 Для каждого типа подготовлен свой набор критериев, используемых при генерации механизма и модель визуализации."""
     st.markdown(some_text)
@@ -149,15 +149,20 @@ def confirm_topology(topology_list, topology_mask):
     if len(topology_list) == 1:
         st.session_state.stage = "jp_ranges"
         st.session_state.gm = topology_list[0][1]
+        graph = st.session_state.gm.get_graph(st.session_state.gm.generate_central_from_mutation_range())
+        _,_=jps_graph2pinocchio_meshes_robot(graph, st.session_state.visualization_builder)
         st.session_state.gm_clone = deepcopy(st.session_state.gm)
         st.session_state.current_generator_dict = deepcopy(
             st.session_state.gm.generator_dict
         )
         # st.session_state.gm_clone = deepcopy(st.session_state.gm)
         st.session_state.datasets = [
-            x for x in dataset_paths if topology_mask[i] is True
+            x for i,x in enumerate(dataset_paths) if topology_mask[i] is True
         ]
     else:
+        for _, gm in topology_list:
+            graph = gm.get_graph(gm.generate_central_from_mutation_range())
+            _,_=jps_graph2pinocchio_meshes_robot(graph, st.session_state.visualization_builder)
         st.session_state.gm_clone = deepcopy(st.session_state.gm)
         st.session_state.stage = "ellipsoid"
         st.session_state.datasets = [
@@ -179,9 +184,12 @@ if st.session_state.stage == "topology_choice":
         st.write(
             "При выборе только одной структуры доступна опция выбора границ для параметров генерации"
         )
-        topology_mask = []
+        topology_mask = [0]*9
         for i, gm in enumerate(graph_managers.items()):
-            topology_mask.append(st.checkbox(label=topology_name(i), value=True))
+            if i == 0:
+                topology_mask[i] = st.checkbox(label=topology_name(i), value=True) 
+            else:
+                topology_mask[i]=st.checkbox(label=topology_name(i), value=False)
         chosen_topology_list = [
             x for i, x in enumerate(graph_managers.items()) if topology_mask[i] is True
         ]
@@ -201,7 +209,7 @@ if st.session_state.stage == "topology_choice":
             gm = chosen_topology_list[i][1]
             plt.subplot(3, 3, i + 1)
             gm.get_graph(gm.generate_central_from_mutation_range())
-            draw_joint_point(gm.graph, labels=2, draw_legend=False)
+            draw_joint_point_widjet(gm.graph, labels=2, draw_legend=False)
             plt.title(topology_name(chosen_topology_list[i][0][-1]))
         else:
             plt.subplot(3, 3, i + 1)
@@ -316,7 +324,7 @@ if st.session_state.stage == "jp_ranges":
     graph = gm.get_graph(center)
     # here I can insert the visualization for jp bounds
 
-    draw_joint_point(graph, labels=1, draw_legend=False, draw_lines=True, offset_lim=0.05)
+    draw_joint_point_widjet(graph, labels=1, draw_legend=True, draw_lines=True)
     # here gm is a clone
 
     # plot_2d_bounds(gm)
@@ -586,7 +594,7 @@ if st.session_state.stage == "results":
     graph = st.session_state.graphs[idx - 1][0]
     reward = st.session_state.graphs[idx - 1][1]
     st.text(f"Значение критерия {st.session_state.reward_name} для дизайна {reward:.2f}")
-    send_graph_to_visualizer(graph, vis_builder)
+    send_graph_to_visualizer(graph, user_visualizer, vis_builder)
     robot_urdf_str = jps_graph2pinocchio_robot_3d_constraints(graph, optimization_builder, True)
     path_to_robots = Path().parent.absolute().joinpath("robots")
     path_to_urdf = path_to_robots / "robot_1.urdf"
@@ -630,9 +638,9 @@ if st.session_state.stage == "results":
         st.pyplot(plt.gcf(), clear_figure=True)
     with col_2:
         st.header("Робот")
-        add_trajectory_to_vis(get_visualizer(vis_builder), final_trajectory)
+        add_trajectory_to_vis(user_visualizer, final_trajectory)
         components.iframe(
-            get_visualizer(vis_builder).viewer.url(),
+            user_vis_url,
             width=310,
             height=310,
             scrolling=True,
@@ -669,10 +677,10 @@ if st.session_state.stage == "results":
             ik_manager.set_solver("Closed_Loop_PI")
             # with st.status("simulation..."):
             _ = ik_manager.follow_trajectory(
-                final_trajectory, viz=get_visualizer(vis_builder)
+                final_trajectory, viz=user_visualizer
             )
             time.sleep(1)
-            get_visualizer(vis_builder).display(pin.neutral(fixed_robot.model))
+            user_visualizer.display(pin.neutral(fixed_robot.model))
             st.session_state.run_simulation_flag = False
     else:
         if st.session_state.run_simulation_flag:
@@ -687,10 +695,10 @@ if st.session_state.stage == "results":
             ik_manager.set_solver("Closed_Loop_PI")
             # with st.status("simulation..."):
             _ = ik_manager.follow_trajectory(
-                final_trajectory, viz=get_visualizer(vis_builder)
+                final_trajectory, viz=user_visualizer
             )
             time.sleep(1)
-            get_visualizer(vis_builder).display(pin.neutral(fixed_robot.model))
+            user_visualizer.display(pin.neutral(fixed_robot.model))
             st.session_state.run_simulation_flag = False
 
 if st.session_state.stage == 'reward_description':
