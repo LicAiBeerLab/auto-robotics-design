@@ -131,6 +131,7 @@ def evaluate_construction(tolerance):
     workspace = ws_bfs.find_workspace(start_pos, q)
     st.session_state.workspace = workspace
     st.session_state.mass = calculate_mass(fixed_robot)
+    send_robot_to_visualizer(st.session_state.fixed_robot_vis, user_visualizer)
     # this object is used only for user trajectory
     st.session_state.trajectory = None
     st.session_state.trajectory_history = []
@@ -197,7 +198,7 @@ if st.session_state.stage == 'joint_point_choice':
             # positions are changed every slider move, but constants are changed only by other actions like scaling and jp change
             if key[0] == jp:
                 slider = st.slider(
-                    label=str(labels[key[0]])+'_'+key[1], min_value=value[0], max_value=value[1], value=st.session_state.slider_constants[i],
+                    label=key[1].upper() +' координата сочленения '+str(labels[key[0]]), min_value=value[0], max_value=value[1], value=st.session_state.slider_constants[i],
                     key="slider_"+str(labels[key[0]])+'_'+key[1])
                 st.session_state.jp_positions[i] = slider
         lower = 0
@@ -357,14 +358,11 @@ if st.session_state.stage == 'workspace_visualization':
     with col_2:
         st.text("\n ")
         st.text("\n ")
-        st.text("\n ")
-        st.text("\n ")
-        st.text("\n ")
-        st.text("\n ")
-        st.text("\n ")
-        send_robot_to_visualizer(st.session_state.fixed_robot_vis, user_visualizer)
-        # if trajectory is not None:
-        #     add_trajectory_to_vis(get_visualizer()[0], trajectory[50:])
+
+        if st.button(label="Обновить визуализацию механизма") or st.session_state.run_simulation_flag:
+            send_robot_to_visualizer(st.session_state.fixed_robot_vis, user_visualizer)
+            if trajectory is not None:
+                add_trajectory_to_vis(user_visualizer, trajectory[50:])
 
         components.iframe(user_vis_url, width=400,
                           height=400, scrolling=True)

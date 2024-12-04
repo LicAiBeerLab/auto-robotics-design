@@ -60,10 +60,16 @@ def clear_trajectory():
     st.session_state.trajectory_history = []
 
 def user_trajectory(x_range,z_range,initial_point = np.array([0,-0.4]),):
+    st.markdown('Добавляйте точки для построения траектории. Слайдеры задают положение следующей точки. траектория должна содержать минимум 2 точки')
     X = st.slider(label="X", min_value=x_range[0], max_value=x_range[1], value=initial_point[0], step=0.01, key="x")
     Y = st.slider(label="Z", min_value=z_range[0], max_value=z_range[1], value=initial_point[1], step=0.01, key="z")
-    Drawing_colored_circle = Circle((X, Y), radius=0.005, color="g")
+    Drawing_colored_circle = Circle((X, Y), radius=0.005, color="g",zorder=4)
     plt.gca().add_artist(Drawing_colored_circle)
     st.button(label = "Добавить точку", key="add_point", help="Add point to trajectory", on_click=add_point_toTrajectory, args=(X,Y))
     st.button(label = "Очистить траекторию", key="clear_trajectory",  on_click=clear_trajectory)
+    if len(st.session_state.trajectory_history) > 0:
+        st.write("Опорные точки траектории:")
+    for point in st.session_state.trajectory_history:
+        st.write(f"X: {point[0]}, Z: {point[1]}")
+
     return st.session_state.trajectory
