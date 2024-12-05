@@ -48,13 +48,13 @@ font_size(20)
 user_visualizer, user_vis_url = get_visualizer(user_key)
 
 def show_loaded_results(dir="./results/optimization_widget/current_results (copy_2)"):
+    st.session_state.results_saved = True
     st.session_state.stage = "results"
     st.session_state.results_exist = True
     st.session_state.run_simulation_flag = False
     selected_directory = dir
     with open(Path(dir).absolute().joinpath("out.txt"),'r')as file:
         n_obj = int(file.readline())
-    # n_obj = st.session_state.reward_manager.close_trajectories()
     st.session_state.n_obj = n_obj
     if n_obj == 1:
         problem = SingleCriterionProblem.load(selected_directory)
@@ -84,10 +84,6 @@ def show_loaded_results(dir="./results/optimization_widget/current_results (copy
         st.session_state.gm = problem.graph_manager
         
 
-# load_results = False
-# if load_results:
-#     show_loaded_results()
-#     load_results = False
 
 @st.dialog("Выберите папку с результатами оптимизации")
 def load_results():
@@ -302,10 +298,10 @@ if st.session_state.stage == "ranges_choice":
     st.pyplot(plt.gcf(), clear_figure=True)
 
 
-def add_trajectory(trajectory, idx):
+def add_trajectory(trajectory, idx, name='unnamed'):
     """Create a new trajectory group with a single trajectory."""
     # trajectory buffer is necessary to store all trajectories until the confirmation and adding to reward manager
-    st.session_state.trajectory_buffer[idx] = trajectory
+    st.session_state.trajectory_buffer[idx] = (trajectory,name)
     st.session_state.trajectory_groups.append([idx])
     st.session_state.trajectory_idx += 1
     # this object is used only for user trajectory
@@ -320,9 +316,9 @@ def remove_trajectory_group():
     st.session_state.trajectory_groups.pop()
 
 
-def add_to_group(trajectory, idx):
+def add_to_group(trajectory, idx, name='unnamed'):
     """Add a trajectory to the last added group."""
-    st.session_state.trajectory_buffer[idx] = trajectory
+    st.session_state.trajectory_buffer[idx] = (trajectory, name)
     st.session_state.trajectory_groups[-1].append(idx)
     st.session_state.trajectory_idx += 1
     # this object is used only for user trajectory
@@ -338,8 +334,8 @@ def start_optimization(rewards_tf):
     # rewards_tf = trajectories
     # add all trajectories to the reward manager and soft constraint
     for idx_trj, trj in st.session_state.trajectory_buffer.items():
-        st.session_state.reward_manager.add_trajectory(trj, idx_trj)
-        st.session_state.soft_constraint.add_points_set(trj)
+        st.session_state.reward_manager.add_trajectory(trj[0], idx_trj, trj[1])
+        st.session_state.soft_constraint.add_points_set(trj[0])
     # add all rewards to the reward manager according to trajectory groups
     rewards = list(reward_dict.values())
     for trj_list_idx, trajectory_list in enumerate(st.session_state.trajectory_groups):
@@ -403,11 +399,11 @@ if st.session_state.stage == "trajectory_choice":
             # no more than 2 groups for now
             if len(st.session_state.trajectory_groups) < 2:
                 st.button(label="Добавить траекторию к новой группе", key="add_trajectory", args=(
-                    trajectory, st.session_state.trajectory_idx), on_click=add_trajectory)
+                    trajectory, st.session_state.trajectory_idx,f"Траектория {st.session_state.trajectory_idx} {trajectory_type}"), on_click=add_trajectory)
             # if there is at leas one group we can add to group or remove group
             if st.session_state.trajectory_groups:
                 st.button(label="Добавить траекторию к текущей группе", key="add_to_group", args=[
-                    trajectory, st.session_state.trajectory_idx], on_click=add_to_group)
+                    trajectory, st.session_state.trajectory_idx,f"Траектория {st.session_state.trajectory_idx} {trajectory_type}"], on_click=add_to_group)
                 st.button(label="Удалить текущую группу", key="remove_group",
                         on_click=remove_trajectory_group)
         # for each reward trajectories should be assigned
@@ -435,7 +431,7 @@ if st.session_state.stage == "trajectory_choice":
             st.text("Граф и выбранные траектории:")
             draw_joint_point(graph, labels=2, draw_legend=False)
             for idx in st.session_state.trajectory_groups[i]:
-                current_trajectory = st.session_state.trajectory_buffer[idx]
+                current_trajectory = st.session_state.trajectory_buffer[idx][0]
                 plt.plot(current_trajectory[:, 0], current_trajectory[:, 2])
             st.pyplot(plt.gcf(), clear_figure=True)
         with cols[1]:
@@ -603,7 +599,7 @@ if st.session_state.stage == "results":
         with st.sidebar:
             trajectories = problem.rewards_and_trajectories.trajectories
             trj_idx = st.radio(label="Выбор траектории:", options=trajectories.keys(
-            ), index=0, key='opt_trajectory_choice')
+            ), index=0, key='opt_trajectory_choice', format_func=lambda x: problem.rewards_and_trajectories.trajectory_names[x])
             trajectory = trajectories[trj_idx]
 
             st.button(label='Визуализация движения', key='run_simulation', on_click=run_simulation, kwargs={
@@ -661,8 +657,8 @@ if st.session_state.stage == "results":
         approx_ideal = F.min(axis=0)
         approx_nadir = F.max(axis=0)
         nF = (F - approx_ideal) / (approx_nadir - approx_ideal)
-        w1 = st.slider(label="Выбор решения из Парето фронта при помощи указания относительного веса:", min_value=0.05,
-                       max_value=0.95, value=0.5)
+        w1 = st.slider(label="Выбор решения из Парето фронта при помощи указания относительного веса:", min_value=0.01,
+                       max_value=0.99, value=0.5)
         weights = np.array([w1, 1-w1])
         decomp = ASF()
         b = decomp.do(nF, 1/weights).argmin()
@@ -671,7 +667,7 @@ if st.session_state.stage == "results":
         with st.sidebar:
             trajectories = st.session_state.reward_manager.trajectories
             trj_idx = st.radio(label="Выберите траекторию из заданных перед оптимизацией:", options=trajectories.keys(
-            ), index=0, key='opt_trajectory_choice')
+            ), index=0, key='opt_trajectory_choice', format_func=lambda x: problem.rewards_and_trajectories.trajectory_names[x])
             trajectory = trajectories[trj_idx]
             st.button(label='Визуализация движения', key='run_simulation', on_click=run_simulation, kwargs={
                       "graph": graph, "trajectory": trajectory})
@@ -704,13 +700,13 @@ if st.session_state.stage == "results":
         plt.figure(figsize=(7, 5))
         plt.xlabel(labels[0])
         plt.ylabel(labels[1])
-        plt.scatter(F[:, 0], F[:, 1], s=30,
+        plt.scatter(F[:, 0]*-1, F[:, 1]*-1, s=30,
                     facecolors='none', edgecolors='blue')
         # plt.scatter(approx_ideal[0], approx_ideal[1], facecolors='none',
         #             edgecolors='red', marker="*", s=100, label="Ideal Point (Approx)")
         # plt.scatter(approx_nadir[0], approx_nadir[1], facecolors='none',
         #             edgecolors='black', marker="p", s=100, label="Nadir Point (Approx)")
-        plt.scatter(F[b, 0], F[b, 1], marker="x", color="red", s=200)
+        plt.scatter(F[b, 0]*-1, F[b, 1]*-1, marker="x", color="red", s=200)
         if n_obj==2:
             plt.title("Парето фронт")
         else:
