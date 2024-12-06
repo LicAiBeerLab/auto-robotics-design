@@ -9,10 +9,10 @@ from auto_robot_design.pinokla.default_traj import (
 
 def set_vertical_trajectory():
     height = st.slider(
-        label="Высота", min_value=0.02*st.session_state.scale, max_value=0.3*st.session_state.scale, value=0.1*st.session_state.scale)
-    x = st.slider(label="X", min_value=-0.3*st.session_state.scale,
+        label="длина вдоль Z", min_value=0.02*st.session_state.scale, max_value=0.3*st.session_state.scale, value=0.1*st.session_state.scale)
+    x = st.slider(label="X координата начала", min_value=-0.3*st.session_state.scale,
                     max_value=0.3*st.session_state.scale, value=0.0*st.session_state.scale)
-    z = st.slider(label="Z", min_value=-0.4*st.session_state.scale,
+    z = st.slider(label="Z координата начала", min_value=-0.4*st.session_state.scale,
                     max_value=-0.2*st.session_state.scale, value=-0.3*st.session_state.scale)
     trajectory = convert_x_y_to_6d_traj_xz(
         *add_auxilary_points_to_trajectory(get_vertical_trajectory(z, height, x, 100),initial_point=np.array([0,-0.4])*st.session_state.scale))
@@ -20,9 +20,9 @@ def set_vertical_trajectory():
     
 def set_step_trajectory():
     start_x = st.slider(
-        label="Начало X", min_value=-0.3*st.session_state.scale, max_value=0.3*st.session_state.scale, value=-0.14*st.session_state.scale)
+        label="X координата начала", min_value=-0.3*st.session_state.scale, max_value=0.3*st.session_state.scale, value=-0.14*st.session_state.scale)
     start_z = st.slider(
-        label="Начало Z", min_value=-0.4*st.session_state.scale, max_value=-0.2*st.session_state.scale, value=-0.34*st.session_state.scale)
+        label="Z координата начала", min_value=-0.4*st.session_state.scale, max_value=-0.2*st.session_state.scale, value=-0.34*st.session_state.scale)
     height = st.slider(
         label="Высота", min_value=0.02*st.session_state.scale, max_value=0.3*st.session_state.scale, value=0.1*st.session_state.scale)
     width = st.slider(label="Ширина", min_value=0.1*st.session_state.scale,
@@ -61,8 +61,8 @@ def clear_trajectory():
 
 def user_trajectory(x_range,z_range,initial_point = np.array([0,-0.4]),):
     st.markdown('Добавляйте точки для построения траектории. Слайдеры задают положение следующей точки. траектория должна содержать минимум 2 точки')
-    X = st.slider(label="X", min_value=x_range[0], max_value=x_range[1], value=initial_point[0], step=0.01, key="x")
-    Y = st.slider(label="Z", min_value=z_range[0], max_value=z_range[1], value=initial_point[1], step=0.01, key="z")
+    X = st.slider(label="X координата", min_value=x_range[0], max_value=x_range[1], value=initial_point[0], step=0.01, key="x")
+    Y = st.slider(label="Z координата", min_value=z_range[0], max_value=z_range[1], value=initial_point[1], step=0.01, key="z")
     Drawing_colored_circle = Circle((X, Y), radius=0.005, color="g",zorder=4)
     plt.gca().add_artist(Drawing_colored_circle)
     st.button(label = "Добавить точку", key="add_point", help="Add point to trajectory", on_click=add_point_toTrajectory, args=(X,Y))

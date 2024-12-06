@@ -89,7 +89,7 @@ def show_loaded_results(dir="./results/optimization_widget/current_results (copy
 def load_results():
     st.session_state.load_results = True
     options = [f for f in Path(f"./results/optimization_widget/user_{user_key}").iterdir() if (f.is_dir()and("current_results" not in f.name and "buffer" not in f.name))]
-    path = st.radio(label="Выберите папку с результатами оптимизации", options=options, index=0, key='results_dir')
+    path = st.radio(label="Выберите папку с результатами оптимизации", options=options, index=0, key='results_dir',format_func=lambda x:x.name)
     if st.button("Загрузить результаты"):
         show_loaded_results(path)
         st.rerun()
@@ -496,7 +496,7 @@ if st.session_state.stage == "optimization":
     st.text("Идёт процесс оптимизации, пожалуйста подождите...")
     empt = st.empty()
     with empt:
-        st.image(str(Path('./apps/widjetdemo/loading.gif').absolute()))
+        st.image(str(Path('./apps/widjetdemo/mechanical-wolf-running.gif').absolute()))
     if not Path(f"./results/optimization_widget/user_{user_key}/current_results").exists():
         Path(f"./results/optimization_widget/user_{user_key}/current_results").mkdir(parents=True)
     file = open(

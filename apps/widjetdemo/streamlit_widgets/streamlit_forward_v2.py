@@ -228,7 +228,7 @@ if st.session_state.stage == 'joint_point_choice':
         for edge in graph.edges():
             vector = edge[0].r - edge[1].r
             st.write(
-                f"Длина линка {labels[edge[0]]}:heavy_minus_sign:{labels[edge[1]]} составляет {np.linalg.norm(vector):.3f} [м]")
+                f"Длина звена {labels[edge[0]]}:heavy_minus_sign:{labels[edge[1]]} составляет {np.linalg.norm(vector):.3f} [м]")
 
     ChangeWidgetFontSize("Масштаб", "16px")
     ChangeWidgetFontSize("Сочленение:", "16px")
@@ -294,7 +294,7 @@ if st.session_state.stage == 'workspace_visualization':
 :large_yellow_square: Жёлтая область - рабочее пространство механизма.  
 :large_red_square: Красные область - недостижимые точки.  
 Для выбранной кинематической схемы можно рассчитать набор критериев. Для успешного вычисления критериев необходимо задать желаемую траекторию лежащую внутри рабочего пространства механизма.
-Для выбранной страектории достраивается вспомогательный участок ведущий от нейтрального положения к началу траектории.""")
+Для выбранной страектории достраивается вспомогательный участок ведущий от нейтрального положения к началу траектории. На шрафе данный участок отображается, в 3D симуляции отображается только часть траектории вдоль которой рассчитываются критерии.""")
     st.markdown("Выберите траекторию и критерии при помощи конопок на боковой панели!")
     gm = st.session_state.current_gm
     graph = gm.graph
@@ -309,9 +309,9 @@ if st.session_state.stage == 'workspace_visualization':
     x_1 = x[values == 1]
     y_1 = y[values == 1]
     # # Plot the points
-    plt.plot(x_0, y_0, "sr", markersize=3, label = "недостижимые точки", zorder=1)
+    plt.plot(x_0, y_0, "s",color="#F8312F", markersize=3, label = "Недостижимые точки", zorder=1)
     plt.legend()
-    plt.plot(x_1, y_1, "sy", markersize=3, label = "достижимые точки", zorder=1)
+    plt.plot(x_1, y_1, "s",color="#FFB02E", markersize=3, label = "Достижимые точки", zorder=1)
     plt.legend()
     # trajectory setting script
     trajectory = None
@@ -356,7 +356,6 @@ if st.session_state.stage == 'workspace_visualization':
         plt.text(0,0.95,'Масса механизма: '+f"{st.session_state.mass:.3f}", transform=plt.gca().transAxes, fontsize=12)
         st.pyplot(plt.gcf(), clear_figure=True)
     with col_2:
-        st.text("\n ")
         st.text("\n ")
 
         if st.button(label="Обновить визуализацию механизма") or st.session_state.run_simulation_flag:
