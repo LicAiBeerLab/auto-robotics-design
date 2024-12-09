@@ -10,7 +10,7 @@ from auto_robot_design.description.mesh_builder.mesh_builder import (
 import dill
 
 @st.cache_resource
-def get_visualizer(_visualization_builder):
+def get_visualizer(_visualization_builder, **camera_params):
     builder = _visualization_builder
     gm = st.session_state.gm
     values = gm.generate_central_from_mutation_range()
@@ -26,7 +26,7 @@ def get_visualizer(_visualization_builder):
     visualizer.viewer["/Grid"].set_property("visible", False)
     visualizer.viewer["/Axes"].set_property("visible", False)
     visualizer.viewer["/Cameras/default/rotated/<object>"].set_property(
-        "position", [0, 0.0, 1]
+        "position", camera_params.get("cam_pos", [0, 0.0, 1])
     )
     # load a model to the visualizer and set it into the neutral position
     visualizer.clean()
