@@ -22,7 +22,7 @@ class ProblemSaver:
 
         self.problem = problem
         date = "_" + time.strftime("%Y-%m-%d_%H-%M-%S") if use_date else ""
-        self.folder_name = folder_name + date
+        self.folder_name = str(folder_name) + date
         self.use_date = use_date
         self.path = self._prepare_folder()
 

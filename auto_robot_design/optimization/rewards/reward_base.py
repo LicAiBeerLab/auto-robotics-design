@@ -250,11 +250,13 @@ class RewardManager():
         self.precalculated_trajectories = None
         self.agg_list = []
         self.reward_description = []
+        self.trajectory_names = {}
 
-    def add_trajectory(self, trajectory, idx):
+    def add_trajectory(self, trajectory, idx, name="unnamed"):
         if not (idx in self.trajectories):
             self.trajectories[idx] = trajectory
             self.rewards[idx] = []
+            self.trajectory_names[idx] = name
         else:
             raise KeyError(
                 'Attempt to add trajectory id that already exist in RewardManager')

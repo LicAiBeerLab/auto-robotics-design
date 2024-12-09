@@ -353,7 +353,7 @@ def draw_joint_point_widjet(graph: nx.Graph, labels=0, draw_legend=True, draw_li
             font_family = "monospace"
 
         )
-    plt.plot(G_pos[:,0], G_pos[:,1], "o", label="Ground", color="silver", ms=10)
+    plt.plot(G_pos[:,0], G_pos[:,1], "o", label="Прикреплён к базе", color="silver", ms=10)
     plt.axis("equal")
     
     import matplotlib.ticker as ticker
@@ -373,10 +373,10 @@ def draw_joint_point_widjet(graph: nx.Graph, labels=0, draw_legend=True, draw_li
 
     # plt.axis('on')
     if EE_pos.size != 0:
-        plt.plot(EE_pos[:,0], EE_pos[:,1], "o", label="EndEffector", ms=10, color="lightsteelblue")
+        plt.plot(EE_pos[:,0], EE_pos[:,1], "o", label="Рабочий инструмент", ms=10, color="lightsteelblue")
     plt.plot(active_j_pos[:,0], active_j_pos[:,1], "og",
              markersize=22, 
-             fillstyle="none", label="Active")
+             fillstyle="none", label="Актуирован")
     if draw_legend: plt.legend()
 
 def draw_kinematic_graph(graph: nx.Graph):

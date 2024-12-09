@@ -2,9 +2,10 @@ from dataclasses import dataclass
 
 import meshcat
 import numpy as np
+import matplotlib.pyplot as plt
 import pinocchio as pin
 import streamlit as st
-
+from matplotlib.patches import Circle
 from auto_robot_design.generator.topologies.bounds_preset import get_preset_by_index_with_bounds
 from auto_robot_design.generator.topologies.graph_manager_2l import GraphManager2L
 from auto_robot_design.optimization.rewards.reward_base import PositioningConstrain, RewardManager
@@ -54,3 +55,8 @@ def get_russian_reward_description():
     reward_description['mean_heavy_lifting'] = ("Средняя грузоподъемность", "Среднее значение грузоподъемности. Характеризует способность конструкции ноги поднимать груз не превышая пороговых значений моментов актуаторов.")
     reward_description['min_heavy_lifting'] = ("Минимальная грузоподъемность", "Минимальное значение грузоподъемности на заданной траектории. Характеризует конструкции ноги непрерывно переносить груз без отклонений от заданной траектории.")
     return reward_description
+
+
+
+
+

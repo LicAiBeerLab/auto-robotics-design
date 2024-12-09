@@ -1,6 +1,7 @@
 import multiprocessing
-
+import streamlit as st
 import dill
+import sys
 from pymoo.algorithms.moo.age2 import AGEMOEA2
 from pymoo.algorithms.soo.nonconvex.pso import PSO
 from pymoo.core.problem import StarmapParallelization
@@ -11,7 +12,7 @@ from auto_robot_design.optimization.problems import (MultiCriteriaProblem,
 from auto_robot_design.optimization.saver import ProblemSaver
 
 if __name__ == "__main__":
-    with open(Path("./results/buffer/data.pkl"), "rb") as f:
+    with open(Path(f"./results/optimization_widget/user_{int(sys.argv[1])}/buffer/data.pkl"), "rb") as f:
         data = dill.load(f)
     N_PROCESS = 10
     pool = multiprocessing.Pool(N_PROCESS)
@@ -36,7 +37,7 @@ if __name__ == "__main__":
                                          soft_constraint, elementwise_runner=runner, Actuator=actuator)
         algorithm = PSO(pop_size=population_size, save_history=True)
     saver = ProblemSaver(
-        problem, f"optimization_widget\\current_results", False)
+        problem, Path(f"optimization_widget\\user_{int(sys.argv[1])}\\current_results"), False)
     saver.save_nonmutable()
     optimizer = PymooOptimizer(problem, algorithm, saver)
 
