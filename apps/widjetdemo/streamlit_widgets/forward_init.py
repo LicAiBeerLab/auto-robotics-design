@@ -23,7 +23,7 @@ def build_constant_objects():
     reward_dict = get_standard_rewards()
     return graph_managers, optimization_builder, manipulation_builder, suspension_builder, crag, reward_dict
 
-def add_trajectory_to_vis(pin_vis, trajectory):
+def add_trajectory_to_vis(pin_vis, trajectory, **balls_parameters):
     material = meshcat.geometry.MeshPhongMaterial()
     material.color = int(0xFF00FF)
     material.color = int(0x00FFFF)
@@ -31,10 +31,10 @@ def add_trajectory_to_vis(pin_vis, trajectory):
     material.color = int(0x00FF00)
     material.opacity = 0.3
     for idx, point in enumerate(trajectory):
-        if idx%2==0:
+        if idx%balls_parameters.get("step_balls", 2)==0:
             ballID = "world/ball" + str(idx)
-            pin_vis.viewer[ballID].set_object(meshcat.geometry.Sphere(0.0075), material)
-            T = np.r_[np.c_[np.eye(3), point[:3]+np.array([0,-0.04,0])], np.array([[0, 0, 0, 1]])]
+            pin_vis.viewer[ballID].set_object(meshcat.geometry.Sphere(balls_parameters.get("radius_balls",0.0075)), material)
+            T = np.r_[np.c_[np.eye(3), point[:3]+np.array([0,balls_parameters.get("y_offset_balls", -0.04),0])], np.array([[0, 0, 0, 1]])]
             pin_vis.viewer[ballID].set_transform(T)
 
 @st.cache_resource

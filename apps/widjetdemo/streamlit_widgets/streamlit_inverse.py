@@ -110,16 +110,16 @@ def type_choice(t):
 if st.session_state.stage == "class_choice":
     some_text = r"""В данном сценарии происходит генерация механизмов по заданной рабочей области. Предлагается выбрать один из трёх типов задач для синтеза механизма:
 
-- замкнутая кинематическая структура общего назначения,
-- подвеска колёсного робота,
-- робот-манипулятор.
+- Абстрактный механизм;
+- Подвеска колёсного робота;
+- Робот-манипулятор.
 
 Для каждого типа подготовлен свой набор критериев, используемых при генерации механизма и модель визуализации."""
     st.markdown(some_text)
     col_1, col_2, col_3 = st.columns(3, gap="medium",  vertical_alignment= 'bottom')
     with col_1:
         st.button(
-            label="замкнутая кинематическая структура",
+            label="Абстрактный механизм",
             key="free",
             on_click=type_choice,
             args=["free"],
@@ -127,7 +127,7 @@ if st.session_state.stage == "class_choice":
         st.image("./apps/kin_struct.png")
     with col_2:
         st.button(
-            label="подвеска",
+            label="Подвеска",
             key="suspension",
             on_click=type_choice,
             args=["suspension"],
@@ -135,7 +135,7 @@ if st.session_state.stage == "class_choice":
         st.image("./apps/hybrid_loco.png")
     with col_3:
         st.button(
-            label="манипулятор",
+            label="Манипулятор",
             key="manipulator",
             on_click=type_choice,
             args=["manipulator"],
@@ -181,7 +181,7 @@ if st.session_state.stage == "topology_choice":
         )
         topology_mask = []
         for i, gm in enumerate(graph_managers.items()):
-            topology_mask.append(st.checkbox(label=topology_name(i), value=True))
+            topology_mask.append(st.checkbox(label=topology_name(i), value=False))
         chosen_topology_list = [
             x for i, x in enumerate(graph_managers.items()) if topology_mask[i] is True
         ]
@@ -394,6 +394,10 @@ if st.session_state.stage == "ellipsoid":
             )
             angle = st.slider(label="наклон", min_value=0, max_value=180, value=33)
             st.form_submit_button(label="Задать рабочее пространство")
+            with st.sidebar:
+                st.button(
+                label="Вернуть эллипс к начальным параметрам", key="back_ellipse", on_click=reward_choice,
+            )
     st.session_state.ellipsoid_params = [x, y, x_rad, y_rad, angle]
     ellipse = Ellipse(np.array([x, y]), np.deg2rad(angle), np.array([x_rad, y_rad]))
     point_ellipse = ellipse.get_points()
@@ -414,8 +418,8 @@ if st.session_state.stage == "ellipsoid":
     mask = check_points_in_ellips(points, ellipse, 0.02)
     rev_mask = np.array(1 - mask, dtype="bool")
     plt.figure(figsize=(10, 10))
-    plt.scatter(points[rev_mask, :][:, 0], points[rev_mask, :][:, 1], s=2, marker="s")
-    plt.scatter(points[mask, :][:, 0], points[mask, :][:, 1], s=2, marker="s")
+    plt.scatter(points[rev_mask, :][:, 0], points[rev_mask, :][:, 1], s=2, marker="s", c="coral")
+    plt.scatter(points[mask, :][:, 0], points[mask, :][:, 1], s=2, marker="s", c="gold")
 
     # plt.plot(point_ellipse[0, :], point_ellipse[1, :], "g", linewidth=1)
     graph = st.session_state.gm.get_graph(
@@ -630,7 +634,8 @@ if st.session_state.stage == "results":
         st.pyplot(plt.gcf(), clear_figure=True)
     with col_2:
         st.header("Робот")
-        add_trajectory_to_vis(get_visualizer(vis_builder), final_trajectory)
+        add_trajectory_to_vis(get_visualizer(vis_builder), final_trajectory, step_balls=1)
+        # add_trajectory_to_vis(get_visualizer(vis_builder, cam_pos=[0.09, 0.09, 0.09]), final_trajectory, step_balls=1, y_offset_balls=0.04)
         components.iframe(
             get_visualizer(vis_builder).viewer.url(),
             width=310,
