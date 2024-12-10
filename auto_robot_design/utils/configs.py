@@ -67,7 +67,7 @@ def get_mesh_builder(manipulation=False, thickness=None, density=None):
                             )
     else:
         cwd = Path.cwd()
-        path = 'mesh/body.stl'
+        path = Path('mesh/body.stl')
         if is_in_subdirectory(path, cwd):
             body_path = str(Path.joinpath(Path.cwd(), Path('mesh/body.stl')))
             whell_path = str(Path.joinpath(Path.cwd(), Path('mesh/wheel_small.stl')))
