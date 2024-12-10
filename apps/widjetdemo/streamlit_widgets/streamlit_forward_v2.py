@@ -1,4 +1,6 @@
 import os
+import shutil
+import zipfile
 import time
 from copy import deepcopy
 from pathlib import Path
@@ -7,7 +9,6 @@ import numpy as np
 import pinocchio as pin
 import streamlit as st
 import streamlit.components.v1 as components
-
 from apps.widjetdemo.streamlit_widgets.reward_descriptions.md_rawards import MD_REWARD_DESCRIPTION
 from forward_init import add_trajectory_to_vis, build_constant_objects, get_russian_reward_description
 from streamlit_widget_auxiliary import get_visualizer, send_graph_to_visualizer, graph_mesh_visualization, send_robot_to_visualizer, robot_move_visualization
@@ -33,10 +34,12 @@ from auto_robot_design.pinokla.criterion_math import calculate_mass
 from apps.widjetdemo.streamlit_widgets.trajectory_widget import set_step_trajectory, set_vertical_trajectory, user_trajectory
 from widget_html_tricks import ChangeWidgetFontSize, font_size
 
+USER_KEY = 0
+
 graph_managers, optimization_builder, _, _, crag, reward_dict = build_constant_objects()
 reward_description = get_russian_reward_description()
 font_size(20)
-user_visualizer, user_vis_url = get_visualizer()
+user_visualizer, user_vis_url = get_visualizer(USER_KEY)
 
 st.title("Расчёт характеристик рычажных механизмов")
 
@@ -45,6 +48,10 @@ if 'gm' not in st.session_state:
     # the session variable for chosen topology, it gets a value after topology confirmation button is clicked
     st.session_state.stage = 'topology_choice'
     st.session_state.run_simulation_flag = False
+
+    path_to_robots = Path().parent.absolute().joinpath(f"robots/user_{USER_KEY}")
+    if os.path.exists(path_to_robots):
+        shutil.rmtree(path_to_robots)
 
 
 def confirm_topology():
@@ -277,12 +284,26 @@ def calculate_and_display_rewards(trajectory, reward_mask):
             label="", value="Траектория содержит точки за пределами рабочего пространства. Для рассчёта критериев укажите траекторию внутри рабочей области.")
 
 
-def create_file(graph):
-    robot_urdf_str = jps_graph2pinocchio_robot_3d_constraints(
-        graph, st.session_state.optimization_builder, True)
-    path_to_robots = Path().parent.absolute().joinpath("robots")
-    path_to_urdf = path_to_robots / "robot_forward.urdf"
-    return robot_urdf_str
+def create_file(graph, user_key=0, id_robot=0):
+    path_to_robots = Path().parent.absolute().joinpath(f"robots/user_{user_key}")
+    if not os.path.exists(path_to_robots):
+        os.makedirs(path_to_robots)
+    zip_file_name = path_to_robots / f"robot_{id_robot}.zip"
+    if os.path.exists(zip_file_name):
+        return zip_file_name
+    robot_urdf_str, yaml_out = jps_graph2pinocchio_robot_3d_constraints(graph, st.session_state.optimization_builder, True)
+    path_to_urdf = path_to_robots / f"robot_{id_robot}.urdf"
+    path_to_yaml = path_to_robots / f"robot_{id_robot}.yaml"
+    with open(path_to_urdf, "w") as f:
+        f.write(robot_urdf_str)
+    with open(path_to_yaml, "w") as f:
+        f.write(yaml_out)
+    file_names = [f"robot_{id_robot}.urdf", f"robot_{id_robot}.yaml"]
+    with zipfile.ZipFile(zip_file_name, 'w') as zip_object:
+        # Add multiple files to the zip file
+        for file_name in file_names:
+            zip_object.write(path_to_robots / file_name, file_name)
+    return zip_file_name
 
 
 def return_to_jp_choice():
@@ -370,12 +391,13 @@ if st.session_state.stage == 'workspace_visualization':
         if st.session_state.run_simulation_flag or cr:
             calculate_and_display_rewards(trajectory, reward_mask)
 
-    st.download_button(
-        "Скачать URDF описание робота",
-        data=create_file(graph),
-        file_name="robot_forward.urdf",
-        mime="robot/urdf",
-    )
+    with open(create_file(graph, USER_KEY), "rb") as file:
+        st.download_button(
+            "Скачать URDF описание робота",
+            data=file,
+            file_name="robot_forw_description.zip",
+            mime="robot/urdf",
+        )
     st.markdown("""Вы можете скачать URDF модель полученного механизма для дальнейшего использования. Данный виджет служит для первичной оценки кинематических структур, вы можете использовать редакторы URDF для более точной настройки параметров и физические симуляторы для имитационного моделирования.""")
     with st.sidebar:
         st.button(label="Посмотреть подробное описание критериев", key="show_reward_description",on_click=lambda: st.session_state.__setitem__('stage', 'reward_description'))

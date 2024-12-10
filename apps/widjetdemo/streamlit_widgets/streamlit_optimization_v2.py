@@ -2,6 +2,9 @@ import subprocess
 import time
 from copy import deepcopy
 from pathlib import Path
+import os 
+import shutil
+import zipfile
 import dill
 import matplotlib.pyplot as plt
 import numpy as np
@@ -115,6 +118,10 @@ if 'stage' not in st.session_state:
 
     st.session_state.run_simulation_flag = False
     st.session_state.results_exist = False
+
+    path_to_robots = Path().parent.absolute().joinpath(f"robots/user_{user_key}")
+    if os.path.exists(path_to_robots):
+        shutil.rmtree(path_to_robots)
 
 
 def confirm_topology():
@@ -566,12 +573,27 @@ def calculate_and_display_rewards(graph,trajectory, reward_mask):
         st.text_area(
             label="", value="Траектория содержит точки за пределами рабочего пространства. Для рассчёта критериев укажите траекторию внутри рабочей области.")
 
-def create_file(graph):
-    robot_urdf_str = jps_graph2pinocchio_robot_3d_constraints(graph, st.session_state.optimization_builder, True)
-    path_to_robots = Path().parent.absolute().joinpath("robots")
-    path_to_urdf = path_to_robots / "robot_forward.urdf"
-    return robot_urdf_str
-import shutil
+def create_file(graph, user_key=0, id_robot=0):
+    path_to_robots = Path().parent.absolute().joinpath(f"robots/user_{user_key}")
+    if not os.path.exists(path_to_robots):
+        os.makedirs(path_to_robots)
+    zip_file_name = path_to_robots / f"robot_{id_robot}.zip"
+    if os.path.exists(zip_file_name):
+        return zip_file_name
+    robot_urdf_str, yaml_out = jps_graph2pinocchio_robot_3d_constraints(graph, st.session_state.optimization_builder, True)
+    path_to_urdf = path_to_robots / f"robot_{id_robot}.urdf"
+    path_to_yaml = path_to_robots / f"robot_{id_robot}.yaml"
+    with open(path_to_urdf, "w") as f:
+        f.write(robot_urdf_str)
+    with open(path_to_yaml, "w") as f:
+        f.write(yaml_out)
+    file_names = [f"robot_{id_robot}.urdf", f"robot_{id_robot}.yaml"]
+    with zipfile.ZipFile(zip_file_name, 'w') as zip_object:
+        # Add multiple files to the zip file
+        for file_name in file_names:
+            zip_object.write(path_to_robots / file_name, file_name)
+    return zip_file_name
+
 def save_results():
     initial_path = Path(f"./results/optimization_widget/user_{user_key}/current_results")
     new_path = Path(f"./results/optimization_widget/user_{user_key}/results_"+time.strftime("%Y-%m-%d_%H-%M-%S"))
@@ -716,12 +738,13 @@ if st.session_state.stage == "results":
         if bc:
             calculate_and_display_rewards(graph, trajectory, reward_idxs)
 
-    st.download_button(
-        "Скачать URDF описание робота",
-        data=create_file(graph),
-        file_name="robot_optimization.urdf",
-        mime="robot/urdf",
-    )
+    with open(create_file(graph, user_key), "rb") as file:
+        st.download_button(
+            "Скачать URDF описание робота",
+            data=file,
+            file_name="robot_opt_description.zip",
+            mime="robot/urdf",
+        )
     st.markdown("""Вы можете скачать URDF модель полученного механизма для дальнейшего использования. Данный виджет служит для оптимизации кинематических структур в рамках заданных ограничений, вы можете использовать редакторы URDF для более точной настройки параметров и физические симуляторы для имитационного модеирования.""")
     if  "results_saved" in st.session_state:
         st.markdown("""<p class="big-font">Результаты оптимизации сохранены.</p>""",unsafe_allow_html=True)
