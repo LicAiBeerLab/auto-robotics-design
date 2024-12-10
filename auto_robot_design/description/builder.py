@@ -1451,7 +1451,13 @@ def jps_graph2pinocchio_robot_3d_constraints(
     )
 
     if back_urdf_str:
-        return robot.urdf()
+        yaml_output = (f"closed_loop: {constraints} \n",
+            f"type: {['3d' for __ in range(len(constraints))]} \n",
+            f"name_mot: {ative_joints} \n",
+            f"joint_name: {[]} \n",
+            f"joint_type: {[]} \n"
+        )
+        return (robot.urdf(), "".join(yaml_output))
     fixed_robot = build_model_with_extensions(robot.urdf(),
                                 joint_description=act_description,
                                 loop_description=constraints_descriptions,

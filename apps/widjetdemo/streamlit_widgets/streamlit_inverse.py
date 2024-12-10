@@ -1,7 +1,9 @@
 import time
 from copy import deepcopy
 from pathlib import Path
-
+import zipfile
+import os
+import shutil
 import matplotlib.pyplot as plt
 import numpy as np
 import pinocchio as pin
@@ -78,9 +80,11 @@ manipulator_reward_keys = [
     "dexterity",
     "min_acceleration",
 ]
-
-dataset_paths = ["./datasets/top_0", "./datasets/top_1","./datasets/top_2", "./datasets/top_3","./datasets/top_4","./datasets/top_5","./datasets/top_6", "./datasets/top_7", "./datasets/top_8"]
-user_visualizer, user_vis_url = get_visualizer()
+USER_KEY = 0 
+WORKSPACE_COLORS_VIZUALIZATION_RED = "#dd2e44"
+WORKSPACE_COLORS_VIZUALIZATION_YELLOW = "#fdcb58"
+dataset_paths = [Path("./datasets/top_0"), Path("./datasets/top_1"),Path("./datasets/top_2"), Path("./datasets/top_3"),Path("./datasets/top_4"),Path("./datasets/top_5"),Path("./datasets/top_6"), Path("./datasets/top_7"), Path("./datasets/top_8")]
+user_visualizer, user_vis_url = get_visualizer(USER_KEY)
 
 st.title("Генерация механизмов по заданной рабочей области")
 # starting stage
@@ -88,7 +92,10 @@ if not hasattr(st.session_state, "stage"):
     st.session_state.stage = "class_choice"
     st.session_state.gm = get_preset_by_index_with_bounds(-1)
     st.session_state.run_simulation_flag = False
-
+    st.session_state["slider_version"] = 1
+    path_to_robots = Path().parent.absolute().joinpath(f"robots/user_{USER_KEY}")
+    if os.path.exists(path_to_robots):
+        shutil.rmtree(path_to_robots)
 
 def type_choice(t):
     if t == "free":
@@ -341,14 +348,16 @@ if st.session_state.stage == "jp_ranges":
 def reward_choice():
     st.session_state.stage = "rewards"
 
+def reset_sliders():
+    st.session_state["slider_version"] = st.session_state["slider_version"] + 1
 
 if st.session_state.stage == "ellipsoid":
     st.markdown("""Задайте необходимую рабочую область для генерации механизмов.
     Рабочее пространство всех сгенерированных решений будет включать заданную область.
     Область задаётся в виде эллипса, определяемого своим центром, радиусами и углом.
                 
-:large_blue_square: Синяя область - допустимая область для задния рабочего пространства.  
-:large_orange_square: Оранжевая область - желаемая область рабочего пространства.""")
+:large_yellow_square: Желтая область - допустимая область для задния рабочего пространства.  
+:large_red_square: Красная область - желаемая область рабочего пространства.""")
 #     some_text = """Задайте необходимую рабочую область для генерации механизмов.
 # Рабочее пространство всех сгенерированных решений будет включать заданную область.
 # Область задаётся в виде эллипса, определяемого своим центром, радиусами и углом."""
@@ -389,23 +398,22 @@ if st.session_state.stage == "ellipsoid":
         st.header("Выбор рабочего пространства")
         with st.form(key="ellipse"):
             x = st.slider(
-                label="х координата центра", min_value=-0.3, max_value=0.3, value=0.0
+                label="х координата центра", min_value=-0.3, max_value=0.3, value=0.0, key=f"ellips_params_x_{st.session_state['slider_version']}"
             )
             y = st.slider(
-                label="z координата центра", min_value=-0.4, max_value=-0.2, value=-0.33
+                label="z координата центра", min_value=-0.4, max_value=-0.2, value=-0.33, key=f"ellips_params_y_{st.session_state['slider_version']}"
             )
             x_rad = st.slider(
-                label="х радиус", min_value=0.02, max_value=0.3, value=0.06
+                label="х радиус", min_value=0.02, max_value=0.3, value=0.06, key=f"ellips_params_x_rad_{st.session_state['slider_version']}"
             )
             y_rad = st.slider(
-                label="z радиус", min_value=0.02, max_value=0.3, value=0.05
+                label="z радиус", min_value=0.02, max_value=0.3, value=0.05, key=f"ellips_params_y_rad_{st.session_state['slider_version']}"
             )
-            angle = st.slider(label="наклон", min_value=0, max_value=180, value=33)
+            angle = st.slider(label="наклон", min_value=0, max_value=180, value=33, key=f"ellips_angle_{st.session_state['slider_version']}")
             st.form_submit_button(label="Задать рабочее пространство")
-            with st.sidebar:
-                st.button(
-                label="Вернуть эллипс к начальным параметрам", key="back_ellipse", on_click=reward_choice,
-            )
+        st.button(
+        label="Вернуть эллипс к начальным параметрам", key="back_ellipse", on_click=reset_sliders,
+    )
     st.session_state.ellipsoid_params = [x, y, x_rad, y_rad, angle]
     ellipse = Ellipse(np.array([x, y]), np.deg2rad(angle), np.array([x_rad, y_rad]))
     point_ellipse = ellipse.get_points()
@@ -426,8 +434,8 @@ if st.session_state.stage == "ellipsoid":
     mask = check_points_in_ellips(points, ellipse, 0.02)
     rev_mask = np.array(1 - mask, dtype="bool")
     plt.figure(figsize=(10, 10))
-    plt.scatter(points[rev_mask, :][:, 0], points[rev_mask, :][:, 1], s=2, marker="s", c="coral")
-    plt.scatter(points[mask, :][:, 0], points[mask, :][:, 1], s=2, marker="s", c="gold")
+    plt.scatter(points[rev_mask, :][:, 0], points[rev_mask, :][:, 1], s=2, marker="s", c=WORKSPACE_COLORS_VIZUALIZATION_RED)
+    plt.scatter(points[mask, :][:, 0], points[mask, :][:, 1], s=2, marker="s", c=WORKSPACE_COLORS_VIZUALIZATION_YELLOW)
 
     # plt.plot(point_ellipse[0, :], point_ellipse[1, :], "g", linewidth=1)
     graph = st.session_state.gm.get_graph(
@@ -475,8 +483,8 @@ if st.session_state.stage == "rewards":
     mask = check_points_in_ellips(points, ellipse, 0.02)
     rev_mask = np.array(1 - mask, dtype="bool")
     plt.figure(figsize=(10, 10))
-    plt.scatter(points[rev_mask, :][:, 0], points[rev_mask, :][:, 1], s=2, marker="s")
-    plt.scatter(points[mask, :][:, 0], points[mask, :][:, 1], s=2, marker="s")
+    plt.scatter(points[rev_mask, :][:, 0], points[rev_mask, :][:, 1], s=2, marker="s", c=WORKSPACE_COLORS_VIZUALIZATION_RED)
+    plt.scatter(points[mask, :][:, 0], points[mask, :][:, 1], s=2, marker="s", c=WORKSPACE_COLORS_VIZUALIZATION_YELLOW)
     # plt.plot(point_ellipse[0, :], point_ellipse[1, :], "g", linewidth=1)
     with st.sidebar:
         st.header("Выбор точки вычисления")
@@ -509,7 +517,7 @@ if st.session_state.stage == "rewards":
         st.button(label="Сгенерировать механизмы", key="generate", on_click=generate, type="primary")
     st.session_state.point = [x_p, y_p]
 
-    Drawing_colored_circle = Circle((x_p, y_p), radius=0.01, color="r")
+    Drawing_colored_circle = Circle((x_p, y_p), radius=0.01, color="g")
     plt.gca().add_artist(Drawing_colored_circle)
     plt.gcf().set_size_inches(4, 4)
     plt.gca().axes.set_aspect(1)
@@ -528,7 +536,7 @@ if st.session_state.stage == "generate":
     empt = st.empty()
     st.text("Начался процесс генерации. Подождите пару минут...")
     with empt:
-        st.image(str(Path("./apps/widjetdemo/loading.gif").absolute()))
+        st.image(str(Path("./apps/widjetdemo/mechanical-wolf-running.gif").absolute()))
     dataset_api = ManyDatasetAPI(st.session_state.datasets)
 
     x, y, x_rad, y_rad, angle = st.session_state.ellipsoid_params
@@ -574,10 +582,26 @@ if st.session_state.stage == "generate":
 def run_simulation(**kwargs):
     st.session_state.run_simulation_flag = True
 
-def create_file(graph):
-    robot_urdf_str = jps_graph2pinocchio_robot_3d_constraints(graph, optimization_builder, True)
-    path_to_robots = Path().parent.absolute().joinpath("robots")
-    return robot_urdf_str
+def create_file(graph, user_key=0, id_robot=0):
+    path_to_robots = Path().parent.absolute().joinpath(f"robots/user_{user_key}")
+    if not os.path.exists(path_to_robots):
+        os.makedirs(path_to_robots)
+    zip_file_name = path_to_robots / f"robot_{id_robot}.zip"
+    if os.path.exists(zip_file_name):
+        return zip_file_name
+    robot_urdf_str, yaml_out = jps_graph2pinocchio_robot_3d_constraints(graph, optimization_builder, True)
+    path_to_urdf = path_to_robots / f"robot_{id_robot}.urdf"
+    path_to_yaml = path_to_robots / f"robot_{id_robot}.yaml"
+    with open(path_to_urdf, "w") as f:
+        f.write(robot_urdf_str)
+    with open(path_to_yaml, "w") as f:
+        f.write(yaml_out)
+    file_names = [f"robot_{id_robot}.urdf", f"robot_{id_robot}.yaml"]
+    with zipfile.ZipFile(zip_file_name, 'w') as zip_object:
+        # Add multiple files to the zip file
+        for file_name in file_names:
+            zip_object.write(path_to_robots / file_name, file_name)
+    return zip_file_name
 
 
 if st.session_state.stage == "results":
@@ -597,13 +621,9 @@ if st.session_state.stage == "results":
     )
     graph = st.session_state.graphs[idx - 1][0]
     reward = st.session_state.graphs[idx - 1][1]
-    st.text(f"Значение критерия {st.session_state.reward_name} для дизайна {reward:.2f}")
+    st.text(f"Значение критерия '{st.session_state.reward_name}' для дизайна {reward:.2f}")
     send_graph_to_visualizer(graph, user_visualizer, vis_builder)
-    robot_urdf_str = jps_graph2pinocchio_robot_3d_constraints(graph, optimization_builder, True)
-    path_to_robots = Path().parent.absolute().joinpath("robots")
-    path_to_urdf = path_to_robots / "robot_1.urdf"
-    with open(path_to_urdf, "w") as f:
-        f.write(robot_urdf_str)
+    create_file(graph, USER_KEY, id_robot=idx )
     col_1, col_2 = st.columns(2, gap="medium", vertical_alignment= 'center')
     x, y, x_rad, y_rad, angle = st.session_state.ellipsoid_params
     ellipse = Ellipse(np.array([x, y]), np.deg2rad(angle), np.array([x_rad, y_rad]))
@@ -628,12 +648,14 @@ if st.session_state.stage == "results":
         rev_mask = np.array(1 - mask_ws_n_ellps, dtype="bool")
         # plt.plot(points_on_ellps[:, 0], points_on_ellps[:, 1], "g")
         plt.scatter(
-            reach_ws_points[rev_mask, :][:, 0], reach_ws_points[rev_mask, :][:, 1], s=2, marker="s"
+            reach_ws_points[rev_mask, :][:, 0], reach_ws_points[rev_mask, :][:, 1], s=2, marker="s",
+            c=WORKSPACE_COLORS_VIZUALIZATION_RED
         )
         plt.scatter(
             reach_ws_points[mask_ws_n_ellps, :][:, 0],
             reach_ws_points[mask_ws_n_ellps, :][:, 1],
-            marker="s"
+            marker="s",
+            c=WORKSPACE_COLORS_VIZUALIZATION_YELLOW
         )
         plt.plot(traj[:, 0], traj[:, 1], "r")
         Drawing_colored_circle = Circle(st.session_state.point, radius=0.01, color="r")
@@ -642,7 +664,7 @@ if st.session_state.stage == "results":
         st.pyplot(plt.gcf(), clear_figure=True)
     with col_2:
         st.header("Робот")
-        add_trajectory_to_vis(get_visualizer(vis_builder), final_trajectory, step_balls=1)
+        add_trajectory_to_vis(user_visualizer, final_trajectory, step_balls=1)
         # add_trajectory_to_vis(get_visualizer(vis_builder, cam_pos=[0.09, 0.09, 0.09]), final_trajectory, step_balls=1, y_offset_balls=0.04)
         components.iframe(
             user_vis_url,
@@ -661,12 +683,13 @@ if st.session_state.stage == "results":
     #         mime="robot/urdf",
 
     #     )
-    st.download_button(
-        "Скачать URDF описание робота",
-        data=create_file(graph),
-        file_name="robot_inverse.urdf",
-        mime="robot/urdf",
-    )
+    with open(create_file(graph, USER_KEY, id_robot=idx), "rb") as file:
+        st.download_button(
+            "Скачать URDF описание робота",
+            data=file,
+            file_name="robot_inv_description.zip",
+            mime="robot/urdf",
+        )
     if st.session_state.type == "free":
         if st.session_state.run_simulation_flag:
             ik_manager = TrajectoryIKManager()
