@@ -9,11 +9,11 @@ import numpy as np
 import pinocchio as pin
 import streamlit as st
 import streamlit.components.v1 as components
-from apps.widjetdemo.streamlit_widgets.reward_descriptions.md_rawards import MD_REWARD_DESCRIPTION
+from reward_descriptions.md_rawards import MD_REWARD_DESCRIPTION
 from forward_init import add_trajectory_to_vis, build_constant_objects, get_russian_reward_description
 from streamlit_widget_auxiliary import get_visualizer, send_graph_to_visualizer, graph_mesh_visualization, send_robot_to_visualizer, robot_move_visualization
 
-from auto_robot_design.description.builder import jps_graph2pinocchio_robot_3d_constraints
+from  auto_robot_design.description.builder import jps_graph2pinocchio_robot_3d_constraints
 from auto_robot_design.description.mesh_builder.mesh_builder import (
     jps_graph2pinocchio_meshes_robot)
 from auto_robot_design.description.utils import draw_joint_point, draw_joint_point_widjet
@@ -33,6 +33,14 @@ from auto_robot_design.generator.topologies.graph_manager_2l import scale_graph_
 from auto_robot_design.pinokla.criterion_math import calculate_mass
 from apps.widjetdemo.streamlit_widgets.trajectory_widget import set_step_trajectory, set_vertical_trajectory, user_trajectory
 from widget_html_tricks import ChangeWidgetFontSize, font_size
+
+
+import os
+#os.environ["MESHCAT_WEB_ROOT_PATH"] = "/"
+#os.environ["MESHCAT_PUBLIC_HOST"] = "lvm"
+os.environ["MESHCAT_WEB_PORT"] = "7000"
+os.environ["MESHCAT_WEB_PUBLIC_PORT"] = "7080"
+
 
 USER_KEY = 0
 

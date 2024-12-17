@@ -46,6 +46,12 @@ from auto_robot_design.user_interface.check_in_ellips import (
     check_points_in_ellips,
 )
 
+
+#os.environ["MESHCAT_WEB_ROOT_PATH"] = "/"
+#os.environ["MESHCAT_PUBLIC_HOST"] = "lvm"
+os.environ["MESHCAT_WEB_PORT"] = "7000"
+os.environ["MESHCAT_WEB_PUBLIC_PORT"] = "7080"
+
 # constant objects
 (
     graph_managers,

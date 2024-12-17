@@ -37,9 +37,10 @@ COPY . ./jmoves_env
 RUN conda run -n base pip install -e ./jmoves_env
 RUN conda run -n base pip install ./jmoves_env/meshcat-0.3.2.tar.gz
 
+RUN chmod -R 777 /home/jovyan/jmoves_env
 
 USER jovyan
 ENV PATH=$CONDA_DIR/bin:$PATH
 RUN conda init
 
-CMD ["/bin/bash", "-c", "if [ -d /usr/local/bin/before-notebook.d ]; then for file in /usr/local/bin/before-notebook.d/*; do $file ; done; fi && jupyter notebook --no-browser --NotebookApp.allow_origin='*' --NotebookApp.token='' --ip=0.0.0.0 --NotebookApp.allow_remote_access=True"]
+#CMD ["/bin/bash", "-c", "if [ -d /usr/local/bin/before-notebook.d ]; then for file in /usr/local/bin/before-notebook.d/*; do $file ; done; fi && jupyter notebook --no-browser --NotebookApp.allow_origin='*' --NotebookApp.token='' --ip=0.0.0.0 --NotebookApp.allow_remote_access=True"]

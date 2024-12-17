@@ -40,6 +40,12 @@ from widget_html_tricks import ChangeWidgetFontSize, font_size
 from apps.widjetdemo.streamlit_widgets.trajectory_widget import set_step_trajectory, set_vertical_trajectory, user_trajectory
 
 
+
+#os.environ["MESHCAT_WEB_ROOT_PATH"] = "/"
+#os.environ["MESHCAT_PUBLIC_HOST"] = "lvm"
+os.environ["MESHCAT_WEB_PORT"] = "7000"
+os.environ["MESHCAT_WEB_PUBLIC_PORT"] = "7080"
+
 # st.set_page_config(layout = "wide", initial_sidebar_state = "expanded")
 graph_managers, default_optimization_builder, default_mesh_builder,_, crag, reward_dict = build_constant_objects()
 reward_description = get_russian_reward_description()
