@@ -306,6 +306,8 @@ def inertial_config_two_link_six_trajectories_v2(workspace_based=False, open_loo
     reward_manager.add_trajectory_aggregator([3, 4, 5], 'mean')
 
     return builder, crag, soft_constrain, reward_manager
+
+
 def inertial_config_two_link_workspace(open_loop=False):
     """Create objects for optimization of two link based robots
 
@@ -376,5 +378,117 @@ def jacobian_config_two_link_workspace(open_loop=False):
 
     reward_manager.add_reward(manipulability, 0, 1)
     reward_manager.add_reward(zrr, 0, 1)
+
+    return builder, crag, soft_constrain, reward_manager
+
+
+def vertical_config_two_link_three_trajectories(workspace_based=False, open_loop=False):
+    """Create objects for optimization of two link based robots
+
+    Args:
+        workspace_based (bool, optional): If true use the workspace trajectory for the soft constraint. Defaults to False.
+
+    Returns:
+        list: builder, crag, soft_constrain, reward_manager
+    """
+    builder = get_standard_builder()
+    trajectories = get_standard_trajectories()
+    crag = get_standard_crag(open_loop)
+    workspace_trajectory = trajectories['workspace']
+    central_vertical = trajectories['central_vertical']
+    left_vertical = trajectories['left_vertical']
+    right_vertical = trajectories['right_vertical']
+    # set the rewards and weights for the optimization task
+    rewards = get_standard_rewards()
+    imf = rewards['z_imf']
+    heavy_lifting = rewards['min_heavy_lifting']
+
+    # set up special classes for reward calculations
+    error_calculator = PositioningErrorCalculator(
+        jacobian_key="Manip_Jacobian")
+    if workspace_based:
+        soft_constrain = PositioningConstrain(
+            error_calculator=error_calculator, points=[workspace_trajectory])
+    else:
+        soft_constrain = PositioningConstrain(
+            error_calculator=error_calculator, points=[central_vertical, left_vertical, right_vertical])
+
+    # manager should be filled with trajectories and rewards using the manager API
+    reward_manager = RewardManager(crag=crag)
+
+
+    reward_manager.add_trajectory(central_vertical, 3)
+    reward_manager.add_trajectory(left_vertical, 4)
+    reward_manager.add_trajectory(right_vertical, 5)
+
+    reward_manager.add_reward(imf, 3, 1)
+    reward_manager.add_reward(imf, 4, 1)
+    reward_manager.add_reward(imf, 5, 1)
+
+    reward_manager.add_reward(heavy_lifting, 3, 1)
+    reward_manager.add_reward(heavy_lifting, 4, 1)
+    reward_manager.add_reward(heavy_lifting, 5, 1)
+
+    # reward_manager.add_trajectory_aggregator([0, 1, 2], 'mean')
+    reward_manager.add_trajectory_aggregator([3, 4, 5], 'mean')
+
+    return builder, crag, soft_constrain, reward_manager
+
+
+def jacobian_config_two_link_six_trajectories(workspace_based=False, open_loop=False):
+    """Create objects for optimization of two link based robots
+
+    Args:
+        workspace_based (bool, optional): If true use the workspace trajectory for the soft constraint. Defaults to False.
+
+    Returns:
+        list: builder, crag, soft_constrain, reward_manager
+    """
+    builder = get_standard_builder()
+    trajectories = get_standard_trajectories()
+    crag = get_standard_crag(open_loop)
+    workspace_trajectory = trajectories['workspace']
+    ground_symmetric_step1 = trajectories['step1']
+    ground_symmetric_step2 = trajectories['step2']
+    ground_symmetric_step3 = trajectories['step3']
+    central_vertical = trajectories['central_vertical']
+    left_vertical = trajectories['left_vertical']
+    right_vertical = trajectories['right_vertical']
+    # set the rewards and weights for the optimization task
+    rewards = get_standard_rewards()
+    manipulability = rewards['manipulability']
+    zrr = rewards['trajectory_zrr']
+
+    # set up special classes for reward calculations
+    error_calculator = PositioningErrorCalculator(
+        jacobian_key="Manip_Jacobian")
+    if workspace_based:
+        soft_constrain = PositioningConstrain(
+            error_calculator=error_calculator, points=[workspace_trajectory])
+    else:
+        soft_constrain = PositioningConstrain(
+            error_calculator=error_calculator, points=[ground_symmetric_step1, ground_symmetric_step2, ground_symmetric_step3, central_vertical, left_vertical, right_vertical])
+
+    # manager should be filled with trajectories and rewards using the manager API
+    reward_manager = RewardManager(crag=crag)
+
+    reward_manager.add_trajectory(ground_symmetric_step1, 0)
+    reward_manager.add_trajectory(ground_symmetric_step2, 1)
+    reward_manager.add_trajectory(ground_symmetric_step3, 2)
+
+    reward_manager.add_trajectory(central_vertical, 3)
+    reward_manager.add_trajectory(left_vertical, 4)
+    reward_manager.add_trajectory(right_vertical, 5)
+
+    reward_manager.add_reward(manipulability, 0, 1)
+    reward_manager.add_reward(manipulability, 1, 1)
+    reward_manager.add_reward(manipulability, 2, 1)
+
+    reward_manager.add_reward(zrr, 3, 1)
+    reward_manager.add_reward(zrr, 4, 1)
+    reward_manager.add_reward(zrr, 5, 1)
+
+    reward_manager.add_trajectory_aggregator([0, 1, 2], 'mean')
+    reward_manager.add_trajectory_aggregator([3, 4, 5], 'mean')
 
     return builder, crag, soft_constrain, reward_manager
