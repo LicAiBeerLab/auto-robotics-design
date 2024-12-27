@@ -200,7 +200,7 @@ def inertial_config_two_link_six_trajectories(workspace_based=False, open_loop=F
     Returns:
         list: builder, crag, soft_constrain, reward_manager
     """
-    builder = get_standard_builder()
+    builder = get_standard_builder(density=723.52/5)
     trajectories = get_standard_trajectories()
     crag = get_standard_crag(open_loop)
     workspace_trajectory = trajectories['workspace']
