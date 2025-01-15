@@ -362,8 +362,8 @@ def jacobian_config_two_link_workspace(open_loop=False):
     workspace_trajectory = trajectories['workspace']
     # set the rewards and weights for the optimization task
     rewards = get_standard_rewards()
-    manipulability = rewards['manipulability']
-    zrr = rewards['trajectory_zrr']
+    manipulability = rewards['z_imf']
+    zrr = rewards['mean_heavy_lifting']
 
     # set up special classes for reward calculations
     error_calculator = PositioningErrorCalculator(
@@ -400,9 +400,10 @@ def vertical_config_two_link_three_trajectories(workspace_based=False, open_loop
     right_vertical = trajectories['right_vertical']
     # set the rewards and weights for the optimization task
     rewards = get_standard_rewards()
-    imf = rewards['z_imf']
-    heavy_lifting = rewards['min_heavy_lifting']
-
+    reward_1 = rewards['mean_heavy_lifting']
+    reward_1 = rewards['trajectory_zrr']
+    # heavy_lifting = rewards['min_heavy_lifting']
+    reward_2  = rewards['z_imf']
     # set up special classes for reward calculations
     error_calculator = PositioningErrorCalculator(
         jacobian_key="Manip_Jacobian")
@@ -421,13 +422,13 @@ def vertical_config_two_link_three_trajectories(workspace_based=False, open_loop
     reward_manager.add_trajectory(left_vertical, 4)
     reward_manager.add_trajectory(right_vertical, 5)
 
-    reward_manager.add_reward(imf, 3, 1)
-    reward_manager.add_reward(imf, 4, 1)
-    reward_manager.add_reward(imf, 5, 1)
+    reward_manager.add_reward(reward_1, 3, 1)
+    reward_manager.add_reward(reward_1, 4, 1)
+    reward_manager.add_reward(reward_1, 5, 1)
 
-    reward_manager.add_reward(heavy_lifting, 3, 1)
-    reward_manager.add_reward(heavy_lifting, 4, 1)
-    reward_manager.add_reward(heavy_lifting, 5, 1)
+    reward_manager.add_reward(reward_2, 3, 1)
+    reward_manager.add_reward(reward_2, 4, 1)
+    reward_manager.add_reward(reward_2, 5, 1)
 
     # reward_manager.add_trajectory_aggregator([0, 1, 2], 'mean')
     reward_manager.add_trajectory_aggregator([3, 4, 5], 'mean')
@@ -490,5 +491,41 @@ def jacobian_config_two_link_six_trajectories(workspace_based=False, open_loop=F
 
     reward_manager.add_trajectory_aggregator([0, 1, 2], 'mean')
     reward_manager.add_trajectory_aggregator([3, 4, 5], 'mean')
+
+    return builder, crag, soft_constrain, reward_manager
+
+def imf_config_single_vertical(open_loop=False):
+    builder = get_standard_builder()
+    trajectories = get_standard_trajectories()
+    crag = get_standard_crag(open_loop)
+    central_vertical = trajectories['central_vertical']
+    left_vertical = trajectories['left_vertical']
+    right_vertical = trajectories['right_vertical']
+    # set the rewards and weights for the optimization task
+    rewards = get_standard_rewards()
+    imf = rewards['z_imf']
+    # heavy_lifting = rewards['min_heavy_lifting']
+    heavy_lifting  = rewards['trajectory_zrr']
+    # set up special classes for reward calculations
+    error_calculator = PositioningErrorCalculator(
+        jacobian_key="Manip_Jacobian")
+
+    soft_constrain = PositioningConstrain(
+            error_calculator=error_calculator, points=[central_vertical, left_vertical, right_vertical])
+
+    # manager should be filled with trajectories and rewards using the manager API
+    reward_manager = RewardManager(crag=crag)
+
+
+    reward_manager.add_trajectory(central_vertical, 3)
+    # reward_manager.add_trajectory(left_vertical, 4)
+    # reward_manager.add_trajectory(right_vertical, 5)
+
+    reward_manager.add_reward(imf, 3, 1)
+    # reward_manager.add_reward(imf, 4, 1)
+    # reward_manager.add_reward(imf, 5, 1)
+
+    # reward_manager.add_trajectory_aggregator([0, 1, 2], 'mean')
+    # reward_manager.add_trajectory_aggregator([3, 4, 5], 'mean')
 
     return builder, crag, soft_constrain, reward_manager
