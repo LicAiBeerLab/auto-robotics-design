@@ -1,21 +1,6 @@
 
 import time
 from matplotlib import pyplot as plt
-from scipy.interpolate import CubicSpline
-from auto_robot_design.control.trajectory_planning import trajectory_planning
-from auto_robot_design.pinokla.default_traj import (
-    convert_x_y_to_6d_traj_xz,
-    create_simple_step_trajectory,
-    get_simple_spline,
-)
-from auto_robot_design.generator.topologies.bounds_preset import get_preset_by_index_with_bounds
-
-from auto_robot_design.description.builder import (
-    ParametrizedBuilder,
-    URDFLinkCreator, DetailedURDFCreatorFixedEE,
-    jps_graph2pinocchio_robot,
-)
-
 import pinocchio as pin
 import numpy as np
 import meshcat
@@ -25,14 +10,31 @@ from scipy.spatial.transform import Rotation as R
 
 import os
 import sys
-from auto_robot_design.pinokla.closed_loop_kinematics import (
-    closedLoopInverseKinematicsProximal,
-    openLoopInverseKinematicsProximal,
-    closedLoopProximalMount,
+
+from scipy.interpolate import CubicSpline
+
+from auto_robot_design.control.trajectory_planning import trajectory_planning
+from auto_robot_design.motion_planning.ik_calculator import closed_loop_ik_pseudo_inverse
+from auto_robot_design.pinokla.default_traj import (
+    add_auxilary_points_to_trajectory,
+    convert_x_y_to_6d_traj_xz,
+    create_simple_step_trajectory,
+)
+from auto_robot_design.generator.topologies.bounds_preset import get_preset_by_index_with_bounds
+
+from auto_robot_design.description.builder import (
+    ParametrizedBuilder, DetailedURDFCreatorFixedEE, URDFLinkCreator,
+    jps_graph2pinocchio_robot,
+    jps_graph2pinocchio_robot_3d_constraints,
+    MIT_CHEETAH_PARAMS_DICT
 )
 
+from auto_robot_design.description.mesh_builder.mesh_builder import (
+    MeshBuilder,
+    jps_graph2pinocchio_meshes_robot
+)
+from auto_robot_design.description.mesh_builder.urdf_creater import URDFMeshCreator, MeshCreator
 from auto_robot_design.control.model_based import (
-    TorqueComputedControl,
     OperationSpacePDControl,
 )
 from auto_robot_design.simulation.trajectory_movments import TrajectoryMovements
@@ -42,16 +44,45 @@ mymodule_dir = os.path.join(script_dir, "../utils")
 sys.path.append(mymodule_dir)
 
 
-# Load robot
-builder = ParametrizedBuilder(URDFLinkCreator)
+thickness = MIT_CHEETAH_PARAMS_DICT["thickness"]
+actuator = MIT_CHEETAH_PARAMS_DICT["actuator"]
+density = MIT_CHEETAH_PARAMS_DICT["density"]
+body_density = MIT_CHEETAH_PARAMS_DICT["body_density"]
+
+
+# builder = ParametrizedBuilder(DetailedURDFCreatorFixedEE,
+#                               density={"default": density, "G": body_density},
+#                               thickness={"default": thickness, "EE": 0.003},
+#                               actuator={"default": actuator},
+#                               size_ground=np.array(
+#                                   MIT_CHEETAH_PARAMS_DICT["size_ground"]),
+#                               offset_ground=MIT_CHEETAH_PARAMS_DICT["offset_ground_rl"]
+#                               )
+
+predined_mesh = {"G":"mesh/body.stl",
+            "EE":"mesh/wheel_small.stl"}
+
+mesh_creator = MeshCreator(predined_mesh)
+urdf_creator = URDFMeshCreator()
+builder = MeshBuilder(urdf_creator,
+                      mesh_creator,
+                              density={"default": density, "G": body_density},
+                              thickness={"default": thickness, "EE": 0.003},
+                              actuator={"default": actuator},
+                              size_ground=np.array(
+                                  MIT_CHEETAH_PARAMS_DICT["size_ground"]),
+                              offset_ground=MIT_CHEETAH_PARAMS_DICT["offset_ground_rl"]
+                              )
+
 np.set_printoptions(precision=3, linewidth=300, suppress=True, threshold=10000)
 
-graph_manager = get_preset_by_index_with_bounds(-1)
+graph_manager = get_preset_by_index_with_bounds(0)
 
 x_centre = graph_manager.generate_central_from_mutation_range()
 graph_jp = graph_manager.get_graph(x_centre)
 
-robo, __ = jps_graph2pinocchio_robot(graph_jp, builder)
+# robo, __ = jps_graph2pinocchio_meshes_robot(graph_jp, builder)
+robo, __ = jps_graph2pinocchio_robot_3d_constraints(graph_jp, builder)
 
 
 # Visualizer
@@ -61,7 +92,7 @@ viz.viewer = meshcat.Visualizer().open()
 viz.viewer["/Background"].set_property("visible", False)
 viz.viewer["/Grid"].set_property("visible", False)
 viz.viewer["/Axes"].set_property("visible", False)
-viz.viewer["/Cameras/default/rotated/<object>"].set_property("position", [0,0,0.5])
+viz.viewer["/Cameras/default/rotated/<object>"].set_property("position", [0,0.2,0.6])
 viz.clean()
 viz.loadViewerModel()
 
@@ -70,37 +101,29 @@ q = np.zeros(robo.model.nq)
 
 # Trajectory by points
 
-# x_point = np.array([-0.5, 0, 0.25]) * 0.5
-# y_point = np.array([-0.4, -0.1, -0.4]) * 0.5
-# y_point = y_point - 0.7
-# traj_6d = convert_x_y_to_6d_traj_xz(x_point, y_point)
-traj_6d = convert_x_y_to_6d_traj_xz(*create_simple_step_trajectory(
-    starting_point=[-0.11, -0.37], step_height=0.07, step_width=0.22, n_points=10))
+ground_symmetric_step1 = convert_x_y_to_6d_traj_xz(*add_auxilary_points_to_trajectory(create_simple_step_trajectory(
+    starting_point=[-0.14, -0.34], step_height=0.12, step_width=0.28, n_points=100)))
 
+time.sleep(1)
 # Trajectory by points in joint space
 q_des_points = []
 time_start = time.time()
-for num, i_pos in enumerate(traj_6d):
-    q, min_feas, is_reach = closedLoopInverseKinematicsProximal(
+for num, i_pos in enumerate(ground_symmetric_step1):
+    q, min_feas, is_reach = closed_loop_ik_pseudo_inverse(
         robo.model,
-        robo.data,
         robo.constraint_models,
-        robo.constraint_data,
         i_pos,
         ee_id_ee,
         onlytranslation=True,
         q_start=q,
-        eps = 1e-3,
-        mu = 1e-2
     )
     ballID = "world/ball" + str(num)
     material = meshcat.geometry.MeshPhongMaterial()
     if not is_reach:
-        q = closedLoopProximalMount(
-            robo.model, robo.data, robo.constraint_models, robo.constraint_data, q
-        )
         material.color = int(0xFF0000)
     else:
+        viz.display(q)
+        time.sleep(0.01)
         material.color = int(0x00FF00)
     material.opacity = 0.3
     viz.viewer[ballID].set_object(meshcat.geometry.Sphere(0.001),material)

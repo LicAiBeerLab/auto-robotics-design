@@ -54,7 +54,7 @@ class GraphManager2L():
         self.current_main_branch = []
         self.graph = nx.Graph()
         self.mutation_ranges = {}
-    
+
     def get_node_by_name(self, name:str):
         for node in self.graph.nodes:
             if node.name == name:
@@ -75,7 +75,7 @@ class GraphManager2L():
             name="Main_ground"
         )
         self.current_main_branch.append(ground_joint)
-        self.generator_dict[ground_joint] = GeneratorInfo()
+        self.generator_dict[ground_joint] = GeneratorInfo(freeze_pos=[0, 0, 0])
 
         ground_connection_jp = JointPoint(
             r=None,
@@ -98,7 +98,7 @@ class GraphManager2L():
         self.current_main_branch.append(knee_joint)
         
         self.generator_dict[knee_joint] = GeneratorInfo(
-            MutationType.ABSOLUTE, initial_coordinate=knee_joint_pos.copy(), mutation_range=[None, None, (-0.1, 0.1)])
+            MutationType.ABSOLUTE, initial_coordinate=knee_joint_pos.copy(), mutation_range=[None, None, (-0.1, 0.1)],freeze_pos=[0.03,0,None])
 
         first_connection = JointPoint(r=None, w=np.array([
                                       0, 1, 0]), name="Main_connection_1")
@@ -118,7 +118,7 @@ class GraphManager2L():
         )
         self.current_main_branch.append(ee)
         self.generator_dict[ee] = GeneratorInfo(
-            initial_coordinate=np.array([0, 0, -length]))
+            initial_coordinate=np.array([0, 0, -length]), freeze_pos=[0,0,-length])
 
         second_connection = JointPoint(r=None, w=np.array([0, 1, 0]), name="Main_connection_2")
         # self.generator_dict[second_connection] = GeneratorInfo(MutationType.RELATIVE, None, mutation_range=[
@@ -284,17 +284,19 @@ class GraphManager2L():
         for key in keys:
             if key not in self.graph.nodes:
                 del self.generator_dict[key]
-
-        for key, value in self.generator_dict.items():
+        axes = ['x', 'y','z']
+        for idx, pare in enumerate(self.generator_dict.items()):
+            key, value = pare
             if value.mutation_type == MutationType.RELATIVE or value.mutation_type == MutationType.RELATIVE_PERCENTAGE:
                 for i, r in enumerate(value.mutation_range):
                     if r is not None and value.freeze_pos[i] is None:
-                        self.mutation_ranges[key.name+'_'+str(i)] = r
+                            self.mutation_ranges[(key, axes[i])] = r
+
             elif value.mutation_type == MutationType.ABSOLUTE:
                 for i, r in enumerate(value.mutation_range):
                     if r is not None and value.freeze_pos[i] is None:
-                        self.mutation_ranges[key.name+'_'+str(i)] = (
-                            r[0]+value.initial_coordinate[i], r[1]+value.initial_coordinate[i])
+                        self.mutation_ranges[(key, axes[i])] = (
+                                r[0]+value.initial_coordinate[i], r[1]+value.initial_coordinate[i])
 
     def generate_random_from_mutation_range(self):
         """Sample random values from the mutation ranges.
@@ -406,7 +408,7 @@ class GraphManager2L():
                             link_direction = gi.relative_to[0].r - \
                                 gi.relative_to[1].r
                             link_ortogonal = np.array(
-                                [-link_direction[2], link_direction[1], link_direction[0]])
+                                [link_direction[2], link_direction[1], -link_direction[0]])
                             link_length = np.linalg.norm(link_direction)
                             if i == 0:
                                 jp.r += parameter * link_ortogonal
@@ -415,6 +417,93 @@ class GraphManager2L():
 
         return self.graph
 
+from matplotlib import patches
+def plot_one_jp_bounds(graph_manager, jp):
+    jp = graph_manager.get_node_by_name(jp)
+    info:GeneratorInfo = graph_manager.generator_dict[jp]
+    if info.mutation_type == MutationType.ABSOLUTE:
+        if graph_manager.mutation_ranges.get((jp, 'x')) is None:
+            x_range = (info.freeze_pos[0]-0.001, info.freeze_pos[0]+0.001)
+        elif graph_manager.mutation_ranges[(jp, 'x')][0] == graph_manager.mutation_ranges[(jp, 'x')][1]:
+            x_range = (graph_manager.mutation_ranges[(jp, 'x')][0]-0.01, graph_manager.mutation_ranges[(jp, 'x')][1]+0.01)
+        else:
+            x_range = graph_manager.mutation_ranges[(jp, 'x')]
+        if graph_manager.mutation_ranges.get((jp, 'z')) is None:
+            z_range = (info.freeze_pos[2]-0.001, info.freeze_pos[2]+0.001)
+        elif graph_manager.mutation_ranges[(jp, 'z')][0] == graph_manager.mutation_ranges[(jp, 'z')][1]:
+            z_range = (graph_manager.mutation_ranges[(jp, 'z')][0]-0.01, graph_manager.mutation_ranges[(jp, 'z')][1]+0.01)
+        else:
+            z_range = graph_manager.mutation_ranges[(jp, 'z')]
+        
+        rect = patches.Rectangle(
+            (x_range[0], z_range[0]),
+            width=x_range[1]-x_range[0],
+            height=z_range[1]-z_range[0],
+            angle=0,
+            linewidth=1,
+            edgecolor='r',
+            facecolor="none",
+        )
+        plt.gca().add_patch(rect)
+
+    if info.mutation_type == MutationType.RELATIVE:
+        if graph_manager.mutation_ranges.get((jp, 'x')) is None:
+            x_range = (info.freeze_pos[0]-0.001+info.relative_to.r[0], info.freeze_pos[0]+0.001+info.relative_to.r[0])
+        elif graph_manager.mutation_ranges[(jp, 'x')][0] == graph_manager.mutation_ranges[(jp, 'x')][1]:
+            x_range = (graph_manager.mutation_ranges[(jp, 'x')][0]-0.001+info.relative_to.r[0], graph_manager.mutation_ranges[(jp, 'x')][0]+0.001+info.relative_to.r[0])
+        else:
+            x_range = (graph_manager.mutation_ranges[(jp, 'x')][0]+info.relative_to.r[0], info.relative_to.r[0]+graph_manager.mutation_ranges[(jp, 'x')][1])
+        if graph_manager.mutation_ranges.get((jp, 'z')) is None:
+            z_range = (info.freeze_pos[2]-0.001+ info.relative_to.r[2], info.freeze_pos[2]+0.001+ info.relative_to.r[2])
+        elif graph_manager.mutation_ranges[(jp, 'z')][0] == graph_manager.mutation_ranges[(jp, 'z')][1]:
+            z_range = (graph_manager.mutation_ranges[(jp, 'z')][0]-0.001+ info.relative_to.r[2], graph_manager.mutation_ranges[(jp, 'z')][1]+0.001+ info.relative_to.r[2])
+        else:
+            z_range = (graph_manager.mutation_ranges[(jp, 'z')][0]+ info.relative_to.r[2], info.relative_to.r[2]+graph_manager.mutation_ranges[(jp, 'z')][1])
+        
+        rect = patches.Rectangle(
+            (x_range[0], z_range[0]),
+            width=x_range[1]-x_range[0],
+            height=z_range[1]-z_range[0],
+            angle=0,
+            linewidth=1,
+            edgecolor='b',
+            facecolor="none",
+        )
+        plt.gca().add_patch(rect)
+
+    if info.mutation_type == MutationType.RELATIVE_PERCENTAGE:
+        link_vector = info.relative_to[0].r-info.relative_to[1].r
+        link_length = np.linalg.norm(link_vector)
+        link_cener = (info.relative_to[1].r+info.relative_to[0].r)/2
+        if graph_manager.mutation_ranges.get((jp, 'x')) is None:
+            x_range = (info.freeze_pos[0] * link_length -0.001+link_cener[0], info.freeze_pos[0]*link_length+0.001+link_cener[0])
+        elif graph_manager.mutation_ranges[(jp, 'x')][0] == graph_manager.mutation_ranges[(jp, 'x')][1]:
+            x_range = (graph_manager.mutation_ranges[(jp, 'x')][0]* link_length-0.001+link_cener[0], graph_manager.mutation_ranges[(jp, 'x')][0]* link_length+0.001+link_cener[0])
+        else:
+            x_range = (graph_manager.mutation_ranges[(jp, 'x')][0]* link_length+link_cener[0], link_cener[0]+graph_manager.mutation_ranges[(jp, 'x')][1]* link_length)
+        if graph_manager.mutation_ranges.get((jp, 'z')) is None:
+            z_range = (info.freeze_pos[2]* link_length-0.001+link_cener[2], info.freeze_pos[2]* link_length+0.001+link_cener[2])
+        elif graph_manager.mutation_ranges[(jp, 'z')][0] == graph_manager.mutation_ranges[(jp, 'z')][1]:
+            z_range = (graph_manager.mutation_ranges[(jp, 'z')][0]* link_length-0.001+link_cener[2], graph_manager.mutation_ranges[(jp, 'z')][0]* link_length+0.001+link_cener[2])
+        else:
+            z_range = (graph_manager.mutation_ranges[(jp, 'z')][0]* link_length+link_cener[2], link_cener[2]+graph_manager.mutation_ranges[(jp, 'z')][1]* link_length)
+        
+        u = np.array([0, 0, 1])
+        v = link_vector/link_length
+        angle_rad = np.arctan2(u[0]*v[2] - u[2]*v[0], np.dot(u, v))  # atan2(det, dot)
+        angle_deg = np.degrees(angle_rad)
+        # angle = np.arccos(np.inner(link_vector, np.array([0, 0, 1]))/link_length)
+        rect = patches.Rectangle(
+            (x_range[0], z_range[0]),
+            width=x_range[1]-x_range[0],
+            height=z_range[1]-z_range[0],
+            angle=angle_deg,
+            rotation_point = (link_cener[0], link_cener[2]),
+            linewidth=1,
+            edgecolor='g',
+            facecolor="none",
+        )
+        plt.gca().add_patch(rect)
 
 def plot_2d_bounds(graph_manager):
     """
@@ -428,8 +517,8 @@ def plot_2d_bounds(graph_manager):
         None
     """
     for jp, gen_info in graph_manager.generator_dict.items():
-        if gen_info.mutation_type == MutationType.UNMOVABLE:
-            continue
+        # if gen_info.mutation_type == MutationType.UNMOVABLE:
+        #     continue
         ez = np.array([1, 0, 0])
         x_bound = (-0.001,
                    0.001) if gen_info.mutation_range[0] is None else gen_info.mutation_range[0]
@@ -603,3 +692,22 @@ def get_preset_by_index(idx: int):
         gm.build_6n4p_asymmetric([2, 1, 0])
         gm.set_mutation_ranges()
         return gm
+
+def scale_jp_graph(graph, scale):
+    for jp in graph.nodes:
+        jp.r = jp.r*scale
+    return graph
+
+def scale_graph_manager(graph_manager, scale):
+    for jp in graph_manager.graph.nodes:
+        generator_info:GeneratorInfo = graph_manager.generator_dict[jp]
+        if generator_info.initial_coordinate is not None:
+            generator_info.initial_coordinate = np.array(generator_info.initial_coordinate)*scale
+        if generator_info.mutation_type != MutationType.RELATIVE_PERCENTAGE:
+            for i, r in enumerate(generator_info.mutation_range):
+                if r is not None:
+                    generator_info.mutation_range[i] = (r[0]*scale, r[1]*scale)
+            for i, r in enumerate(generator_info.freeze_pos):
+                if r is not None:
+                    generator_info.freeze_pos[i] = r*scale
+    return graph_manager

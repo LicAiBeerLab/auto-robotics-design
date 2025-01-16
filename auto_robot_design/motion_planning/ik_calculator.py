@@ -47,17 +47,21 @@ def open_loop_ik(rmodel,cs, target_pos, ideff, q_start=None, eps=1e-5, max_it=10
 
     return q, norm(err), is_reach
 
-
+def closed_loop_velocity_ik(rmodel, rconstraint_model,target_pos, ideff, q_start=None, onlytranslation:bool=True, eps:float=2e-5, max_it:int=100):
+    model = pin.Model(rmodel)
+    constraint_model = [pin.RigidConstraintModel(x) for x in rconstraint_model]
+    starting_ee_position=model.frames[ideff].placement
+    
 def closed_loop_ik_pseudo_inverse(rmodel, 
                                   rconstraint_model, 
                                   target_pos, ideff, 
                                   q_start=None, 
                                   onlytranslation:bool=True, 
-                                  eps:float=1e-5, 
+                                  eps:float=2e-5, 
                                   max_it:int=100, 
                                   alpha:float=0.5, 
                                   l:float=1e-5, 
-                                  q_delta_threshold:float=0.5):
+                                  q_delta_threshold:float=1):
     """Finds the IK solution using constraint Jacobian. 
 
         The target position is added to the list of constraints and treated as a constraint violated in the starting position.
@@ -281,5 +285,148 @@ def closed_loop_ik_grad(rmodel, rconstraint_model, target_pos, ideff, q_start=No
         min_feas = for_sort[0][0]
         min_real_feas = for_sort[0][1]
         pin.framesForwardKinematics(model, data, q)
+
+    return q, min_feas, is_reach
+
+def closedLoopInverseKinematicsProximal(
+    rmodel,
+    rconstraint_model,
+    target_pos,
+    ideff,
+    q_start=None,
+    onlytranslation=False,
+
+    max_it=100,
+    eps=1e-5,
+    rho=1e-10,
+    mu=1e-3,
+    q_delta_threshold:float=0.75
+):
+    """
+    q=inverseGeomProximalSolver(rmodel,rdata,rconstraint_model,rconstraint_data,idframe,pos,only_translation=False,max_it=100,eps=1e-12,rho=1e-10,mu=1e-4)
+
+    Perform inverse kinematics with a proximal solver.
+
+    Args:
+        rmodel (pinocchio.Model): Pinocchio model.
+        rdata (pinocchio.Data): Pinocchio data.
+        rconstraint_model (list): List of constraint models.
+        rconstraint_data (list): List of constraint data.
+        target_pos (np.array): Target position.
+        name_eff (str, optional): Name of the frame. Defaults to "effecteur".
+        onlytranslation (bool, optional): Only consider translation. Defaults to False.
+        max_it (int, optional): Maximum number of iterations. Defaults to 100.
+        eps (float, optional): Convergence threshold for primal and dual feasibility. Defaults to 1e-12.
+        rho (float, optional): Scaling factor for the identity matrix. Defaults to 1e-10.
+        mu (float, optional): Penalty parameter. Defaults to 1e-4.
+
+    Returns:
+        np.array: Joint positions that achieve the desired target position.
+
+    raw here (L84-126):https://gitlab.inria.fr/jucarpen/pinocchio/-/blob/pinocchio-3x/examples/simulation-closed-kinematic-chains.py
+    """
+    TRAJ_CONS_DEVIDER = 1
+    model = pin.Model(rmodel)
+    constraint_model = [pin.RigidConstraintModel(x) for x in rconstraint_model]
+    # add a contact constraint
+    target_SE3 = pin.SE3.Identity()
+    target_SE3.translation = np.array(target_pos[0:3])
+    frame_constraint = model.frames[ideff]
+    parent_joint = frame_constraint.parentJoint
+    placement = frame_constraint.placement
+    if onlytranslation:
+        final_constraint = pin.RigidConstraintModel(pin.ContactType.CONTACT_3D,
+                                                    model, parent_joint,
+                                                    placement, 0, target_SE3,
+                                                    pin.ReferenceFrame.LOCAL)
+    else:
+        final_constraint = pin.RigidConstraintModel(
+            pin.ContactType.CONTACT_6D, model, parent_joint, placement,
+            model.getJointId("universel"), target_pos,
+            pin.ReferenceFrame.LOCAL)
+        raise Exception("Not implemented")
+
+    final_constraint.name = "TrajCons"
+    constraint_model.append(final_constraint)
+
+    data = model.createData()
+    constraint_data = [cm.createData() for cm in constraint_model]
+
+    # proximal solver (black magic)
+    if q_start is None:
+        q = pin.neutral(model)
+    else:
+        q = q_start
+    constraint_dim = 0
+    for cm in constraint_model:
+        constraint_dim += cm.size()
+    is_reach = False
+    # Solve the inverse kinematics for open loop kinematics
+    # Only translation is considered
+    # ref: https://gepettoweb.laas.fr/doc/stack-of-tasks/pinocchio/master/doxygen-html/md_doc_b_examples_d_inverse_kinematics.html#autotoc_md44
+
+    y = np.ones((constraint_dim))
+    data.M = np.eye(model.nv) * rho
+    kkt_constraint = pin.ContactCholeskyDecomposition(model, constraint_model)
+    primal_feas_array = np.zeros(max_it)
+    real_feas_array = np.zeros(max_it)
+    q_array = np.zeros((max_it, len(q)))
+    for k in range(max_it):
+        pin.computeJointJacobians(model, data, q)
+        kkt_constraint.compute(model, data, constraint_model, constraint_data, mu)
+        constraint_value = np.concatenate([
+            (pin.log(cd.c1Mc2).np[:cm.size()])
+            for (cd, cm) in zip(constraint_data, constraint_model)
+        ])
+
+        LJ = []
+        for cm, cd in zip(constraint_model, constraint_data):
+            Jc = pin.getConstraintJacobian(model, data, cm, cd)
+            LJ.append(Jc)
+        J = np.concatenate(LJ)
+        traj_cons_value = constraint_value[-3:]
+        # if np.linalg.norm(traj_cons_value) < 0.01:
+        #     traj_cons_value = np.zeros(3)
+        constraint_value[-3:] = traj_cons_value / TRAJ_CONS_DEVIDER
+        primal_feas = np.linalg.norm(constraint_value, np.inf)
+        real_constrain_feas = np.linalg.norm(constraint_value[:-3])
+        real_feas_array[k] = real_constrain_feas
+        primal_feas_array[k] = primal_feas
+        q_array[k] = q
+        # dual_feas = np.linalg.norm(J.T.dot(constraint_value + y), np.inf)
+        if primal_feas < eps:
+            is_reach = True
+            break
+
+        rhs = np.concatenate([-constraint_value - y * mu, np.zeros(model.nv)])
+
+        dz = kkt_constraint.solve(rhs)
+        dy = dz[:constraint_dim]
+        dq = dz[constraint_dim:]
+
+        alpha = 0.5
+        if np.linalg.norm(dq, np.inf) > q_delta_threshold:
+            break
+        q = pin.integrate(model, q, -alpha * dq)
+        y -= alpha * (-dy + y)
+
+    pin.framesForwardKinematics(model, data, q)
+
+    # pos_e = np.linalg.norm(data.oMf[id_frame].translation -
+    #                     np.array(target_pos[0:3]))
+    min_feas = primal_feas
+    min_real_feas = real_constrain_feas
+    if not is_reach:
+        for_sort = np.column_stack(
+            (primal_feas_array, real_feas_array, q_array))
+
+        def key_sort(x): return x[0]
+        for_sort = sorted(for_sort, key=key_sort)
+        finish_q = for_sort[0][2:]
+        q = finish_q
+        min_feas = for_sort[0][0]
+        min_real_feas = for_sort[0][1]
+        pin.framesForwardKinematics(model, data, q)
+    # print(min_real_feas," ", is_reach)
 
     return q, min_feas, is_reach

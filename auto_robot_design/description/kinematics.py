@@ -13,7 +13,7 @@ import networkx as nx
 import modern_robotics as mr
 from trimesh import Trimesh
 from trimesh.convex import convex_hull
-
+from trimesh.boolean import union
 from auto_robot_design.description.actuators import RevoluteUnit
 from typing import Union
 
@@ -43,9 +43,9 @@ class JointPoint:
     def __hash__(self) -> int:
         return hash(
             (
-                self.w[0],
-                self.w[1],
-                self.w[2],
+                # self.w[0],
+                # self.w[1],
+                # self.w[2],
                 self.attach_ground,
                 self.attach_endeffector,
                 self.__instance_counter,
@@ -75,7 +75,7 @@ def create_mesh_from_joints(joints, thickness, frame=np.eye(4)) -> Trimesh:
                 points[p1][0] + (v[0] - v[1] * p1.jp.w) * thickness / 2)
             link_points.append(
                 points[p2][0] + (v[0] - v[1] * p2.jp.w) * thickness / 2)
-        mesh = mesh.union(convex_hull(link_points))
+        mesh = mesh.union([convex_hull(link_points), convex_hull(link_points)])
 
     return mesh
 
@@ -220,8 +220,8 @@ class Link:
         geometry: Optional[Geometry] = None,
         frame: np.ndarray = np.eye(4),
         inertial_frame: np.ndarray = np.eye(4),
-        density: float = 2700,
-        thickness: float = 0.08,
+        density: float = 2700 /4,
+        thickness: float = 0.01,
     ) -> None:
         self.joints: set[JointPoint] = joints
         self.name: str = name
@@ -390,15 +390,16 @@ def get_endeffector_joints(graph: nx.Graph):
 if __name__ == "__main__":
     # print("Kinematic description of the mechanism")
     # Define the joint points
-    joint_points = [
-        JointPoint(r=np.array([0, 0, 0]), attach_ground=True),
-        JointPoint(r=np.array([1, 0, 0])),
-        JointPoint(r=np.array([0, 1, 0])),
-        JointPoint(r=np.array([0, 0, 1])),
-        JointPoint(r=np.array([1, 1, 0])),
-        JointPoint(r=np.array([1, 0, 1])),
-        JointPoint(r=np.array([0, 1, 1])),
-        JointPoint(r=np.array([1, 1, 1]), attach_endeffector=True),
-    ]
+    # joint_points = [
+    #     JointPoint(r=np.array([0, 0, 0]), attach_ground=True),
+    #     JointPoint(r=np.array([1, 0, 0])),
+    #     JointPoint(r=np.array([0, 1, 0])),
+    #     JointPoint(r=np.array([0, 0, 1])),
+    #     JointPoint(r=np.array([1, 1, 0])),
+    #     JointPoint(r=np.array([1, 0, 1])),
+    #     JointPoint(r=np.array([0, 1, 1])),
+    #     JointPoint(r=np.array([1, 1, 1]), attach_endeffector=True),
+    # ]
     # print(joint_points[0] == joint_points[1])
     # print(joint_points[0] == joint_points[0])
+    pass

@@ -1,24 +1,28 @@
 from itertools import product
 from collections import deque
+from typing import Optional
 
 import numpy as np
 import pinocchio as pin
 import matplotlib.pyplot as plt
-
+import meshcat
+from pinocchio.visualize import MeshcatVisualizer
+    
 from auto_robot_design.pinokla.closed_loop_jacobian import (
     constraint_jacobian_active_to_passive,
 )
 from auto_robot_design.pinokla.closed_loop_kinematics import (
     closedLoopProximalMount,
 )
-from auto_robot_design.motion_planning.ik_calculator import closed_loop_ik_pseudo_inverse
+from auto_robot_design.motion_planning.ik_calculator import closed_loop_ik_pseudo_inverse, closedLoopInverseKinematicsProximal
 from auto_robot_design.pinokla.default_traj import add_auxilary_points_to_trajectory
 
 from auto_robot_design.motion_planning.trajectory_ik_manager import (
     IK_METHODS, TrajectoryIKManager)
 
 from auto_robot_design.motion_planning.utils import (
-    Workspace
+    Workspace,
+    ellipse_in_workspace,
 )
 
 
@@ -56,11 +60,13 @@ class BreadthFirstSearchPlanner:
     def __init__(
         self,
         workspace: Workspace,
-        verbose: int = 0
+        verbose: int = 0,
+        dexterous_tolerance: np.ndarray = np.array([0, np.inf])
     ) -> None:
 
         self.workspace = workspace
         self.verbose = verbose
+        self.dext_tolerance = dexterous_tolerance
         self.num_indexes = self.workspace.mask_shape
 
         # Варианты движения при обходе сетки (8-связности)
@@ -81,10 +87,10 @@ class BreadthFirstSearchPlanner:
             Workspace: обновляет переменную `workspace` и возвращает её.
         """
         robot = self.workspace.robot
-
+        ws = self.workspace
         pin.framesForwardKinematics(robot.model, robot.data, prev_q)
         if self.verbose > 1:
-            pos_6d = self.workspace.robot.motion_space.get_6d_point(start_pos)
+            pos_6d = robot.motion_space.get_6d_point(start_pos)
             pin.framesForwardKinematics(
                 robot.model, robot.data, np.zeros(robot.model.nq))
 
@@ -113,7 +119,7 @@ class BreadthFirstSearchPlanner:
             pin.framesForwardKinematics(robot.model, robot.data, q)
             viz.display(q)
 
-            bound_pos = product(bounds[0, :], bounds[1, :])
+            bound_pos = product(ws.bounds[0, :], ws.bounds[1, :])
 
             for k, pos in enumerate(bound_pos):
                 ballID = "world/ball" + "_bound_" + str(k)
@@ -133,44 +139,29 @@ class BreadthFirstSearchPlanner:
         # Псевдо первая нода, определяется по стартовым положению, может не лежать на сетки
         pseudo_start_node = self.Node(start_pos, -1, q_arr=prev_q)
 
-        start_index_on_grid = self.workspace.calc_index(start_pos)
-        start_pos_on_grid = self.workspace.calc_grid_position(
+        start_index_on_grid = ws.calc_index(start_pos)
+        start_pos_on_grid = ws.calc_grid_position(
             start_index_on_grid)
         # Настоящая стартовая нода, которая лежит на сетки. Не имеет предков
         start_n = self.Node(start_pos_on_grid, -1)
         # Проверка достижимости стартовой ноды из псевдо ноды
         self.transition_function(pseudo_start_node, start_n)
         start_n.parent = None
-        
+
         if not start_n.is_reach:
             raise Exception("Start position of workspace is not reachable")
 
         del pseudo_start_node, start_index_on_grid, start_pos_on_grid
-        # Словари для обхis_reachода bfs
+        # Словари для обхода bfs
         open_set, closed_set, bad_nodes = dict(), dict(), dict()
         queue = deque()
-        open_set[self.calc_grid_index(start_n)] = start_n
+        open_set[ws.calc_grid_index(start_n.pos)] = start_n
 
         if self.verbose > 0:
-            points = []
-            point = self.workspace.bounds[:, 0]
-            k, m = 0, 0
-            while point[1] <= self.workspace.bounds[1, 1]:
-
-                while point[0] <= self.workspace.bounds[0, 1]:
-                    points.append(point)
-                    m += 1
-                    point = self.workspace.bounds[:, 0] + np.array(
-                        self.workspace.resolution) * np.array([m, k])
-                k += 1
-                m = 0
-                point = self.workspace.bounds[:, 0] + np.array(
-                    self.workspace.resolution) * np.array([m, k])
-
-            points = np.array(points)
+            points = ws.points
             plt.plot(points[:, 0], points[:, 1], "xy")
 
-        queue.append(self.calc_grid_index(start_n))
+        queue.append(ws.calc_grid_index(start_n.pos))
         while len(open_set) != 0:
             # Вытаскиваем первую из очереди ноду
             c_id = queue.popleft()
@@ -192,7 +183,7 @@ class BreadthFirstSearchPlanner:
                     plt.plot(current.pos[0], current.pos[1], "xr")
                 pos_3d = np.array([current.pos[0], 0, current.pos[1]])
                 size_box = np.array(
-                    [self.workspace.resolution[0], 0.001, self.workspace.resolution[1]])
+                    [ws.resolution[0], 0.001, ws.resolution[1]])
                 viz.viewer[boxID].set_object(
                     meshcat.geometry.Box(size_box), material)
                 T = np.r_[np.c_[np.eye(3), pos_3d], np.array([[0, 0, 0, 1]])]
@@ -216,7 +207,7 @@ class BreadthFirstSearchPlanner:
 
                 # Проверка что ноды не вышли за бонды
                 if self.verify_node(node):
-                    n_id = self.calc_grid_index(node)
+                    n_id = ws.calc_grid_index(node.pos)
                     neigb_node[n_id] = node
                 else:
                     continue
@@ -236,9 +227,9 @@ class BreadthFirstSearchPlanner:
                         line_id = "world/line" + "_from_" + \
                             str(c_id) + "_to_" + str(n_id)
                         verteces = np.zeros((2, 3))
-                        verteces[0, :] = self.workspace.robot.motion_space.get_6d_point(current.pos)[
+                        verteces[0, :] = robot.motion_space.get_6d_point(current.pos)[
                             :3]
-                        verteces[1, :] = self.workspace.robot.motion_space.get_6d_point(node.pos)[
+                        verteces[1, :] = robot.motion_space.get_6d_point(node.pos)[
                             :3]
 
                         material = meshcat.geometry.LineBasicMaterial()
@@ -259,7 +250,13 @@ class BreadthFirstSearchPlanner:
                 else:
                     plt.plot(current.pos[0], current.pos[1], "xc")
 
-        self.workspace.updated_by_bfs(closed_set)
+        reach_index = {}
+        for idx, node in closed_set.items():
+            index = ws.calc_index(node.pos)
+            reach_index[idx] = index
+        self.workspace.reachable_index.update(reach_index)
+        # dext_index = [1 / n.cost for n in closed_set.values()]
+        # print(np.nanmax(dext_index), np.nanmin(dext_index))
         return self.workspace
 
     def transition_function(self, from_node: Node, to_node: Node):
@@ -277,6 +274,14 @@ class BreadthFirstSearchPlanner:
             onlytranslation=True,
             q_start=from_node.q_arr,
         )
+        # q, min_feas, is_reach = closedLoopInverseKinematicsProximal(
+        #     robot.model,
+        #     robot.constraint_models,
+        #     robot_ms.get_6d_point(to_node.pos),
+        #     ee_id,
+        #     onlytranslation=True,
+        #     q_start=from_node.q_arr,
+        # )
 
         if is_reach:
 
@@ -302,27 +307,31 @@ class BreadthFirstSearchPlanner:
             )
 
             dext_index = np.abs(S).max() / np.abs(S).min()
+            # dext_index = np.linalg.norm(np.linalg.det(Jfclosed[robot.motion_space.indexes, :]))
+            # m = Jfclosed[robot.motion_space.indexes, :]
+            # lower_value = np.abs(np.linalg.det(m / np.linalg.norm(m,axis=0)))
+            # # if self.dext_tolerance[1] != np.inf:
+                
+            # lower_check = lower_value >= self.dext_tolerance[0]
+            # upper_check = dext_index <= self.dext_tolerance[1]
+            
+            # is_reach = lower_check and upper_check
+            # if self.dext_tolerance[1] != np.inf:
+                
+            #     lower_check = dext_index >= self.dext_tolerance[0]
+            #     upper_check = dext_index <= self.dext_tolerance[1]
+                
+            #     is_reach = lower_check and upper_check
+
             to_node.transit_to_node(
-                from_node, q, 1 / dext_index, bool(is_reach)
-            )
+                    from_node, q, 1 / dext_index, bool(is_reach)
+                )
         else:
             dext_index = np.inf
 
-    def calc_grid_index(self, node):
-        idx = self.workspace.calc_index(node.pos)
-
-        grid_index = 0
-        for k, id in enumerate(idx):
-            grid_index += id * np.prod(self.num_indexes[:k])
-
-        return grid_index
-
     def verify_node(self, node):
         pos = node.pos
-        self.workspace.mask_shape
-        if np.all(pos >= self.workspace.bounds[:, 0] - self.workspace.resolution*0.9) and np.all(pos <= self.workspace.bounds[:, 1] + self.workspace.resolution*0.9):
-            return True
-        return False
+        return self.workspace.point_in_bound(pos)
 
     @staticmethod
     def get_motion_model():
@@ -345,20 +354,19 @@ if __name__ == "__main__":
     from auto_robot_design.generator.topologies.bounds_preset import (
         get_preset_by_index_with_bounds,
     )
+    from auto_robot_design.user_interface.check_in_ellips import (
+        Ellipse,
+        check_points_in_ellips
+    )
     from auto_robot_design.description.builder import (
         ParametrizedBuilder,
         URDFLinkCreater3DConstraints,
         jps_graph2pinocchio_robot_3d_constraints,
     )
-    import meshcat
-    from pinocchio.visualize import MeshcatVisualizer
-    from auto_robot_design.pinokla.closed_loop_kinematics import (
-        closedLoopProximalMount,
-    )
 
     builder = ParametrizedBuilder(URDFLinkCreater3DConstraints)
 
-    gm = get_preset_by_index_with_bounds(1)
+    gm = get_preset_by_index_with_bounds(0)
     x_centre = gm.generate_central_from_mutation_range()
     graph_jp = gm.get_graph(x_centre)
 
@@ -366,7 +374,7 @@ if __name__ == "__main__":
         graph_jp, builder=builder)
 
     center_bound = np.array([0, -0.3])
-    size_box_bound = np.array([0.3, 0.3])
+    size_box_bound = np.array([0.1, 0.1])
 
     start_pos = center_bound
     pos_6d = np.zeros(6)
@@ -384,7 +392,9 @@ if __name__ == "__main__":
     point_6d = robo.motion_space.get_6d_traj(np.array(traj_init_to_center).T)
     ik_manager = TrajectoryIKManager()
     ik_manager.register_model(robo.model, robo.constraint_models)
-    ik_manager.set_solver("Closed_Loop_PI")
+    # ik_manager.set_solver("Closed_Loop_PI")
+    ik_manager.set_solver("Closed_Loop_Proximal")
+
     poses_6d, q_fixed, constraint_errors,reach_array = ik_manager.follow_trajectory(point_6d)
 
     # poses_6d, q_fixed, constraint_errors, reach_array = (
@@ -405,7 +415,7 @@ if __name__ == "__main__":
 
     bounds = np.array(
         [
-            [-size_box_bound[0] / 2 - 0.001, size_box_bound[0] / 2],
+            [-size_box_bound[0] / 2, size_box_bound[0] / 2],
             [-size_box_bound[1] / 2, size_box_bound[1] / 2],
         ]
     )
@@ -413,13 +423,25 @@ if __name__ == "__main__":
     bounds[1, :] += center_bound[1]
 
     workspace = Workspace(robo, bounds, np.array([0.01, 0.01]))
-    ws_bfs = BreadthFirstSearchPlanner(workspace, 1)
+    ws_bfs = BreadthFirstSearchPlanner(workspace, 1)#, np.array([1, 40]))
     workspace = ws_bfs.find_workspace(start_pos, q)
 
-    # dext_index = [1 / n.cost for n in viewed_nodes.values()]
-
-    # print(np.nanmax(dext_index), np.nanmin(dext_index))
-
-    # workspace.updated_by_bfs(viewed_nodes)
-
+    ax = plt.gca()
+    ellipse = Ellipse(np.array([0.04,-0.31]), 0, np.array([0.04, 0.01]))
+    points_on_ellps = ellipse.get_points(0.1).T
+    
+    ax.plot(points_on_ellps[:,0], points_on_ellps[:,1], "g")
+    
+    print(workspace.check_points_in_ws(points_on_ellps))
+    
+    reach_ws_points = workspace.points
+    mask_ws_n_ellps = check_points_in_ellips(reach_ws_points, ellipse, 0.02)
+    ax.plot(reach_ws_points[mask_ws_n_ellps,:][:,0],reach_ws_points[mask_ws_n_ellps,:][:,1], "gx")
+    
+    print(workspace.check_points_in_ws(reach_ws_points[mask_ws_n_ellps,:]))
+    plt.show()
+    plt.figure()
+    print(ellipse_in_workspace(ellipse, workspace, verbose=1))
+    plt.show()
+    
     print(workspace.reachabilty_mask)
