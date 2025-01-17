@@ -62,9 +62,11 @@ def show_loaded_results(dir="./results/optimization_widget/current_results (copy
     st.session_state.results_exist = True
     st.session_state.run_simulation_flag = False
     selected_directory = dir
-    with open(Path(dir).absolute().joinpath("out.txt"),'r')as file:
-        n_obj = int(file.readline())
+    #with open(Path(dir).absolute().joinpath("out.txt"),'r')as file:
+    #    n_obj = int(file.readline())
+    n_obj = 2
     st.session_state.n_obj = n_obj
+
     if n_obj == 1:
         problem = SingleCriterionProblem.load(selected_directory)
         checkpoint = load_checkpoint(selected_directory)
@@ -429,8 +431,8 @@ if st.session_state.stage == "trajectory_choice":
 
     draw_joint_point_widjet(graph,labels=2, draw_legend=False, draw_lines=True)
     plt.gcf().set_size_inches(4, 4)
-    if trajectory is not None:
-        plt.plot(trajectory[:, 0], trajectory[:, 2])
+    # if trajectory is not None:
+    #     plt.plot(trajectory[:, 0], trajectory[:, 2])
     st.pyplot(plt.gcf(), clear_figure=True)
 
     trajectories = [[0]*len(list(reward_dict.keys()))]*len(st.session_state.trajectory_groups)
@@ -445,7 +447,7 @@ if st.session_state.stage == "trajectory_choice":
             draw_joint_point(graph, labels=2, draw_legend=False)
             for idx in st.session_state.trajectory_groups[i]:
                 current_trajectory = st.session_state.trajectory_buffer[idx][0]
-                plt.plot(current_trajectory[:, 0], current_trajectory[:, 2])
+                #plt.plot(current_trajectory[:, 0], current_trajectory[:, 2])
             st.pyplot(plt.gcf(), clear_figure=True)
         with cols[1]:
             st.header("Критерии:")
@@ -707,7 +709,7 @@ if st.session_state.stage == "results":
                         label=reward_description[reward[0]][0], value=False, key=reward[1].reward_name+str(reward_idx), help=reward_description[reward[0]][1])
                     reward_idxs[reward_idx] = current_checkbox
                 bc = st.form_submit_button(label="Рассчитать значения выбранных критериев",  type='primary')
-        plt.plot(trajectory[:, 0], trajectory[:, 2])
+        #plt.plot(trajectory[:, 0], trajectory[:, 2])
         graph_mesh_visualization(graph, user_visualizer, user_vis_url, labels=2, draw_lines=True, draw_legend=False)
         add_trajectory_to_vis(user_visualizer, trajectory)
         # send_graph_to_visualizer(graph, st.session_state.visualization_builder)
