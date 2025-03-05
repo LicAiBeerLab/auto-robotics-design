@@ -3,6 +3,7 @@ import networkx as nx
 import numpy as np
 import numpy.linalg as la
 import matplotlib.pyplot as plt
+from matplotlib import patches
 
 from auto_robot_design.description.kinematics import Link
 from trimesh import Trimesh
@@ -269,7 +270,7 @@ def draw_joint_point(graph: nx.Graph, labels=0, draw_legend=True, draw_lines=Fal
     if draw_legend: plt.legend()
 
 
-def draw_joint_point_widjet(graph: nx.Graph, labels=0, draw_legend=True, draw_lines=False):
+def draw_joint_point_widjet(graph: nx.Graph, labels=0, draw_legend=True, draw_lines=False, patches_list=[]):
     pos = get_pos(graph)
     pos_list = [p for p in pos.values()]
     pos_matrix = np.array(pos_list)
@@ -333,6 +334,7 @@ def draw_joint_point_widjet(graph: nx.Graph, labels=0, draw_legend=True, draw_li
                 break
         if not pos_flag:
             pos_labels[g] = np.array(p)
+
     nx.draw_networkx_labels(
         graph,
         pos_labels,
@@ -378,6 +380,15 @@ def draw_joint_point_widjet(graph: nx.Graph, labels=0, draw_legend=True, draw_li
              markersize=22, 
              fillstyle="none", label="Актуирован")
     if draw_legend: plt.legend()
+
+    for patch_labels in patches_list:
+        vertices = []
+        for i, pos in enumerate(pos_list):
+            if i in patch_labels: vertices.append(pos)
+        triangle = patches.Polygon(vertices, closed=True, edgecolor='black', facecolor='orange')
+        plt.gca().add_patch(triangle)
+
+
 
 def draw_kinematic_graph(graph: nx.Graph):
     elarge = [(u, v) for (u, v, d) in graph.edges(data=True) if d["joint"].jp.active]

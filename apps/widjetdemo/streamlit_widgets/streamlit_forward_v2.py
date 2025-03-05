@@ -233,7 +233,7 @@ if st.session_state.stage == 'joint_point_choice':
                   on_click=evaluate_construction, key="get_workspace", args=[[lower, upper]], type='primary')
     # draw the graph
     graph = gm.get_graph(st.session_state.jp_positions)
-    draw_joint_point_widjet(graph, labels=1, draw_lines=True)
+    draw_joint_point_widjet(graph, labels=1, draw_lines=False,patches_list=[[1,0,5], [4,6,8], [1,7,2]], draw_legend=False)
     plot_one_jp_bounds(gm, jp.name)
 
     plt.gcf().set_size_inches(4, 4)
