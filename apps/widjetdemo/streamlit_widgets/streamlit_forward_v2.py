@@ -233,7 +233,7 @@ if st.session_state.stage == 'joint_point_choice':
                   on_click=evaluate_construction, key="get_workspace", args=[[lower, upper]], type='primary')
     # draw the graph
     graph = gm.get_graph(st.session_state.jp_positions)
-    draw_joint_point_widjet(graph, labels=1, draw_lines=False,patches_list=[[1,0,5], [4,6,8], [1,7,2]], draw_legend=False)
+    draw_joint_point_widjet(graph, labels=1, draw_lines=False,patches_list=[([1,0,5],'#ffe6cc'), ([4,6,8],"#e1d5e7"), ([1,7,2],"#ffe6cc")], draw_legend=False)
     plot_one_jp_bounds(gm, jp.name)
 
     plt.gcf().set_size_inches(4, 4)
@@ -244,6 +244,10 @@ if st.session_state.stage == 'joint_point_choice':
             vector = edge[0].r - edge[1].r
             st.write(
                 f"Длина звена {labels[edge[0]]}:heavy_minus_sign:{labels[edge[1]]} составляет {np.linalg.norm(vector):.3f} [м]")
+        
+        for idx, node in enumerate(graph):
+            st.write(f"Координаты вершины {idx} {node.r[0]:.3f} {node.r[2]:.3f}")
+
 
     ChangeWidgetFontSize("Масштаб", "16px")
     ChangeWidgetFontSize("Сочленение:", "16px")

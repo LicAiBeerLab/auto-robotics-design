@@ -384,8 +384,8 @@ def draw_joint_point_widjet(graph: nx.Graph, labels=0, draw_legend=True, draw_li
     for patch_labels in patches_list:
         vertices = []
         for i, pos in enumerate(pos_list):
-            if i in patch_labels: vertices.append(pos)
-        triangle = patches.Polygon(vertices, closed=True, edgecolor='black', facecolor='orange')
+            if i in patch_labels[0]: vertices.append(pos)
+        triangle = patches.Polygon(vertices, closed=True, edgecolor='black', facecolor=patch_labels[1])
         plt.gca().add_patch(triangle)
 
 
