@@ -8,7 +8,7 @@ import numpy as np
 import modern_robotics as mr
 import odio_urdf as urdf
 from auto_robot_design.description.actuators import Actuator, TMotor_AK80_9
-from auto_robot_design.description.builder import BLUE_COLOR, DEFAULT_PARAMS_DICT, GREEN_COLOR, RED_COLOR, Builder, ParametrizedBuilder
+from auto_robot_design.description.builder import BLUE_COLOR, DEFAULT_PARAMS_DICT, GREEN_COLOR, RED_COLOR, YELLOW_COLOR, Builder, ParametrizedBuilder
 from auto_robot_design.description.mechanism import JointPoint2KinematicGraph, KinematicGraph
 from auto_robot_design.description.mesh_builder.urdf_creater import MeshCreator, URDFMeshCreator
 from auto_robot_design.pino_adapter.pino_adapter import get_pino_description_3d_constraints
@@ -147,7 +147,7 @@ def jps_graph2pinocchio_meshes_robot(
             link.geometry.color = RED_COLOR[0,:].tolist()
         elif link in kinematic_graph.main_branch.nodes():
             # print("yes")
-            link.geometry.color = BLUE_COLOR[i,:].tolist()
+            link.geometry.color = YELLOW_COLOR[i,:].tolist()
             i = (i + 1) % 6
         else:
             link.geometry.color = GREEN_COLOR[k,:].tolist()
@@ -158,7 +158,7 @@ def jps_graph2pinocchio_meshes_robot(
 
     kinematic_graph.define_link_frames()
     
-    robot, ative_joints, constraints = builder.create_kinematic_graph(kinematic_graph)
+    robot, active_joints, constraints = builder.create_kinematic_graph(kinematic_graph)
 
     # with open("robot.urdf", "w") as f:
     #     f.write(robot.urdf())

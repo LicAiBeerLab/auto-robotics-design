@@ -41,6 +41,24 @@ GREEN_COLOR = np.array([[17, 90, 57, 1],
                         [0, 255, 119, 1]], dtype=np.float64)
 GREEN_COLOR[:,:3] = GREEN_COLOR[:,:3] / 255
 
+YELLOW_COLOR = np.array([[215,156,3,1],
+                        [217, 159, 12, 1],
+                        [219, 163, 12, 1],
+                        [223, 171, 44, 1],
+                        [234, 191, 97, 1],
+                        [255, 230, 204, 1]
+                        ], dtype=np.float64)
+YELLOW_COLOR[:,:3] = YELLOW_COLOR[:,:3] / 255
+
+PURPLE_COLOR = np.array([[153, 119, 168,1],
+                        [168, 139, 181, 1],
+                        [183, 159, 194, 1],
+                        [201, 182, 210, 1],
+                        [215, 200, 222, 1],
+                        [225, 213, 231, 1]
+                        ], dtype=np.float64)
+PURPLE_COLOR[:,:3] = PURPLE_COLOR[:,:3] / 255
+
 
 
 DEFAULT_DENSITY = 2700 / 2.8
