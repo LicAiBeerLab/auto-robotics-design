@@ -34,6 +34,10 @@ from auto_robot_design.pinokla.criterion_math import calculate_mass
 from apps.widjetdemo.streamlit_widgets.trajectory_widget import set_step_trajectory, set_vertical_trajectory, user_trajectory
 from widget_html_tricks import ChangeWidgetFontSize, font_size
 
+import sys
+
+# Save the original stdout
+original_stdout = sys.stdout
 
 import os
 #os.environ["MESHCAT_WEB_ROOT_PATH"] = "/"
@@ -56,6 +60,7 @@ if 'gm' not in st.session_state:
     # the session variable for chosen topology, it gets a value after topology confirmation button is clicked
     st.session_state.stage = 'topology_choice'
     st.session_state.run_simulation_flag = False
+    st.session_state.save_flag = False
 
     path_to_robots = Path().parent.absolute().joinpath(f"robots/user_{USER_KEY}")
     if os.path.exists(path_to_robots):
@@ -168,6 +173,16 @@ def scale_change():
     current_gm.set_mutation_ranges()
     st.session_state.current_gm = current_gm
 
+def save_fig():
+    st.session_state.save_flag = True
+#     plt.savefig("current_graph.png")
+#     with open("current_graph.txt", "w+") as f:
+#         for edge in graph.edges():
+#             vector = edge[0].r - edge[1].r
+#             f.write("Juccy pussy bang bang")
+            # f.write(f"Длина звена {labels[edge[0]]}:heavy_minus_sign:{labels[edge[1]]} составляет {np.linalg.norm(vector):.3f} [м]")
+        # for idx, node in enumerate(graph):
+        #     f.write(f"Координаты вершины {idx} {node.r[0]:.3f} {node.r[2]:.3f}")
 
 # choose the mechanism for optimization
 if st.session_state.stage == 'joint_point_choice':
@@ -233,13 +248,26 @@ if st.session_state.stage == 'joint_point_choice':
                   on_click=evaluate_construction, key="get_workspace", args=[[lower, upper]], type='primary')
     # draw the graph
     graph = gm.get_graph(st.session_state.jp_positions)
-    draw_joint_point_widjet(graph, labels=1, draw_lines=False,patches_list=[([1,0,5],'#ffe6cc'), ([4,6,8],"#e1d5e7"), ([1,7,2],"#ffe6cc")], draw_legend=False)
-    plot_one_jp_bounds(gm, jp.name)
+    draw_joint_point_widjet(graph, labels=2, draw_lines=False,patches_list=[([1,0,5],'#ffe6cc'), ([4,6,8],"#e1d5e7"), ([1,7,2],"#ffe6cc")], draw_legend=False)
+    if st.session_state.save_flag:
+        plt.savefig("current_graph.png",dpi =500)
+        
+    # plot_one_jp_bounds(gm, jp.name)
 
     plt.gcf().set_size_inches(4, 4)
     st.pyplot(plt.gcf(), clear_figure=True)
     # link lengths calculations
     with st.sidebar:
+        if st.session_state.save_flag:
+            with open('current_graph.txt', 'w', encoding='utf-8') as f:
+                sys.stdout = f
+                for edge in graph.edges():
+                    vector = edge[0].r - edge[1].r
+                    print(f"Длина звена {labels[edge[0]]}---{labels[edge[1]]} составляет {np.linalg.norm(vector):.3f} [м]\n")
+                for idx, node in enumerate(graph):
+                    print(f"Координаты вершины {idx} {node.r[0]:.3f} {node.r[2]:.3f}\n")
+            sys.stdout = original_stdout
+            st.session_state.save_flag = False
         for edge in graph.edges():
             vector = edge[0].r - edge[1].r
             st.write(
@@ -247,6 +275,7 @@ if st.session_state.stage == 'joint_point_choice':
         
         for idx, node in enumerate(graph):
             st.write(f"Координаты вершины {idx} {node.r[0]:.3f} {node.r[2]:.3f}")
+        st.session_state.save_flag = st.button(label="Сохранить картинку графа и координатные величины", key="save_graph_image", on_click=save_fig)
 
 
     ChangeWidgetFontSize("Масштаб", "16px")

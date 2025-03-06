@@ -164,7 +164,7 @@ def jps_graph2pinocchio_meshes_robot(
     #     f.write(robot.urdf())
 
     act_description, constraints_descriptions = get_pino_description_3d_constraints(
-        ative_joints, constraints
+        active_joints, constraints
     )
     fixed_robot = build_model_with_extensions(robot.urdf(),
                                 joint_description=act_description,
