@@ -155,6 +155,18 @@ class TMotor_AK80_9(RevoluteActuator):
         self.nominal_speed = 390 * 2 * np.pi / 60
 
 @dataclass
+class TMotor_AK80_8(RevoluteActuator):
+    def __init__(self):
+        self.mass = 0.57
+        self.inertia: float = 607 * 1e-07#608.6e-7
+        self.peak_effort = 25
+        self.peak_velocity = 475
+        self.size = [0.098/2, 0.044]
+        self.reduction_ratio = 1 #/ 9#8
+        self.nominal_effort = 9
+        self.nominal_speed = 390 * 2 * np.pi / 60
+
+@dataclass
 class MIT_Actuator(RevoluteActuator):
     def __init__(self):
         self.mass = 0.440

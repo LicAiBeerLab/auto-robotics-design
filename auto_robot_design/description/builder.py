@@ -987,7 +987,7 @@ def jps_graph2urdf_by_bulder(
 
 def jps_graph2pinocchio_robot(
     graph: nx.Graph,
-    builder: ParametrizedBuilder
+    builder: ParametrizedBuilder, return_kingraph=False
 ):
     """
     Converts a Joint Point Structure (JPS) graph to a Pinocchio robot model.
@@ -1023,7 +1023,8 @@ def jps_graph2pinocchio_robot(
                                 loop_description=constraints_descriptions,
                                 actuator_context=kinematic_graph,
                                 fixed=False)
-    
+    if return_kingraph:
+        return fixed_robot, free_robot, kinematic_graph
     return fixed_robot, free_robot
 
 def create_dict_jp_limit(joints, limit):

@@ -326,21 +326,32 @@ def reduce_constr_dict(constr_dict, n_jp_to_leave):
 
     return new_dict, counter >= n_jp_to_leave
 
-def plot_boxes_and_points(boxes, xlim, ylim, points2d=None, points2d_final=None, x_ind=-2, y_ind=-1):
-    fig = plt.figure(dpi=150)
+def plot_boxes_and_points(boxes, xlim, ylim, points2d=None, points2d_final=None, x_ind=-2, y_ind=-1, title=None, legend=None):
+    fig = plt.figure(dpi=110)
     ax = plt.gca()
+    legend_handles = []
 
     for b in boxes:#[::10]:
         xlb, xub = b[x_ind,0], b[x_ind,1]
         ylb, yub = b[y_ind,0], b[y_ind,1]
-        ax.add_patch(Rectangle((xlb,ylb),xub-xlb,yub-ylb,linewidth=1/2,edgecolor='none',facecolor='k',alpha=.1))
+        patch=ax.add_patch(Rectangle((xlb,ylb),xub-xlb,yub-ylb,linewidth=1/2,edgecolor='none',facecolor='k',alpha=.1))
+    # legend_handles.append(patch)
     if points2d is not None:
-        plt.scatter(points2d[:,0], points2d[:,1],c='r',linewidths=0,s=2)
+        scat1=plt.scatter(points2d[:,0], points2d[:,1],c='r',linewidths=0,s=2, label='22222')
+        legend_handles.append(scat1)
     if points2d_final is not None:
-        plt.scatter(points2d_final[:,0], points2d_final[:,1],c='b',linewidths=0,s=5)
+        scat2=plt.scatter(points2d_final[:,0], points2d_final[:,1],c='b',linewidths=0,s=5, label='333333333')
+        legend_handles.append(scat2)
 
     plt.xlim(xlim)
     plt.ylim(ylim)
+    plt.xlabel( "X [м]")
+    plt.ylabel( "Z [м]")
+    if title is not None:
+        plt.title(title)
+    if legend is not None:
+        # for h in legend_handles:
+        plt.legend(handles=legend_handles)
 
     ax.set_aspect(1)
     plt.tight_layout()

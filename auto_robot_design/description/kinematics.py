@@ -58,7 +58,20 @@ class JointPoint:
 
 def create_mesh_from_joints(joints, thickness, frame=np.eye(4)) -> Trimesh:
     points = {}
+    pos_seen = np.full((len(joints),3),None)
+    # print(len(joints))
+    cnt = 0
+    #№№№№ seen_cnt = 0
     for j in joints:
+        # is_in_list = np.any(np.all(j.jp.r == pos_seen, axis=1))
+        # # print(j.jp.r)
+        # if is_in_list:#j.jp.r in pos_seen:
+        #     # # seen_cnt+=1
+        #     # # if seen_cnt>1:
+        #     print('skipped---')
+        #     continue
+        # pos_seen[cnt,:] = j.jp.r
+        # cnt += 1
         points[j] = ((mr.TransInv(frame) @ np.r_[j.jp.r, 1])[:3], j.jp.w)
     pairs_p = combinations(points.keys(), 2)
     mesh = Trimesh()
@@ -224,6 +237,24 @@ class Link:
         thickness: float = 0.08,
     ) -> None:
         self.joints: set[JointPoint] = joints
+        # print('link',name)
+        # for j in self.joints:
+        #     print(j.jp)
+        # self.joints = 
+        # pos_seen = np.full((len(joints),3),None)
+        # print(len(joints))
+        # cnt = 0
+        # seen_cnt = 0
+        # for j in joints:
+        #     is_in_list = np.any(np.all(j.jp.r == pos_seen, axis=1))
+        #     if j.jp.r in pos_seen:
+        #         seen_cnt+=1
+        #         if seen_cnt>1:
+        #             print('skipped---')
+        #             continue
+        #     cnt += 1
+        #     pos_seen[cnt,:] = j.jp.r
+
         self.name: str = name
         self.geometry = geometry
 
@@ -233,6 +264,7 @@ class Link:
         self._density: float = density
 
         self._thickness: tuple[float] = thickness
+        # print('direct call')
         self.define_geometry()
 
         Link.instance_counter += 1
@@ -278,7 +310,28 @@ class Link:
         # self.define_geometry()
 
     def define_geometry(self):
-        num_joint = len(self.joints)
+        # print('defining geom')
+        uniq_joints = self.joints
+        
+        # uniq_joints = set()
+        # pos_seen = np.full((len(self.joints),3),None)
+        # # print(len(joints))
+        # cnt = 0
+        # #№№№№ seen_cnt = 0
+        # for j in self.joints:
+        #     is_in_list = np.any(np.all(j.jp.r == pos_seen, axis=1))
+        #     # print(j.jp.r)
+        #     if is_in_list:#j.jp.r in pos_seen:
+        #         # # seen_cnt+=1
+        #         # # if seen_cnt>1:
+        #         print('skipped---')
+        #         continue
+        #     pos_seen[cnt,:] = j.jp.r
+        #     uniq_joints.add(j)
+        #     cnt += 1
+
+        num_joint = len(uniq_joints)
+        # num_joint = len(self.joints)
         color = (np.r_[np.random.uniform(0, 1, 3), 1]).tolist()
         if self.name == "G":
             size = [self._thickness * 2 for __ in range(3)]
@@ -287,7 +340,7 @@ class Link:
             self.geometry = Sphere(
                 self._density, [self._thickness/1.4], color=color)
         elif num_joint == 2:
-            joint_list = list(self.joints)
+            joint_list = list(uniq_joints)#self.joints)
             vector = joint_list[1].jp.r - joint_list[0].jp.r
             length = la.norm(vector)
             # thickness = min((length * self._thickness, self._thickness))
@@ -301,7 +354,7 @@ class Link:
             # print(max_length)
             # thickness = min((max_length * self._thickness, self._thickness))
             # thickness = max((thickness, 0.015))
-            mesh = create_mesh_from_joints(self.joints, self._thickness)
+            mesh = create_mesh_from_joints(uniq_joints, self._thickness)#self.joints, self._thickness)
             self.geometry = Mesh(self._density, mesh, color=color)
         else:
             raise Exception("Zero joints")

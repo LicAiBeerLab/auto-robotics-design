@@ -146,24 +146,43 @@ class KinematicGraph(nx.Graph):
         path_main_branch: list = nx.shortest_path(self.kinematic_tree, self.G, self.EE)
         
         for link in links:
+            uniq_joints = link.joints
+
+            # uniq_joints = set()
+            # pos_seen = np.full((len(link.joints),3),None)
+            # # print(len(joints))
+            # cnt = 0
+            # #№№№№ seen_cnt = 0
+            # for j in link.joints:
+            #     is_in_list = np.any(np.all(j.jp.r == pos_seen, axis=1))
+            #     # print(j.jp.r)
+            #     if is_in_list:#j.jp.r in pos_seen:
+            #         # # seen_cnt+=1
+            #         # # if seen_cnt>1:
+            #         print('skipped---')
+            #         continue
+            #     pos_seen[cnt,:] = j.jp.r
+            #     uniq_joints.add(j)
+            #     cnt += 1
+
             path_G_link = path_from_G[link]
             prev_link = path_G_link[-2]
-            if len(link.joints) == 2:
+            if len(uniq_joints) == 2:
                 close_j_to_G: Joint = self.get_in_joint(prev_link,link)
-                out_joint = (link.joints - set([close_j_to_G])).pop()
+                out_joint = (uniq_joints - set([close_j_to_G])).pop()
                 if out_joint.link_in is None:
                     out_joint.link_in = link
                 elif out_joint.link_out is None:
                     out_joint.link_out = link
                 self.set_link_frame_by_joints(link, close_j_to_G, out_joint)
 
-            elif len(link.joints) > 2:
+            elif len(uniq_joints) > 2:
                 if link in path_main_branch:
                     num = path_main_branch.index(link)
                     prev_link = path_main_branch[num-1]
 
                 in_joint = self.get_in_joint(prev_link,link)
-                out_joints = link.joints - set([in_joint])
+                out_joints = uniq_joints - set([in_joint])
                 j2edge = self.joint2edge
                 
                 joint_tree = set(filter(lambda j: tuple(j2edge[j]) in self.kinematic_tree.edges(),out_joints))
@@ -299,7 +318,8 @@ def JointPoint2KinematicGraph(jp_graph: nx.Graph):
 
     # Create stack of joints and add ground joints
     stack_joints: deque[Joint] = deque(maxlen=len(JP2Joint.values()))
-    stack_joints += list(ground_joints)
+    stack_joints += sorted(ground_joints, key=lambda obj: obj.jp.name, reverse=True) #list(ground_joints)
+    # print('stack',ground_joints)
 
     # Create expedited set of joints
     exped_j = set()
@@ -309,6 +329,7 @@ def JointPoint2KinematicGraph(jp_graph: nx.Graph):
     while stack_joints:
         # Get the current joint
         current_joint = stack_joints.pop()
+        # print('popped jnt:',current_joint.jp.name)
         # current_joint = JP2Joint[curr_jp]
         # Get the link that the current joint is connected to
         L = next(iter(current_joint.links))
@@ -326,14 +347,18 @@ def JointPoint2KinematicGraph(jp_graph: nx.Graph):
             lenNN[n] = len(nextN[n] & L.joints)
         if len(L.joints) <= 2: # If the link has less than or equal to 2 joints
             # Create a new link with the current joint and the neighbors
-            L2 = Link(joints=(N | set([current_joint])))
+            jnts = (N | set([current_joint]))
+            # L2 = Link(joints=jnts)
+            L2 = Link(joints=jnts, name=str([jnt.jp.name for jnt in jnts]))
             for j in L2.joints:
                 j.links.add(L2)
         # If the link has more than 2 joints and number of neighbors is 1
         elif len(N) == 1:
             N = N.pop()
             if lenNN[N] == 1:
-                L2 = Link(joints=set([N, current_joint]))
+                jnts = set([N, current_joint])
+                # L2 = Link(joints=jnts)
+                L2 = Link(joints=jnts, name=str([jnt.jp.name for jnt in jnts]))
                 for j in L2.joints:
                     j.links.add(L2)
             else:
@@ -349,12 +374,16 @@ def JointPoint2KinematicGraph(jp_graph: nx.Graph):
             less_one_adj_L1 = N - more_one_adj_L1
             if len(less_one_adj_L1) > 1:
                 N = less_one_adj_L1
-                L2 = Link(joints=(N | set([current_joint])))
+                jnts = (N | set([current_joint]))
+                # L2 = Link(joints=jnts)
+                L2 = Link(joints=jnts, name=str([jnt.jp.name for jnt in jnts]))
                 for j in L2.joints:
                     j.links.add(L2)
             else:
                 N = list(less_one_adj_L1)[0]
-                L2 = Link(joints=set([N, current_joint]))
+                jnts = set([N, current_joint])
+                # L2 = Link(joints=jnts)
+                L2 = Link(joints=jnts, name=str([jnt.jp.name for jnt in jnts]))
                 N.links.add(L2)
         links.append(L2)
         # Add the neighbors to the stack

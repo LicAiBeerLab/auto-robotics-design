@@ -1,6 +1,6 @@
-from box_utils import prepare_boxes_plot, mul_intervals, pow_interval, neg_interval, subtr_intervals, gain_interval, atan2_intervals, atan_intervals
-from boxapprox import box_parallel, box_serial
-from boxapprox import process_box_1shrink, process_box_1shrink_splitselected, process_box_splitselected, process_box_maxshrink, AsyncBoxerManaged, AsyncBoxerManagedWaves
+from testing_ground.singular_hell.box_utils import prepare_boxes_plot, mul_intervals, pow_interval, neg_interval, subtr_intervals, gain_interval, atan2_intervals, atan_intervals
+from testing_ground.singular_hell.boxapprox import box_parallel, box_serial
+from testing_ground.singular_hell.boxapprox import process_box_1shrink, process_box_1shrink_splitselected, process_box_splitselected, process_box_maxshrink, AsyncBoxerManaged, AsyncBoxerManagedWaves
 import modern_robotics as mr
 # from typing import Union
 import numpy as np
@@ -261,7 +261,8 @@ def box_workspace(kinematic_graph, sigma: float,
                   init_safety_factor: float=10.,
                 #   x_b: Union[list, tuple, np.ndarray], 
                 #   y_b: Union[list, tuple, np.ndarray]
-                is_2linker_based = True, return_lorder=False, split_selected=True
+                is_2linker_based = True, return_lorder=False, split_selected=True,
+                j_g_name=None, j_knee_name="Main_knee", j_ee_name="Main_ee", ee_b_x=None, ee_b_y=None
                   ):
     """
     Approximates linkage workspace with boxes. Parametrize every movable link with 6 vars: 
@@ -348,7 +349,7 @@ def box_workspace(kinematic_graph, sigma: float,
 
     # take max distance from (0,0) to EE of 2linker as a reference length
     if is_2linker_based:
-        ee_b = calc_ee_range_of_2linker(kinematic_graph)
+        ee_b = calc_ee_range_of_2linker(kinematic_graph, j_g=j_g_name, j_knee=j_knee_name, j_ee=j_ee_name)
         # norm_factor = 1./np.linalg.norm(kinematic_graph.name2joint["Main_ee"].jp.r)
         norm_factor = 1./ee_b[1]
         
@@ -401,8 +402,8 @@ def box_workspace(kinematic_graph, sigma: float,
         B[j*w+4,:] = pow_interval(un_b,2)
         B[j*w+5,:] = pow_interval(un_b,2)
 
-    B[(-2),:] = rxb
-    B[(-1),:] = ryb
+    B[(-2),:] = rxb if ee_b_x is None else ee_b_x *norm_factor
+    B[(-1),:] = ryb if ee_b_y is None else ee_b_y *norm_factor
 
     #links which frames do not translate
     gr_links = {lname2ord[l.name]: p_i[0, lord2jord[frozenset((0,lname2ord[l.name]))], :] 
@@ -486,9 +487,12 @@ def box_workspace(kinematic_graph, sigma: float,
         return sols, {n: j for j,n in enumerate(l_order)}
     return sols
 
-def calc_ee_range_of_2linker(kinematic_graph):
-    l1 = np.linalg.norm(kinematic_graph.name2joint["Main_knee"].jp.r)
-    l2 = np.linalg.norm(kinematic_graph.name2joint["Main_ee"].jp.r - kinematic_graph.name2joint["Main_knee"].jp.r)
+def calc_ee_range_of_2linker(kinematic_graph, j_g=None, j_knee="Main_knee", j_ee="Main_ee"):
+    g_pos = np.zeros(3) if j_g is None else kinematic_graph.name2joint[j_g].jp.r
+    l1 = np.linalg.norm(kinematic_graph.name2joint[j_knee].jp.r - g_pos)
+    l2 = np.linalg.norm(kinematic_graph.name2joint[j_ee].jp.r - kinematic_graph.name2joint[j_knee].jp.r)
+
+    # print('l1 l2',l1, l2)
 
     rng = np.asarray([-l1-l2, l1+l2])
     return rng

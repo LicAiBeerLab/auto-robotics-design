@@ -194,7 +194,7 @@ def approximate_boxes(B, A_eq, b_eq, sqr_pairs=[], cross_triplets=[], threshold_
                 is_small_enough = (lengths_c <= threshold_s).all()
 
             valid_inds = (lengths_c > 0).nonzero()
-            print('valid indexes',valid_inds[0])
+            # print('valid indexes',valid_inds[0])
             # print('valleng',lengths_c[valid_inds])
             V_p = np.prod(lengths_p[valid_inds])
             V_c = np.prod(lengths_c[valid_inds])
@@ -348,7 +348,7 @@ def process_box(B_c, A_eq, b_eq,
         # probably if move below, it compares length p to length p, so it is always 1 except it deleted some dims 
 
         valid_inds = (lengths_c > 0).nonzero()[0]
-        print('valid indexes',valid_inds)
+        # print('valid indexes',valid_inds)
         # print('valleng',lengths_c[valid_inds])
         V_p = np.prod(lengths_p[valid_inds])
         V_c = np.prod(lengths_c[valid_inds])
@@ -492,7 +492,7 @@ def process_box_1shrink(B_c, A_eq, b_eq,
         lengths_c = B_c[:,1] - B_c[:,0]
 
         valid_inds = (lengths_c > 0).nonzero()[0]
-        print('valid indexes',valid_inds)
+        # print('valid indexes',valid_inds)
         V_p = np.prod(lengths_p[valid_inds])
         V_c = np.prod(lengths_c[valid_inds])
         is_shrinkable = V_c/V_p <= threshold_v
@@ -618,7 +618,7 @@ def process_box_maxshrink(B_c, A_eq, b_eq,
         lengths_c = B_c[:,1] - B_c[:,0]
 
         valid_inds = (lengths_c > 0).nonzero()[0]
-        print('valid indexes',valid_inds)
+        # print('valid indexes',valid_inds)
         V_p = np.prod(lengths_p[valid_inds])
         V_c = np.prod(lengths_c[valid_inds])
         is_shrinkable = V_c/V_p <= threshold_v
@@ -744,7 +744,7 @@ def process_box_splitselected(B_c, A_eq, b_eq,
         lengths_c = B_c[:,1] - B_c[:,0]
 
         valid_inds = (lengths_c > 0).nonzero()[0]
-        print('valid indexes',valid_inds)
+        # print('valid indexes',valid_inds)
         V_p = np.prod(lengths_p[valid_inds])
         V_c = np.prod(lengths_c[valid_inds])
         is_shrinkable = V_c/V_p <= threshold_v
@@ -872,7 +872,7 @@ def process_box_1shrink_splitselected(B_c, A_eq, b_eq,
         lengths_c = B_c[:,1] - B_c[:,0]
 
         valid_inds = (lengths_c > 0).nonzero()[0]
-        print('valid indexes',valid_inds)
+        # print('valid indexes',valid_inds)
         V_p = np.prod(lengths_p[valid_inds])
         V_c = np.prod(lengths_c[valid_inds])
         is_shrinkable = V_c/V_p <= threshold_v
@@ -1156,7 +1156,7 @@ def process_box_shared(P, sols, A_eq, b_eq,
         lengths_c = B_c[:,1] - B_c[:,0]
 
         valid_inds = (lengths_c > 0).nonzero()[0]
-        print('valid indexes',valid_inds)
+        # print('valid indexes',valid_inds)
         V_p = np.prod(lengths_p[valid_inds])
         V_c = np.prod(lengths_c[valid_inds])
         is_shrinkable = V_c/V_p <= threshold_v
