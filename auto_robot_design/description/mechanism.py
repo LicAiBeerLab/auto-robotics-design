@@ -84,16 +84,31 @@ class KinematicGraph(nx.Graph):
             self.main_branch = self.subgraph(main_branch)
         main_branch = self.main_branch
 
-        for edge in self.edges(data=True):
-            weight = calc_weight_for_span(edge, self)
-            self[edge[0]][edge[1]]["weight"] = weight
+        # for edge in self.edges(data=True):
+        #     weight = calc_weight_for_span(edge, self)
+        #     self[edge[0]][edge[1]]["weight"] = weight
 
-        for m_edge in main_branch.edges():
-            self[m_edge[0]][m_edge[1]]["weight"] = (
-                self[m_edge[0]][m_edge[1]]["weight"] + 1000
-            )
+        # for m_edge in main_branch.edges():
+        #     self[m_edge[0]][m_edge[1]]["weight"] = (
+        #         self[m_edge[0]][m_edge[1]]["weight"] + 1000
+        #     )
 
-        self.kinematic_tree = nx.maximum_spanning_tree(self, algorithm="prim")
+        # self.kinematic_tree = nx.maximum_spanning_tree(self, algorithm="prim")
+        # self.kinematic_tree = self.edges() - 
+        # for j1,j2 in self.edges:
+        #     print(j1,j2)
+        # for jp in self.jps_graph.nodes():
+        equality_edges = []
+        for jnt in self.joint_graph.nodes():
+            if 'eq' in jnt.jp.name:
+                # print(jnt.jp.name)
+                equality_edges.append(tuple(self.joint2edge[jnt]))
+                # print(self.joint2edge[jnt])
+
+        self.kinematic_tree = self.copy()
+        self.kinematic_tree.remove_edges_from(equality_edges)
+
+        # self.kinematic_tree = self.edges() - set(equality_edges)
         return self.kinematic_tree
 
     @property

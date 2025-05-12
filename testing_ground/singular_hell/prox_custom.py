@@ -417,7 +417,7 @@ def compute_total_inertia_at_point(model, data, target_point):
     for joint_id in range(1, model.njoints):
         # Получить инерцию тела в локальных координатах
         body_inertia = model.inertias[joint_id]
-        print(f'm on jnt{joint_id}:',body_inertia.matrix()[0,0])
+        # print(f'm on jnt{joint_id}:',body_inertia.matrix()[0,0])
         # Преобразовать в мировые координаты
         body_inertia_world = body_inertia.se3Action(data.oMi[joint_id])
         # Сместить инерцию в целевую точку

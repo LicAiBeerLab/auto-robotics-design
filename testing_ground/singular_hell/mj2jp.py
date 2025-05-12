@@ -174,7 +174,7 @@ def build_jp(link_mounts, equalities, trackpoints):
             jp_pos = np.array([j_pos[0], 0, j_pos[1]])
             
             link_parent_name = link_mounts[link_name][2]
-            jp_name = str(link_name)[0] #str(link_name)+'-'+str(link_parent_name)
+            jp_name = str(link_name)#[0] #str(link_name)+'-'+str(link_parent_name)
 
             # neigh_to_g_group = 
             attach_ground = link_parent_name in get_ground_group(seen_groups)
@@ -220,6 +220,7 @@ def build_jp(link_mounts, equalities, trackpoints):
         return None
 
     # from equalities
+    i_eq = 0
     for eq in equalities:
         link1_name = eq[1]
         link2_name = eq[2]
@@ -232,9 +233,10 @@ def build_jp(link_mounts, equalities, trackpoints):
             attach_ground = is_ground_id(link1_name) or is_ground_id(link2_name)
             # attach_endeffector = np.allclose(jp_pos, ee_pos, atol=1e-5)
             attach_endeffector = False
-            current_jp = JointPoint(r=jp_pos, w=jaxis, name=str(link1_name)+'-'+str(link2_name),
+            current_jp = JointPoint(r=jp_pos, w=jaxis, name=f'eq{i_eq}',#str(link1_name)+'-'+str(link2_name),
                                     attach_ground=attach_ground, attach_endeffector=attach_endeffector)
             graph.add_node(current_jp)
+            i_eq+=1
         else:
             current_jp = overlapper
         graph.add_edge(current_jp, jp_dict[link1_name])
