@@ -89,7 +89,7 @@ manipulator_reward_keys = [
 USER_KEY = 0 
 WORKSPACE_COLORS_VIZUALIZATION_RED = "#dd2e44"
 WORKSPACE_COLORS_VIZUALIZATION_YELLOW = "#fdcb58"
-dataset_paths = [Path("./datasets/top_0"), Path("./datasets/top_1"),Path("./datasets/top_2"), Path("./datasets/top_3"),Path("./datasets/top_4"),Path("./datasets/top_5"),Path("./datasets/top_6"), Path("./datasets/top_7"), Path("./datasets/top_8")]
+dataset_paths = [Path("/home/kirill/prj/widjetdata/top_0"), Path("/home/kirill/prj/widjetdata/top_1"),Path("/home/kirill/prj/widjetdata/top_2"), Path("/home/kirill/prj/widjetdata/top_3"),Path("/home/kirill/prj/widjetdata/top_4"),Path("/home/kirill/prj/widjetdata/top_5"),Path("/home/kirill/prj/widjetdata/top_6"), Path("/home/kirill/prj/widjetdata/top_7"), Path("/home/kirill/prj/widjetdata/top_8")]
 user_visualizer, user_vis_url = get_visualizer(USER_KEY)
 
 st.title("Генерация механизмов по заданной рабочей области")

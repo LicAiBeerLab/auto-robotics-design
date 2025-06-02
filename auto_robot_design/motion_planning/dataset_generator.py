@@ -33,7 +33,7 @@ from auto_robot_design.user_interface.check_in_ellips import (
 )
 from auto_robot_design.utils.append_saver import chunk_list
 from auto_robot_design.utils.bruteforce import get_n_dim_linspace
-from presets.MIT_preset import get_mit_builder
+from auto_robot_design.presets.MIT_preset import get_mit_builder
 
 
 WORKSPACE_ARGS_NAMES = ["bounds", "resolution", "dexterous_tolerance", "grid_shape"]

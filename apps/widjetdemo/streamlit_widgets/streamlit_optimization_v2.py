@@ -429,7 +429,7 @@ if st.session_state.stage == "trajectory_choice":
 """, unsafe_allow_html=True)
     st.button(label="Посмотреть подробное описание критериев", key="show_reward_description",on_click=lambda: st.session_state.__setitem__('stage', 'reward_description'))
 
-    draw_joint_point_widjet(graph,labels=2, draw_legend=False, draw_lines=True)
+    draw_joint_point_widjet(graph, labels=2, draw_lines=False,patches_list=[([1,0,5],'#ffe6cc'), ([4,6,8],"#e1d5e7"), ([1,7,2],"#ffe6cc")], draw_legend=False)
     plt.gcf().set_size_inches(4, 4)
     # if trajectory is not None:
     #     plt.plot(trajectory[:, 0], trajectory[:, 2])
@@ -640,7 +640,8 @@ if st.session_state.stage == "results":
                 current_checkbox = st.checkbox(
                     label=reward_description[reward[0]][0], value=False, key=reward[1].reward_name+str(reward_idx), help=reward_description[reward[0]][1])
                 reward_idxs[reward_idx] = current_checkbox
-        graph_mesh_visualization(graph, user_visualizer,user_vis_url, labels=2, draw_lines=True, draw_legend=False)
+        graph_mesh_visualization(graph, user_visualizer,user_vis_url, labels=2, draw_lines=True, patches_list=[([1,0,5],'#ffe6cc'), ([4,6,8],"#e1d5e7"), ([1,7,2],"#ffe6cc")], draw_legend=False )
+        #draw_joint_point_widjet(graph, labels=2, draw_lines=False,patches_list=[([1,0,5],'#ffe6cc'), ([4,6,8],"#e1d5e7"), ([1,7,2],"#ffe6cc")], draw_legend=False)
         with st.sidebar:
             bc = st.button(label="Рассчитать значения выбранных критериев", key="calculate_rewards", type='primary')
         
@@ -698,7 +699,7 @@ if st.session_state.stage == "results":
             trajectories = st.session_state.reward_manager.trajectories
             trj_idx = st.radio(label="Выберите траекторию из заданных перед оптимизацией:", options=trajectories.keys(
             ), index=0, key='opt_trajectory_choice', format_func=lambda x: problem.rewards_and_trajectories.trajectory_names[x])
-            trajectory = trajectories[trj_idx]
+            trajectory = trajectories[trj_idx] * 1000            
             st.button(label='Визуализация движения', key='run_simulation', on_click=run_simulation, kwargs={
                       "graph": graph, "trajectory": trajectory})
             with st.form("reward_form_mlt"):
@@ -709,9 +710,35 @@ if st.session_state.stage == "results":
                         label=reward_description[reward[0]][0], value=False, key=reward[1].reward_name+str(reward_idx), help=reward_description[reward[0]][1])
                     reward_idxs[reward_idx] = current_checkbox
                 bc = st.form_submit_button(label="Рассчитать значения выбранных критериев",  type='primary')
+        
         #plt.plot(trajectory[:, 0], trajectory[:, 2])
-        graph_mesh_visualization(graph, user_visualizer, user_vis_url, labels=2, draw_lines=True, draw_legend=False)
-        add_trajectory_to_vis(user_visualizer, trajectory)
+        #graph_mesh_visualization(graph, user_visualizer, user_vis_url, labels=2, draw_lines=True, draw_legend=False)
+        # TOPOLOGY 0
+        # graph_mesh_visualization(graph, 
+        #                          user_visualizer,user_vis_url, 
+        #                          labels=2, draw_lines=True, 
+        #                          patches_list=[([1,2,5],'#ffe6cc')], draw_legend=False)
+        
+        # TOPOLOGY 2
+        #graph_mesh_visualization(graph, user_visualizer,user_vis_url, labels=2, draw_lines=True, patches_list=[([1,0,5],'#ffe6cc'), ([4,6,8],"#e1d5e7"), ([1,7,2],"#ffe6cc")], draw_legend=False )
+        
+        # TOPOLOGY 6
+        # graph_mesh_visualization(graph, 
+        #                          user_visualizer,user_vis_url, 
+        #                          labels=2, draw_lines=True, 
+        #                          patches_list=[([1,2,5],'#ffe6cc'), 
+        #                                        ([4,5,6],"#dae8fc"), 
+        #                                        ([0,1,3],"#ffe6cc")], draw_legend=False)
+
+        # TOPOLOGY 8
+        graph_mesh_visualization(graph, 
+                                 user_visualizer,user_vis_url, 
+                                 labels=2, draw_lines=True, 
+                                 patches_list=[([1,2,3],'#ffe6cc'), 
+                                               ([4,5,6],"#dae8fc"), 
+                                               ([0,1,5],"#ffe6cc")], draw_legend=False)
+
+        # add_trajectory_to_vis(user_visualizer, trajectory)
         # send_graph_to_visualizer(graph, st.session_state.visualization_builder)
         # col_1, col_2 = st.columns([0.7,0.3], gap="medium")
         # with col_1:

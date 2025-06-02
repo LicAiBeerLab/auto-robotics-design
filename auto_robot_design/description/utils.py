@@ -8,7 +8,7 @@ from auto_robot_design.description.kinematics import Link
 from trimesh import Trimesh
 from scipy.spatial.transform import Rotation as R
 import modern_robotics as mr
-
+from matplotlib import patches
 # from auto_robot_design.description.mechanism import KinematicGraph
 
 def all_combinations_active_joints_n_actuator(graph: nx.Graph, actuators):
@@ -222,14 +222,14 @@ def draw_joint_point(graph: nx.Graph, labels=0, draw_legend=True, draw_lines=Fal
                 break
         if not pos_flag:
             pos_labels[g] = np.array(p)
-    nx.draw_networkx_labels(
-        graph,
-        pos_labels,
-        labels,
-        font_color = "#ff5A00",
-        font_family = "monospace",
-        font_size=20
-    )
+    # nx.draw_networkx_labels(
+    #     graph,
+    #     pos_labels,
+    #     labels,
+    #     font_color = "#ff5A00",
+    #     font_family = "monospace",
+    #     font_size=20
+    # )
 
     #"#fe8a18"
     if nx.is_weighted(graph):
@@ -269,7 +269,7 @@ def draw_joint_point(graph: nx.Graph, labels=0, draw_legend=True, draw_lines=Fal
     if draw_legend: plt.legend()
 
 
-def draw_joint_point_widjet(graph: nx.Graph, labels=0, draw_legend=True, draw_lines=False):
+def draw_joint_point_widjet(graph: nx.Graph, labels=0, draw_legend=True, draw_lines=False, patches_list=[]):
     pos = get_pos(graph)
     pos_list = [p for p in pos.values()]
     pos_matrix = np.array(pos_list)
@@ -333,6 +333,7 @@ def draw_joint_point_widjet(graph: nx.Graph, labels=0, draw_legend=True, draw_li
                 break
         if not pos_flag:
             pos_labels[g] = np.array(p)
+
     nx.draw_networkx_labels(
         graph,
         pos_labels,
@@ -378,6 +379,13 @@ def draw_joint_point_widjet(graph: nx.Graph, labels=0, draw_legend=True, draw_li
              markersize=22, 
              fillstyle="none", label="Актуирован")
     if draw_legend: plt.legend()
+
+    for patch_labels in patches_list:
+        vertices = []
+        for i, pos in enumerate(pos_list):
+            if i in patch_labels[0]: vertices.append(pos)
+        triangle = patches.Polygon(vertices, closed=True, edgecolor='black', facecolor=patch_labels[1])
+        plt.gca().add_patch(triangle)
 
 def draw_kinematic_graph(graph: nx.Graph):
     elarge = [(u, v) for (u, v, d) in graph.edges(data=True) if d["joint"].jp.active]
