@@ -2,11 +2,12 @@ from dataclasses import dataclass
 from typing import Tuple
 from enum import Enum
 import itertools
+from copy import deepcopy
 
 class PointType(Enum):
     """Enumerate for point types."""
     JOINT = 0  # A joint that can be moved
-    FIXED = 1  # A fixed point that cannot be moved
+    CONNECTION = 1  # A fixed point that cannot be moved
     END_EFFECTOR = 2  # The end effector of the robot, which is the last joint in the chain
 
 class MutationType(Enum):
@@ -22,7 +23,6 @@ class MutationType(Enum):
 class GeneratorPoint:
     name:str = "J"
     point_type: PointType = PointType.JOINT
-
     mutation_type: int = MutationType.ABSOLUTE
     coordinates: Tuple[float, float, float]= (0.0, 0.0, 0.0)
     mutation_x:Tuple[float, float]= (0.0, 0.0)
@@ -37,9 +37,7 @@ class GeneratorConnection:
     start_joint: int = -1
     dependent_open: bool = False
     independent_open: bool = False
-
-
-
+    unused: bool = True
 
 
 class Generator2DRotational():
@@ -68,19 +66,22 @@ class Generator2DRotational():
     
     def build_all_topologies(self):
         def connect_branch(branch_idx, current_connections=self.branch_connection_dict):
+            new_connections = deepcopy(current_connections)
             dependent_points = []
-            dependent_points+=[c for c in current_connections if c.branch_idx in self.branch_connection_dict[branch_idx][0] and c.dependent_open]
+            dependent_points+=[c for c in new_connections if c.unused and c.branch_idx in self.branch_connection_dict[branch_idx][0] and c.dependent_open]
             independent_points = []
-            independent_points+=[c for c in current_connections if c.branch_idx in self.branch_connection_dict[branch_idx][1] and c.independent_open]
+            independent_points+=[c for c in new_connections if c.unused and c.branch_idx in self.branch_connection_dict[branch_idx][1] and c.independent_open]
             
             product = itertools.product(dependent_points, independent_points)
             for pair in product:
-                new_connections = current_connections.deepcopy()
-                new_connections.remove(pair[0])
-                new_connections.remove(pair[1])
+                pair[0].unused = False
+                pair[1].unused = False
                 if branch_idx+1 in self.branch_connection_dict:
                     connect_branch(branch_idx + 1, new_connections)
-                
+                else:
+                    
+
+        current_connections = self.connections.deepcopy()
 
 
             if branch_idx not in self.topologies:
