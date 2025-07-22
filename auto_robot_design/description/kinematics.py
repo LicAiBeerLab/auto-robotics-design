@@ -22,8 +22,8 @@ from typing import Union
 class JointPoint:
     """Describe a point in global frame where a joint is attached"""
 
-    r: np.ndarray = field(default_factory=np.zeros(3))
-    w: np.ndarray = field(default_factory=np.array([0,1,0]))
+    r: np.ndarray = np.zeros(3)
+    w: np.ndarray = np.zeros(3)
     active: bool = False
     attach_ground: bool = False
     attach_endeffector: bool = False
