@@ -11,7 +11,6 @@ class MutationType(Enum):
     # The movement of the joint are relative to some other joint or joints and doesn't have an initial position. The movement is in percentage of the distance between the joints.
     RELATIVE_PERCENTAGE = 3
 
-
 @dataclass
 class MutationCoordinate:
     freeze: Optional[float] = None
@@ -82,7 +81,7 @@ if __name__ == "__main__":
     # example with manually built scheme
     builder = ManualSchemeBuilder()
     builder.add_point(SchemeJoint(name="G", mutation_type=MutationType.ABSOLUTE, mutation_x=MutationCoordinate(
-        freeze=0.0), mutation_y=MutationCoordinate(freeze=0.0), mutation_z=MutationCoordinate(freeze=0.0), active=True))
+        freeze=0.0), mutation_y=MutationCoordinate(freeze=0.0), mutation_z=MutationCoordinate(freeze=0.0), active=True, attach_ground=True))
     builder.add_point(SchemeJoint(name="J", mutation_type=MutationType.ABSOLUTE,
                       mutation_x=MutationCoordinate(mutation_origin=0.05, lower_bound=-0.1, upper_bound=0.1), mutation_y = MutationCoordinate(freeze=0.0), mutation_z=MutationCoordinate(mutation_origin=-0.2, lower_bound=-0.1, upper_bound=0.1)))
     builder.add_point(SchemeEE(name="EE", mutation_type=MutationType.ABSOLUTE, mutation_x=MutationCoordinate(
