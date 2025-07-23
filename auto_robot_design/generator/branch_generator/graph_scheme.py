@@ -5,11 +5,11 @@ from enum import Enum
 
 class MutationType(Enum):
     """Enumerate for mutation types."""
-    # UNMOVABLE = 0  # Unmovable joint that is not used for optimization
     ABSOLUTE = 1  # The movement of the joint are in the absolute coordinate system and are relative to the initial position
     RELATIVE = 2  # The movement of the joint are relative to some other joint or joints and doesn't have an initial position
     # The movement of the joint are relative to some other joint or joints and doesn't have an initial position. The movement is in percentage of the distance between the joints.
     RELATIVE_PERCENTAGE = 3
+
 
 @dataclass
 class MutationCoordinate:
@@ -47,7 +47,8 @@ class SchemeConnectionJoint(SchemePoint):
     attach_ground: bool = False
     active: bool = False
     dependent_shift: Tuple[float, float, float] = (0, 0, 0)
-    connected_to: Optional[Tuple[int, int]] = None #branch idx and first joint index
+    # branch idx and first joint index (0, -1) for ground connection
+    connected_to: Optional[Tuple[int, int]] = None
 
 
 class ManualSchemeBuilder:
@@ -83,12 +84,14 @@ if __name__ == "__main__":
     builder.add_point(SchemeJoint(name="G", mutation_type=MutationType.ABSOLUTE, mutation_x=MutationCoordinate(
         freeze=0.0), mutation_y=MutationCoordinate(freeze=0.0), mutation_z=MutationCoordinate(freeze=0.0), active=True, attach_ground=True))
     builder.add_point(SchemeJoint(name="J", mutation_type=MutationType.ABSOLUTE,
-                      mutation_x=MutationCoordinate(mutation_origin=0.05, lower_bound=-0.1, upper_bound=0.1), mutation_y = MutationCoordinate(freeze=0.0), mutation_z=MutationCoordinate(mutation_origin=-0.2, lower_bound=-0.1, upper_bound=0.1)))
+                      mutation_x=MutationCoordinate(mutation_origin=0.05, lower_bound=-0.1, upper_bound=0.1), mutation_y=MutationCoordinate(freeze=0.0), mutation_z=MutationCoordinate(mutation_origin=-0.2, lower_bound=-0.1, upper_bound=0.1)))
     builder.add_point(SchemeEE(name="EE", mutation_type=MutationType.ABSOLUTE, mutation_x=MutationCoordinate(
         freeze=0.0), mutation_y=MutationCoordinate(freeze=0.0), mutation_z=MutationCoordinate(freeze=-0.4)))
     builder.add_branch()
-    builder.add_point(SchemeConnectionJoint(name="G", mutation_type=MutationType.ABSOLUTE, mutation_x = MutationCoordinate(mutation_origin=-0.2, upper_bound=0.1, lower_bound=-0.1), mutation_y = MutationCoordinate(freeze=0.0), mutation_z = MutationCoordinate(mutation_origin=0.0, lower_bound=0.0, upper_bound=0.2),
+    builder.add_point(SchemeConnectionJoint(name="G", mutation_type=MutationType.ABSOLUTE, mutation_x=MutationCoordinate(mutation_origin=-0.2, upper_bound=0.1, lower_bound=-0.1), mutation_y=MutationCoordinate(freeze=0.0), mutation_z=MutationCoordinate(mutation_origin=0.0, lower_bound=0.0, upper_bound=0.2),
                       active=True, attach_ground=True), branch_idx=1)
-    builder.add_point(SchemeJoint(name="J", mutation_type=MutationType.RELATIVE, mutation_x=MutationCoordinate(mutation_origin=0.0, lower_bound=-0.1, upper_bound=0.1),mutation_y=MutationCoordinate(0.0), mutation_z=MutationCoordinate(None, -0.2, -0.1, 0.1)), branch_idx=1)
-    builder.add_point(SchemeConnectionJoint(name="CJ", mutation_type=MutationType.RELATIVE_PERCENTAGE, connected_to=(0, 1), mutation_x=MutationCoordinate(None, -0.05,-0.1, 0.1), mutation_y=MutationCoordinate(freeze=0.0), mutation_z=MutationCoordinate(None, 0.0, -0.4, 0.4)), branch_idx=1)
+    builder.add_point(SchemeJoint(name="J", mutation_type=MutationType.RELATIVE, mutation_x=MutationCoordinate(mutation_origin=0.0, lower_bound=-
+                      0.1, upper_bound=0.1), mutation_y=MutationCoordinate(0.0), mutation_z=MutationCoordinate(None, -0.2, -0.1, 0.1)), branch_idx=1)
+    builder.add_point(SchemeConnectionJoint(name="CJ", mutation_type=MutationType.RELATIVE_PERCENTAGE, connected_to=(0, 1), mutation_x=MutationCoordinate(
+        None, -0.05, -0.1, 0.1), mutation_y=MutationCoordinate(freeze=0.0), mutation_z=MutationCoordinate(None, 0.0, -0.4, 0.4)), branch_idx=1)
     print(builder.graph_scheme)

@@ -1,7 +1,7 @@
-# from updated_generator import GeneratorPoint
+
 from dataclasses import dataclass
 from typing import Tuple, Optional
-from graph_scheme import SchemePoint, SchemeEE, SchemeJoint, SchemeConnectionJoint, MutationType, MutationCoordinate
+from auto_robot_design.generator.branch_generator.graph_scheme import MutationType, MutationCoordinate, SchemeEE, SchemeJoint, SchemeConnectionJoint
 from auto_robot_design.description.kinematics import JointPoint
 import networkx as nx
 import numpy as np
@@ -50,15 +50,16 @@ class MutableGraphManager:
             for idx, point in enumerate(branch):
                 # first step - get the joint point without position
                 jp = self.create_jp_from_sp(point)
+                jp.name = f"b_{branch_idx}_jp_{idx}"
                 # second step - solve the graph relation for the new joint point
                 if idx == 0: # first point in branch, it can be a jp for main branch or connection for any other branch
                     if jp.attach_ground:
                         self.joint_points[branch_idx].append(jp)
                         self.graph.add_node(jp) #ground points are just added to the graph
-                    else: # the only other possibility is the connection point attached to already existing pair of joints 
+                    else: # the only other possibility is the connection point attached to already existing pair of joints
                         # get the joints to connect
                         branch_to_connect = point.connected_to[0]
-                        joints = (self.joint_points[branch_to_connect][point.connected_to[1]], self.joint_points[branch_to_connect][point.connected_to[1]+1]) 
+                        joints = (self.joint_points[branch_to_connect][point.connected_to[1]], self.joint_points[branch_to_connect][point.connected_to[1]+1])
                         self.graph.add_edge(joints[0], jp)
                         self.graph.add_edge(joints[1], jp)
                         self.joint_points[branch_idx].append(jp)
@@ -72,9 +73,10 @@ class MutableGraphManager:
                         self.graph.add_edge(jp, self.joint_points[branch_idx][-1])
                         self.joint_points[branch_idx].append(jp)
                         branch_to_connect = point.connected_to[0]
-                        joints = (self.joint_points[branch_to_connect][point.connected_to[1]], self.joint_points[branch_to_connect][point.connected_to[1]+1]) 
+                        joints = (self.joint_points[branch_to_connect][point.connected_to[1]], self.joint_points[branch_to_connect][point.connected_to[1]+1])
                         self.graph.add_edge(joints[0], jp)
                         self.graph.add_edge(joints[1], jp)
+
                 # third step - create mutation entry for the point
                 if point.mutation_type == MutationType.ABSOLUTE:
                     mutation = AbsoluteMutation(mutation_x=point.mutation_x, mutation_y=point.mutation_y, mutation_z=point.mutation_z)
@@ -82,7 +84,7 @@ class MutableGraphManager:
                 elif point.mutation_type == MutationType.RELATIVE:
                     # get relative to what
                     if isinstance(point, SchemeJoint) or isinstance(point, SchemeEE):
-                        relative_to = self.joint_points[branch_idx][idx-1]
+                        relative_to = self.joint_points[branch_idx][-2]
                         mutation = RelativeMutation(mutation_x=point.mutation_x, mutation_y=point.mutation_y, mutation_z=point.mutation_z, relative_to=relative_to)
                         if isinstance(branch[idx-1], SchemeConnectionJoint):
                             shift = branch[idx-1].dependent_shift
@@ -90,15 +92,15 @@ class MutableGraphManager:
                             mutation.mutation_y.shift = shift[1]
                             mutation.mutation_z.shift = shift[2]
                         self.mutations[branch_idx].append(mutation)
-                    elif(point, SchemeConnectionJoint):
-                        mutation = RelativeMutation(mutation_x=point.mutation_x, mutation_y=point.mutation_y, mutation_z=point.mutation_z, relative_to=relative_to)
-                        first_joint, second_joint = self.joint_points[point.connected_to[0]][point.connected_to[0]], self.joint_points[point.connected_to[0]][point.connected_to[0]+1] 
+                    elif isinstance(point, SchemeConnectionJoint):
+                        mutation = RelativeMutation(mutation_x=point.mutation_x, mutation_y=point.mutation_y, mutation_z=point.mutation_z)
+                        first_joint, second_joint = self.joint_points[point.connected_to[0]][point.connected_to[1]], self.joint_points[point.connected_to[0]][point.connected_to[1]+1] 
                         mutation.relative_to = (first_joint, second_joint)
                         self.mutations[branch_idx].append(mutation)
                 elif point.mutation_type == MutationType.RELATIVE_PERCENTAGE:
-                    if(point, SchemeConnectionJoint):
-                        mutation = RelativePercentageMutation(mutation_x=point.mutation_x, mutation_y=point.mutation_y, mutation_z=point.mutation_z, relative_to=relative_to)
-                        first_joint, second_joint = self.joint_points[point.connected_to[0]][point.connected_to[0]], self.joint_points[point.connected_to[0]][point.connected_to[0]+1] 
+                    if isinstance(point, SchemeConnectionJoint):
+                        mutation = RelativePercentageMutation(mutation_x=point.mutation_x, mutation_y=point.mutation_y, mutation_z=point.mutation_z)
+                        first_joint, second_joint = self.joint_points[point.connected_to[0]][point.connected_to[1]], self.joint_points[point.connected_to[0]][point.connected_to[1]+1]
                         mutation.relative_to = (first_joint, second_joint)
                         self.mutations[branch_idx].append(mutation)
 
@@ -117,7 +119,7 @@ class MutableGraphManager:
                         jp = self.joint_points[branch_idx][mutation_idx]
                         if isinstance(mutation, AbsoluteMutation):
                             if mutation.mutation_x.shift is not None:
-                                self.current_mutation_ranges[(jp, 'x')] = (mutation.mutation_x.mutation_origin + mutation.mutation_x.lower_bound + mutation.mutation_x.shift, mutation.mutation_x.mutation_originmutation.mutation_x.upper_bound + mutation.mutation_x.shift)
+                                self.current_mutation_ranges[(jp, 'x')] = (mutation.mutation_x.mutation_origin + mutation.mutation_x.lower_bound + mutation.mutation_x.shift, mutation.mutation_x.mutation_origin + mutation.mutation_x.upper_bound + mutation.mutation_x.shift)
                             else:
                                 self.current_mutation_ranges[(jp, 'x')] = (mutation.mutation_x.mutation_origin + mutation.mutation_x.lower_bound, mutation.mutation_x.mutation_origin + mutation.mutation_x.upper_bound)
 
@@ -166,11 +168,12 @@ class MutableGraphManager:
         
         parameter_counter = 0
         # starting to set coordinates of the joint points one by one
-        for branch_idx in self.joint_points:
-            for jp_idx, jp in enumerate(self.joint_points[branch_idx]):
+        for branch_idx, jp_branch in self.joint_points.items():
+            for jp_idx, jp in enumerate(jp_branch):
                 jp.r = np.zeros(3)
                 mutation = self.mutations[branch_idx][jp_idx]
-                if isinstance(mutation, AbsoluteMutation):
+                if type(mutation) is AbsoluteMutation: 
+                # isinstance(mutation, AbsoluteMutation):
                     if not mutation.mutation_x.freeze is None:
                         jp.r[0] = mutation.mutation_x.freeze
                     elif mutation.mutation_x.lower_bound == mutation.mutation_x.upper_bound:
@@ -200,8 +203,9 @@ class MutableGraphManager:
                         parameter_counter += 1
                     if mutation.mutation_z.shift is not None:
                         jp.r[2] += mutation.mutation_z.shift
-
-                elif isinstance(mutation, RelativeMutation):
+                
+                elif type(mutation) is RelativeMutation:
+                # elif isinstance(mutation, RelativeMutation):
                     relative_to = mutation.relative_to
                     if isinstance(relative_to, JointPoint):
                         if not mutation.mutation_x.freeze is None:
@@ -266,7 +270,8 @@ class MutableGraphManager:
                         if mutation.mutation_z.shift is not None:
                             jp.r[2] += mutation.mutation_z.shift
                 
-                elif isinstance(mutation, RelativePercentageMutation):
+                elif type(mutation) is RelativePercentageMutation:
+                # elif isinstance(mutation, RelativePercentageMutation):
                     first_joint, second_joint =  mutation.relative_to
                     jp.r = (first_joint.r + second_joint.r) / 2
                     link_direction = first_joint.r - second_joint.r
