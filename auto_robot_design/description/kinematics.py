@@ -46,9 +46,10 @@ class JointPoint:
                 # self.w[0],
                 # self.w[1],
                 # self.w[2],
-                self.attach_ground,
-                self.attach_endeffector,
-                self.__instance_counter,
+                self.name
+                # self.attach_ground,
+                # self.attach_endeffector,
+                # self.__instance_counter,
             )
         )
 

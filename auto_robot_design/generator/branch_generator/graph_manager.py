@@ -1,7 +1,8 @@
 """This module provides the MutableGraphManager class that manages a mutable graph based on a given graph scheme."""
 from dataclasses import dataclass
+from itertools import permutations, combinations
 from typing import Optional, Tuple
-
+from copy import deepcopy
 import networkx as nx
 import numpy as np
 
@@ -28,12 +29,14 @@ class RelativePercentageMutation(AbsoluteMutation):
 
 
 class MutableGraphManager:
-    def __init__(self, graph_scheme=None):
+    def __init__(self, graph_scheme=None, ee_dof=2):
         self.graph_scheme = graph_scheme
+        self.triangle_links = []
         self.mutations = {}
         self.current_mutation_ranges = {}
         self.joint_points = {}
         self.graph = nx.Graph()
+        self.ee_dof = ee_dof
 
     def create_jp_from_sp(self, scheme_point) -> JointPoint:
         if isinstance(scheme_point, SchemeEE):
@@ -42,6 +45,20 @@ class MutableGraphManager:
             jp = JointPoint(r=None, name=scheme_point.name, attach_ground=scheme_point.attach_ground, active=scheme_point.active)
 
         return jp
+    def check_for_triangle_cycles(self):
+        triangles = [cycle for cycle in nx.simple_cycles(self.graph) if len(cycle) == 3]
+        for triangle in triangles:
+            triangle_permutations = permutations(triangle)
+            new_triangle = True
+            for perm in triangle_permutations:
+                if perm in self.triangle_links:
+                    new_triangle = False
+                    break
+            if new_triangle:
+                return True
+        return False
+    
+
 
     def build_graph(self):
         """Builds the graph from the graph scheme.
@@ -69,6 +86,7 @@ class MutableGraphManager:
                         self.graph.add_edge(joints[0], jp)
                         self.graph.add_edge(joints[1], jp)
                         self.joint_points[branch_idx].append(jp)
+                        self.triangle_links.append((joints[0], jp, joints[1]))
                 else:
                     # if joint the next point is joint or ee it is just added with connection to previous point
                     if isinstance(point, SchemeJoint) or isinstance(point, SchemeEE):
@@ -82,6 +100,7 @@ class MutableGraphManager:
                         joints = (self.joint_points[branch_to_connect][point.connected_to[1]], self.joint_points[branch_to_connect][point.connected_to[1]+1])
                         self.graph.add_edge(joints[0], jp)
                         self.graph.add_edge(joints[1], jp)
+                        self.triangle_links.append((joints[0], jp, joints[1]))
 
                 # third step - create mutation entry for the point
                 if point.mutation_type == MutationType.ABSOLUTE:
@@ -328,6 +347,66 @@ class MutableGraphManager:
     def reset_mutation_range(self, branch_idx, joint_idx, mutation_range):
         self.mutations[branch_idx][joint_idx] = mutation_range
         self.get_mutation_ranges()
+
+    def find_active_joints(self):
+        current = 1 # the ground of the main branch is always active
+        graph = deepcopy(self.graph)
+        ground_joints = list(filter(lambda n: n.attach_ground, graph))
+        for pairs in combinations(ground_joints, 2):
+            graph.add_edge(pairs[0], pairs[1])
+        
+        quadrilaterals = [cycle for cycle in nx.simple_cycles(graph) if len(cycle) == 4]
+        actuated_quads = []
+        main_ground = self.joint_points[0][0]
+        ground_joints.remove(main_ground)
+        for quad in quadrilaterals:
+            if main_ground in quad:
+                actuated_quads.append(quad)
+
+        while current < self.ee_dof and len(ground_joints) > 0:
+            joint = ground_joints.pop()
+            in_cycle = False
+            for quad in actuated_quads:
+                if joint in quad:
+                    in_cycle = True
+                    break
+            if not in_cycle:
+                for j in self.graph:
+                    if j==joint:
+                        j.active = True
+                        current += 1
+        if current == self.ee_dof: return
+
+        total_branches = len(self.graph_scheme)
+        i = 0
+        while current < self.ee_dof:
+            c = 0
+            for branch_idx in range(1, total_branches):
+                if i < len(self.joint_points[branch_idx]):
+                    c += 1
+                    jp = self.joint_points[branch_idx][i]
+                    in_cycle = False
+                    for quad in actuated_quads:
+                        if jp in quad:
+                            in_cycle = True
+                            break
+
+                    if in_cycle:
+                        continue
+                    else:
+                        jp.active = True
+                        current += 1
+
+            i += 1
+            if c == 0: # no more joints to activate in the secondary branches
+                break
+
+
+        # # find all joints connected to the ground
+        # for joint in ground_joints:
+        #     if joint.active:
+        #         current += 1
+        # return current
 
 
 if __name__ == "__main__":
