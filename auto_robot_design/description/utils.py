@@ -10,30 +10,6 @@ from trimesh import Trimesh
 from scipy.spatial.transform import Rotation as R
 import modern_robotics as mr
 
-# from auto_robot_design.description.mechanism import KinematicGraph
-
-def all_combinations_active_joints_n_actuator(graph: nx.Graph, actuators):
-    """
-    Generates all possible combinations of active joints and actuators.
-
-    Args:
-        graph (nx.Graph): The graph representing the robot design.
-        actuators (list): List of available actuators.
-
-    Returns:
-        list: List of tuples representing pairs of name of active joints and actuators.
-    """
-    try:
-        active_joints = [j.jp.name for j in graph.active_joints]
-    except AttributeError:
-        active_joints = [j.name for j in graph.nodes() if j.active]
-
-    combination_actuator = permutations(actuators, len(active_joints))
-    pairs_joint_actuator = []
-    for combination in combination_actuator:
-        pairs_joint_actuator.append(tuple(zip(active_joints, combination)))
-    return pairs_joint_actuator
-
 
 def trans2_xyz_rpy(trans: np.ndarray) -> tuple[list[float]]:
     rot, pos = mr.TransToRp(trans)
@@ -46,28 +22,21 @@ def trans2_xyz_quat(trans: np.ndarray) -> tuple[list[float]]:
 def tensor_inertia_sphere(density, r):
     mass = 4/3 * np.pi * r**3 * density
     central_inertia =  2/5 * mass * r**2
-    
     tensor_inertia = np.diag([central_inertia for __ in range(3)])
-    
     return mass, tensor_inertia
 
 def tensor_inertia_sphere_by_mass(mass, r):
     central_inertia =  2/5 * mass * r**2
-    
     tensor_inertia = np.diag([central_inertia for __ in range(3)])
-    
     return tensor_inertia
 
 def tensor_inertia_box(density, x, y, z):
     mass = x*y*z*density
     inertia = lambda a1, a2:  1/12 * mass * (a1**2 + a2**2)
-    
     inertia_xx = inertia(y, z)
     inertia_yy = inertia(x, z)
     inertia_zz = inertia(x, y)
-    
     tensor_inertia = np.diag([inertia_xx, inertia_yy, inertia_zz])
-    
     return mass, tensor_inertia
 
 def tensor_inertia_mesh(density, mesh: Trimesh):
@@ -165,12 +134,11 @@ def draw_joint_point(graph: nx.Graph, labels=0, draw_legend=True, draw_lines=Fal
     pos_matrix = np.array(pos_list)
     min_x, min_y = np.round(np.min(pos_matrix, axis=0),2)
     max_x, max_y = np.round(np.max(pos_matrix, axis=0),2)
-    for key, value in pos.items():
-        value
+    # for key, value in pos.items():
+    #     value
     G_pos = np.array(
         list(
-        map(
-            lambda n: [n.r[0], n.r[2]],
+        map(lambda n: [n.r[0], n.r[2]],
             filter(lambda n: n.attach_ground, graph),
         )
         )
@@ -211,7 +179,7 @@ def draw_joint_point(graph: nx.Graph, labels=0, draw_legend=True, draw_lines=Fal
     #pos_labels = {g:np.array(p) + np.array([-0.2, 0.2])*la.norm(EE_pos)/5 for g, p in pos.items()}
     pos_labels = {}
     coef = 1000
-    pos_additions = [np.array([0.2, 0.2])*la.norm(EE_pos)/coef, np.array([0.2, -0.2])*la.norm(EE_pos)/coef, 
+    pos_additions = [np.array([0.2, 0.2])*la.norm(EE_pos)/coef, np.array([0.2, -0.2])*la.norm(EE_pos)/coef,
                      np.array([0.2,-0.2])*la.norm(EE_pos)/coef, np.array([-0.2, -0.2])*la.norm(EE_pos)/coef]
     for g,p in pos.items():
         pos_flag = False
@@ -243,8 +211,7 @@ def draw_joint_point(graph: nx.Graph, labels=0, draw_legend=True, draw_lines=Fal
             font_family = "monospace"
 
         )
-    plt.plot(G_pos[:,0], G_pos[:,1], "ok", label="Ground")
-    plt.axis("equal")
+
     
     import matplotlib.ticker as ticker
     if draw_lines:
@@ -260,13 +227,16 @@ def draw_joint_point(graph: nx.Graph, labels=0, draw_legend=True, draw_lines=Fal
         ax.set_ylim(min_y-kwargs.get("offset_lim", 0.1), max_y+kwargs.get("offset_lim", 0.1))
         pass
 
-
-    # plt.axis('on')
+    if G_pos.size != 0:
+        plt.plot(G_pos[:,0], G_pos[:,1], "ok", label="Ground")
+        plt.axis("equal")
     if EE_pos.size != 0:
         plt.plot(EE_pos[:,0], EE_pos[:,1], "ob", label="EndEffector")
-    plt.plot(active_j_pos[:,0], active_j_pos[:,1], "og",
-             markersize=20, 
-             fillstyle="none", label="Active")
+    if active_j_pos.size != 0:
+        plt.plot(active_j_pos[:,0], active_j_pos[:,1], "og",
+                markersize=20, 
+                fillstyle="none", label="Active")
+
     if draw_legend: plt.legend()
 
 
