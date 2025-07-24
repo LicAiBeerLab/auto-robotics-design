@@ -162,7 +162,7 @@ cython_debug/
 #.idea/
 
 # jupyter tests
-
+.vscode/
 python_tests.ipynb
 manifold3d.pyi
 L*.stl

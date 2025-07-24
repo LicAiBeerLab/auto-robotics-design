@@ -1,3 +1,7 @@
+"""This module introduce the graph scheme components that are used to build mutable graphs for robot design.
+
+A scheme is just a dictionary of the components where keys are branch indices and values are lists of components in the branch.
+Each secondary branch should start and end with a connection joint that is connected to an already defined pair of joints."""
 from dataclasses import dataclass
 from typing import Tuple, Optional
 from enum import Enum
@@ -5,14 +9,28 @@ from enum import Enum
 
 class MutationType(Enum):
     """Enumerate for mutation types."""
-    ABSOLUTE = 1  # The movement of the joint are in the absolute coordinate system and are relative to the initial position
-    RELATIVE = 2  # The movement of the joint are relative to some other joint or joints and doesn't have an initial position
-    # The movement of the joint are relative to some other joint or joints and doesn't have an initial position. The movement is in percentage of the distance between the joints.
+    # The movement of the joint are in the absolute coordinate system and are relative to the initial position
+    ABSOLUTE = 1
+    # The movement of the joint are relative to some other joint or joints and doesn't have an initial position
+    RELATIVE = 2
+    # The movement of the joint are relative to some other joint or joints and doesn't have an initial position.
+    # The movement is in percentage of the distance between the joints.
     RELATIVE_PERCENTAGE = 3
 
 
 @dataclass
 class MutationCoordinate:
+    """
+    Represents the mutation parameters for a single coordinate in a mechanism.
+
+    Attributes:
+        freeze (Optional[float]): If set, the coordinate will not change during mutation and will remain at this value.
+        mutation_origin (Optional[float]): The origin value from which mutation is calculated.
+        lower_bound (Optional[float]): The minimum allowed value for the coordinate.
+        upper_bound (Optional[float]): The maximum allowed value for the coordinate.
+        shift (Optional[float]): The shift to apply to the coordinate during mutation. Usually imposed by the connection.
+    """
+
     freeze: Optional[float] = None
     mutation_origin: Optional[float] = None
     lower_bound: Optional[float] = None
@@ -22,6 +40,15 @@ class MutationCoordinate:
 
 @dataclass
 class SchemePoint:
+    """Parent class for all points in the graph scheme.
+
+    Attributes:
+        name (str): The name of the point.
+        mutation_type(MutationType): type of mutation
+        mutation_x(MutationCoordinate): mutation of the x coordinate of the point
+        mutation_y(MutationCoordinate): mutation of the y coordinate of the point
+        mutation_z(MutationCoordinate): mutation of the z coordinate of the point
+    """
     name: str = "P"
     mutation_type: int = MutationType.ABSOLUTE
     mutation_x: MutationCoordinate = MutationCoordinate()
@@ -31,11 +58,20 @@ class SchemePoint:
 
 @dataclass
 class SchemeEE(SchemePoint):
+    """End Effector point in the graph scheme."""
     name: str = "EE"
 
 
 @dataclass
 class SchemeJoint(SchemePoint):
+    """Joint point in the graph scheme.
+
+    Adds attributes that can be added to the joint.
+    Attributes:
+        name (str): The name of the joint.
+        active (bool): Whether the joint is active.
+        attach_ground (bool): Whether the joint is attached to the ground.
+    """
     name: str = "J"
     active: bool = False
     attach_ground: bool = False
@@ -43,6 +79,15 @@ class SchemeJoint(SchemePoint):
 
 @dataclass
 class SchemeConnectionJoint(SchemePoint):
+    """"Connection Joint point in the graph scheme.
+    
+    Adds attributes that can be added to the connection joint. Connection joints are attached to a pair of joints that represent a link.
+    Attributes:
+        name (str): The name of the connection joint.
+        attach_ground (bool): Whether the connection joint is attached to the ground.
+        active (bool): Whether the connection joint is active.
+        dependent_shift (Tuple[float, float, float]): The shift to apply to a joint that is built relative to this joint.
+        connected_to (Optional[Tuple[int, int]]): The branch index and first joint index for this connection."""
     name: str = "CJ"
     attach_ground: bool = False
     active: bool = False

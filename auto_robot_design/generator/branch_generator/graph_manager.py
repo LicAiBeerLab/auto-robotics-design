@@ -1,11 +1,17 @@
-
+"""This module provides the MutableGraphManager class that manages a mutable graph based on a given graph scheme."""
 from dataclasses import dataclass
-from typing import Tuple, Optional
-from auto_robot_design.generator.branch_generator.graph_scheme import MutationType, MutationCoordinate, SchemeEE, SchemeJoint, SchemeConnectionJoint
-from auto_robot_design.description.kinematics import JointPoint
+from typing import Optional, Tuple
+
 import networkx as nx
 import numpy as np
+
+from auto_robot_design.description.kinematics import JointPoint
 from auto_robot_design.description.utils import draw_joint_point
+from auto_robot_design.generator.branch_generator.graph_scheme import (
+    MutationCoordinate, MutationType, SchemeConnectionJoint, SchemeEE,
+    SchemeJoint)
+
+
 @dataclass
 class AbsoluteMutation:
     mutation_x: MutationCoordinate = MutationCoordinate()
@@ -326,6 +332,7 @@ class MutableGraphManager:
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
+
     # example with manually built scheme
     graph_scheme = {0: [SchemeJoint(name="G0", attach_ground = True,mutation_x=MutationCoordinate(freeze=0.0), mutation_y=MutationCoordinate(freeze=0.0), mutation_z=MutationCoordinate(freeze=0.0), active=True),
                     SchemeJoint(name="J0",  mutation_x=MutationCoordinate(mutation_origin=0.05, lower_bound=-0.1, upper_bound=0.1), mutation_y=MutationCoordinate(freeze=0.0), mutation_z=MutationCoordinate(mutation_origin=-0.2, lower_bound=-0.1, upper_bound=0.1)),
