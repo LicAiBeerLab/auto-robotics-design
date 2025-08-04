@@ -124,7 +124,7 @@ class CalculateCriteriaProblemByWeigths(ElementwiseProblem):
 
 
 class MultiCriteriaProblem(ElementwiseProblem):
-    def __init__(self, graph_manager: GraphManager2L, builder, rewards_and_trajectories: RewardManager, soft_constrain=None, **kwargs):
+    def __init__(self, graph_manager, builder, rewards_and_trajectories: RewardManager, soft_constrain=None, **kwargs):
         if "Actuator" in kwargs:
             self.motor = kwargs["Actuator"]
         else:
@@ -136,9 +136,9 @@ class MultiCriteriaProblem(ElementwiseProblem):
         self.rewards_and_trajectories: RewardManager = rewards_and_trajectories
         num_objs = self.rewards_and_trajectories.close_trajectories()
         lower_bounds = [value[0]
-                        for key, value in graph_manager.mutation_ranges.items()]
+                        for key, value in graph_manager.current_mutation_ranges.items()]
         upper_bounds = [value[1]
-                        for key, value in graph_manager.mutation_ranges.items()]
+                        for key, value in graph_manager.current_mutation_ranges.items()]
 
         super().__init__(
             n_var=len(lower_bounds),

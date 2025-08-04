@@ -57,7 +57,6 @@ class MutableGraphManager:
             if new_triangle:
                 return True
         return False
-    
 
 
     def build_graph(self):

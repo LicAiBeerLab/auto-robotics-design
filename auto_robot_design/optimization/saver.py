@@ -46,8 +46,7 @@ class ProblemSaver:
         if hasattr(self.problem, "graph"):
             draw_joint_point(self.problem.graph)
         else:
-            draw_joint_point(self.problem.graph_manager.get_graph(
-                self.problem.graph_manager.generate_central_from_mutation_range()))
+            draw_joint_point(self.problem.graph_manager.get_central_graph())
         plt.savefig(os.path.join(self.path, "initial_mechanism.png"))
         plt.close()
 
