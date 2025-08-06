@@ -1,44 +1,12 @@
 import pinocchio as pin
 import numpy as np
 from numpy.linalg import norm
-# from loader_tools import *
-# from apps.results_humanoid_2023.criterion_test import Li
 from auto_robot_design.pinokla.closed_loop_kinematics import *
 from pinocchio.robot_wrapper import RobotWrapper
 import os
 from auto_robot_design.pinokla.loader_tools import completeRobotLoader
-
 import meshcat
 from pinocchio.visualize import MeshcatVisualizer
-
-def jacobianFinitDiffClosedLoop(model,actuation_model,constraint_model, idframe: int, idref: int, qmot: np.array,q_prec, dq=1e-6,name_mot='mot',fermeture='fermeture'):
-    """
-    J=Jacobian_diff_finis(robot ,idframe: int,idref :int,qo :np.array,dq: float)
-    return the jacobian of the frame id idframe in the reference frame number idref, with the configuration of the robot rob qo
-    """
-    LJ = []  # the transpose of the Jacobian ( list of list)
-
-    data = model.createData()
-    q,b=closedLoopForwardKinematics(model, data, qmot, q_prec, name_mot, fermeture)
-    pin.framesForwardKinematics(model, data, q)
-    oMf1 = data.oMf[idframe].copy()  # require to avoid bad pointing
-    oMrep = data.oMf[idref].copy()
-
-    RrefXframe = (oMrep.inverse() * oMf1).action
-    Lidmot=getMotId_q(model,name_mot)
-    for i in range(len(Lidmot)):  # finit difference algorithm
-        qmot[i] = qmot[i] + dq
-        nq,b=closedLoopForwardKinematics(model, data, qmot, q_prec, name_mot, fermeture)
-        pin.framesForwardKinematics(model, data, nq)
-        oMf1p = data.oMf[idframe]
-        V = pin.log(oMf1.inverse() * oMf1p).vector / dq
-
-        LJ.append(V.tolist())
-        qmot[i] = qmot[i] - dq
-    
-    J = np.transpose(np.array(LJ))
-    J = RrefXframe @ J
-    return J
 
 
 def sepJc(model,actuation_model,Jn):

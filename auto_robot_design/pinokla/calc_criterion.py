@@ -13,8 +13,6 @@ from auto_robot_design.pinokla.closed_loop_jacobian import (
 from auto_robot_design.pinokla.closed_loop_jacobian import (
     closedLoopInverseKinematicsProximal,
     ConstraintFrameJacobian)
-from auto_robot_design.pinokla.closed_loop_kinematics import (
-     closedLoopProximalMount)
 from auto_robot_design.pinokla.criterion_math import (calc_manipulability,
                                                       ImfProjections, calc_actuated_mass, calc_effective_inertia,
                                                       calc_force_ell_projection_along_trj, calc_IMF, calculate_mass,
@@ -93,10 +91,10 @@ def pseudo_static_step(robot: Robot, q_state: np.ndarray,
         @ _dq_dqmot
     )
     #[[0,2]]
-    LJ = []
-    for cm, cd in zip(robot.constraint_models, robot.constraint_data):
-        Jc = pin.getConstraintJacobian(robot.model, robot.data, cm, cd)
-        LJ.append(Jc)
+    # LJ = []
+    # for cm, cd in zip(robot.constraint_models, robot.constraint_data):
+    #     Jc = pin.getConstraintJacobian(robot.model, robot.data, cm, cd)
+    #     LJ.append(Jc)
 
     M = pin.crba(robot.model, robot.data, q_state)
     # TODO: force Kirill to explain what is this and why we need it

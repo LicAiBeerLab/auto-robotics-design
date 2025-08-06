@@ -37,7 +37,7 @@ def calculate_quasi_static_simdata(free_robot: Robot,
     ik_manager = TrajectoryIKManager()
     ik_manager.register_model(fixed_robot.model, fixed_robot.constraint_models)
     ik_manager.set_solver(alg_name)
-    poses, q_fixed, constraint_errors,reach_array = ik_manager.follow_trajectory(traj_6d)
+    poses, q_fixed, constraint_errors, reach_array = ik_manager.follow_trajectory(traj_6d)
 
     # add standard body position to all points in the q space
     normal_pose = np.array([0, 0, 0, 0, 0, 0, 1], dtype=np.float64)

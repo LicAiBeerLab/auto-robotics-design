@@ -11,9 +11,7 @@ from pinocchio.visualize import MeshcatVisualizer
 from auto_robot_design.pinokla.closed_loop_jacobian import (
     constraint_jacobian_active_to_passive,
 )
-from auto_robot_design.pinokla.closed_loop_kinematics import (
-    closedLoopProximalMount,
-)
+
 from auto_robot_design.motion_planning.ik_calculator import closed_loop_ik_pseudo_inverse, closedLoopInverseKinematicsProximal
 from auto_robot_design.pinokla.default_traj import add_auxilary_points_to_trajectory
 

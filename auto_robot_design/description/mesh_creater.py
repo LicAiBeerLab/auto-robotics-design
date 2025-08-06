@@ -37,9 +37,6 @@ if __name__ == "__main__":
     )
     import meshcat
     from pinocchio.visualize import MeshcatVisualizer
-    from auto_robot_design.pinokla.closed_loop_kinematics import (
-        closedLoopProximalMount,
-    )
 
     builder = ParametrizedBuilder(URDFLinkCreater3DConstraints)
 
