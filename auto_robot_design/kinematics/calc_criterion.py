@@ -7,17 +7,14 @@ from typing import NamedTuple, Optional
 import numpy as np
 import pinocchio as pin
 from numpy.linalg import norm
-from auto_robot_design.pinokla.closed_loop_jacobian import (
+from auto_robot_design.kinematics.closed_loop_jacobian import (
     constraint_jacobian_active_to_passive,
 )
-from auto_robot_design.pinokla.closed_loop_jacobian import (
-    closedLoopInverseKinematicsProximal,
-    ConstraintFrameJacobian)
-from auto_robot_design.pinokla.criterion_math import (calc_manipulability,
+from auto_robot_design.kinematics.criterion_math import (calc_manipulability,
                                                       ImfProjections, calc_actuated_mass, calc_effective_inertia,
                                                       calc_force_ell_projection_along_trj, calc_IMF, calculate_mass,
                                                       convert_full_J_to_planar_xz)
-from auto_robot_design.pinokla.loader_tools import Robot
+from auto_robot_design.kinematics.loader_tools import Robot
 
 
 class MovmentSurface(IntFlag):

@@ -3,7 +3,7 @@ from typing import Tuple
 import numpy as np
 
 from auto_robot_design.optimization.rewards.reward_base import Reward
-from auto_robot_design.pinokla.calc_criterion import DataDict
+from auto_robot_design.kinematics.calc_criterion import DataDict
 
 
 class MassReward(Reward):

@@ -6,12 +6,12 @@ import numpy as np
 
 from auto_robot_design.motion_planning.trajectory_ik_manager import (
     IK_METHODS, TrajectoryIKManager)
-from auto_robot_design.pinokla.calc_criterion import (ComputeInterfaceMoment,
+from auto_robot_design.kinematics.calc_criterion import (ComputeInterfaceMoment,
                                                       DataDict,
                                                       along_criteria_calc,
                                                       iterate_over_q_space,
                                                       moment_criteria_calc)
-from auto_robot_design.pinokla.loader_tools import (
+from auto_robot_design.kinematics.loader_tools import (
     Robot, build_model_with_extensions)
 
 

@@ -1,10 +1,10 @@
 import pinocchio as pin
 import numpy as np
 from numpy.linalg import norm
-from auto_robot_design.pinokla.closed_loop_kinematics import *
+# from auto_robot_design.pinokla.closed_loop_kinematics import *
 from pinocchio.robot_wrapper import RobotWrapper
 import os
-from auto_robot_design.pinokla.loader_tools import completeRobotLoader
+from auto_robot_design.kinematics.loader_tools import completeRobotLoader
 import meshcat
 from pinocchio.visualize import MeshcatVisualizer
 

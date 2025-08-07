@@ -1,10 +1,6 @@
 from copy import deepcopy
 from auto_robot_design.description.builder import jps_graph2urdf_by_bulder
 import numpy as np
-
-
-
-
 from auto_robot_design.optimization.optimizer import PymooOptimizer
 from auto_robot_design.optimization.problems import CalculateMultiCriteriaProblem
 from auto_robot_design.optimization.saver import load_checkpoint

@@ -12,7 +12,7 @@ from yaml.loader import SafeLoader
 from warnings import warn
 
 
-from auto_robot_design.pinokla.actuation_model import ActuationModel
+from auto_robot_design.kinematics.actuation_model import ActuationModel
 import pinocchio as pin
 
 

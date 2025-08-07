@@ -12,7 +12,7 @@ from auto_robot_design.description.builder import BLUE_COLOR, DEFAULT_PARAMS_DIC
 from auto_robot_design.description.mechanism import JointPoint2KinematicGraph, KinematicGraph
 from auto_robot_design.description.mesh_builder.urdf_creater import MeshCreator, URDFMeshCreator
 from auto_robot_design.pino_adapter.pino_adapter import get_pino_description_3d_constraints
-from auto_robot_design.pinokla.loader_tools import build_model_with_extensions
+from auto_robot_design.kinematics.loader_tools import build_model_with_extensions
 
 
 class MeshBuilder(ParametrizedBuilder):

@@ -22,7 +22,7 @@ from auto_robot_design.description.kinematics import (
 from auto_robot_design.description.mechanism import JointPoint2KinematicGraph, KinematicGraph
 from auto_robot_design.description.utils import tensor_inertia_sphere_by_mass
 from auto_robot_design.pino_adapter.pino_adapter import get_pino_description, get_pino_description_3d_constraints
-from auto_robot_design.pinokla.loader_tools import build_model_with_extensions
+from auto_robot_design.kinematics.loader_tools import build_model_with_extensions
 
 RED_COLOR = np.array([[245/ 255, 84/ 255, 84/ 255, 1]])
 

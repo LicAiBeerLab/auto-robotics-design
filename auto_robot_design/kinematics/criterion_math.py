@@ -4,7 +4,7 @@ from matplotlib.pylab import LinAlgError
 import numpy as np
 import pinocchio as pin
 
-from auto_robot_design.pinokla.loader_tools import Robot
+from auto_robot_design.kinematics.loader_tools import Robot
 
 import numpy.linalg as la
 

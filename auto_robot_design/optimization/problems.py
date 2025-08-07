@@ -7,7 +7,7 @@ from pymoo.core.problem import ElementwiseProblem
 from auto_robot_design.description.builder import jps_graph2pinocchio_robot, jps_graph2pinocchio_robot_3d_constraints
 from auto_robot_design.generator.topologies.graph_manager_2l import GraphManager2L
 from auto_robot_design.optimization.rewards.reward_base import (Reward, RewardManager)
-from auto_robot_design.pinokla.criterion_agregator import CriteriaAggregator
+from auto_robot_design.kinematics.criterion_agregator import CriteriaAggregator
 from auto_robot_design.description.mesh_builder.mesh_builder import MeshBuilder,  jps_graph2pinocchio_meshes_robot
 
 def get_optimizing_joints(graph, constrain_dict):
