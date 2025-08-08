@@ -76,7 +76,7 @@ def create_mesh_from_joints(joints, thickness, frame=np.eye(4)) -> Trimesh:
                 points[p1][0] + (v[0] - v[1] * p1.jp.w) * thickness / 2)
             link_points.append(
                 points[p2][0] + (v[0] - v[1] * p2.jp.w) * thickness / 2)
-        mesh = mesh.union([convex_hull(link_points), convex_hull(link_points)])
+        mesh = mesh.union([convex_hull(link_points), convex_hull(link_points)], check_volume=False)
 
     return mesh
 

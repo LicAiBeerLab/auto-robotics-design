@@ -4,10 +4,10 @@ import dill
 import numpy as np
 
 class PymooOptimizer:
-    def __init__(self, problem, algortihm, saver=None) -> None:
+    def __init__(self, problem, algorithm, saver=None) -> None:
         self.history = {"X": [], "F": [], "Fs": [], "Mean":[]}
         self.problem = problem
-        self.algorithm = algortihm
+        self.algorithm = algorithm
         self.saver = saver
 
     def load_history(self, path):

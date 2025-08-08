@@ -1,15 +1,13 @@
-name: j_moves
+name: j_moves_new
 channels:
   - conda-forge
 dependencies:
-  - python = 3.9
+  - python = 3.10
   - numpy
   - scipy  
   - matplotlib 
   - pip
-  - olivier.roussel::hpp-fcl
-  - olivier.roussel::example-robot-data
-  - olivier.roussel::pinocchio=2.99.0
+  - pinocchio 
   - pip:
     - networkx
     - pyparsing == 3.1.4
@@ -25,4 +23,3 @@ dependencies:
     - git+https://github.com/hauptmech/odio_urdf.git
     - pymoo
     - ipywidgets
-    - streamlit
