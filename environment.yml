@@ -15,7 +15,7 @@ dependencies:
     - notebook
     - mediapy
     - tqdm
-    - trimesh==4.1.4
+    - trimesh
     - meshcat
     - numba
     - joblib
