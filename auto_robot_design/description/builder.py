@@ -183,6 +183,10 @@ class URDFLinkCreator:
         Returns:
             urdf_link: The created URDF link.
         """
+        # ======TODO: REFACTORING =======
+        # Move creating URDF link logic to a separate method
+        # https://refactoring.guru/ru/design-patterns/factory-method
+        # ===============================
         if link.geometry.shape == "mesh":
             pos_joint_in_local = []
             H_l_w = mr.TransInv(link.frame)
@@ -230,6 +234,11 @@ class URDFLinkCreator:
         Returns:
             dict: A dictionary containing the created URDF joint and additional information.
         """
+        # ======TODO: REFACTORING =======
+        # Move creating URDF joint logic to a separate method
+        # URDF Joint object needs to be divided in different methods dependent from joint type and properties
+        # https://refactoring.guru/ru/design-patterns/factory-method
+        # ===============================
         if joint.link_in is None or joint.link_out is None:
             return {"joint": []}
         origin = cls.trans_matrix2xyz_rpy(joint.frame)
