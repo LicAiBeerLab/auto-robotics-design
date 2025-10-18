@@ -57,6 +57,24 @@ def get_russian_reward_description():
     return reward_description
 
 
+def get_english_reward_description():
+    reward_description={}
+    reward_description['mass'] = ("Мechanism mass", "The total mass of all links and motors")
+    reward_description['actuated_inertia_matrix'] = ("Inverse Inertia", "Величина обратная определителю матрицы инерции в обобщённых координатах актуированных сочленений. Характеризует полную инерцию механизма")
+    reward_description['z_imf'] = ("Vertical Impact Mitigation Factor", "Характеризует насколько конструкция ноги ослабляет влияние вертикальных внешних сил на корпус робота")
+    reward_description['trajectory_manipulability'] = ("Manipulability along the trajectory", "Среднее значение проекции якобиана скоростей концевого эффектора на направление траектории. Показывает соотношение скоростей движения моторов")
+    reward_description['manipulability'] = ("Manipulability", "Среднее значение определителя якобиана скоростей концевого эффектора. В каждой точке характеризует преобразование скоростей моторов в скорость концевого эффектора")
+    reward_description['min_manipulability'] = ("Minimal manipulability", "Минимальное значение манипулируемости концевого эффектора. Зависит от минимального значения преобразования скоростей моторов в скорость концевого эффектора")
+    reward_description['min_force'] = ("Minimal stoping force", "Минимальное значение внешней силы необходимое для преодоления единичного момента актуаторов")
+    reward_description['trajectory_zrr'] = ("Inverse vertical reduction ratio", "Среднее значение вертикального передаточного отношения вдоль траектории. Характеризует способность конструкции ноги выдерживать вертикальное усилие приложенное к концевому эффектору.")
+    reward_description['dexterity'] = ("Dexterity index", "Среднее значение индекса подвижности вдоль траектории. Характеризует отношение силовой и скоростной характеристик механизма, большие значения соотвествуют лучшему балансу.")
+    reward_description['trajectory_acceleration'] = ("Acceleration capability", "Среднее значение потенциального ускорения вдоль траектории. Характеризует способность двигателей разгонять концевой эффектор в заданноам направлении.")
+    reward_description['min_acceleration'] = ("Minimal acceleration capability", "Минимальное значение потенциального ускорения в точке. Характеризует способность двигателей разгонять концевой эффектор.")
+    reward_description['mean_heavy_lifting'] = ("Mean payload capacity", "Среднее значение грузоподъемности. Характеризует способность конструкции ноги поднимать груз не превышая пороговых значений моментов актуаторов.")
+    reward_description['min_heavy_lifting'] = ("Minimal payload capacity at trajectory", "Минимальное значение грузоподъемности на заданной траектории. Характеризует конструкции ноги непрерывно переносить груз без отклонений от заданной траектории.")
+    return reward_description
+
+
 
 
 

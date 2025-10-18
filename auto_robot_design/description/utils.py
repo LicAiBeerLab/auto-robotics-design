@@ -355,7 +355,7 @@ def draw_joint_point_widjet(graph: nx.Graph, labels=0, draw_legend=True, draw_li
             font_family = "monospace"
 
         )
-    plt.plot(G_pos[:,0], G_pos[:,1], "o", label="Прикреплён к базе", color="silver", ms=10)
+    plt.plot(G_pos[:,0], G_pos[:,1], "o", label="Body joint", color="silver", ms=10)
     plt.axis("equal")
     
     import matplotlib.ticker as ticker
@@ -363,8 +363,8 @@ def draw_joint_point_widjet(graph: nx.Graph, labels=0, draw_legend=True, draw_li
         ax = plt.gca()
         ax.set_axis_on()
         # ax.set_title('JP graph')
-        ax.set_ylabel('z [м]')
-        ax.set_xlabel('x [м]')
+        ax.set_ylabel('z [m]')
+        ax.set_xlabel('x [m]')
         ax.tick_params(left=True, bottom=True, labelleft=True, labelbottom=True)
         # ax.set_xticks(np.arange(min_x-0.1,max_x+0.1,0.1))
         # ax.set_yticks(np.arange(min_y-0.1,max_y+0.1,0.1))
@@ -375,10 +375,10 @@ def draw_joint_point_widjet(graph: nx.Graph, labels=0, draw_legend=True, draw_li
 
     # plt.axis('on')
     if EE_pos.size != 0:
-        plt.plot(EE_pos[:,0], EE_pos[:,1], "o", label="Рабочий инструмент", ms=10, color="lightsteelblue")
+        plt.plot(EE_pos[:,0], EE_pos[:,1], "o", label="End-effector", ms=10, color="lightsteelblue")
     plt.plot(active_j_pos[:,0], active_j_pos[:,1], "og",
              markersize=22, 
-             fillstyle="none", label="Актуирован")
+             fillstyle="none", label="Actuated")
     if draw_legend: plt.legend()
 
     for patch_labels in patches_list:
@@ -388,7 +388,123 @@ def draw_joint_point_widjet(graph: nx.Graph, labels=0, draw_legend=True, draw_li
         triangle = patches.Polygon(vertices, closed=True, edgecolor='black', facecolor=patch_labels[1])
         plt.gca().add_patch(triangle)
 
+# def draw_joint_point_widjet(graph: nx.Graph, labels=0, draw_legend=True, draw_lines=False, patches_list=[]):
+#     pos = get_pos(graph)
+#     pos_list = [p for p in pos.values()]
+#     pos_matrix = np.array(pos_list)
+#     min_x, min_y = np.min(pos_matrix, axis=0)
+#     max_x, max_y = np.max(pos_matrix, axis=0)
+#     for key, value in pos.items():
+#         value
+#     G_pos = np.array(
+#         list(
+#         map(
+#             lambda n: [n.r[0], n.r[2]],
+#             filter(lambda n: n.attach_ground, graph),
+#         )
+#         )
+#     )
+#     EE_pos = np.array(
+#         list(
+#         map(
+#             lambda n: [n.r[0], n.r[2]],
+#             filter(lambda n: n.attach_endeffector, graph),
+#         )
+#         )
+#     )
+#     active_j_pos = np.array(
+#         list(
+#         map(
+#             lambda n: [n.r[0], n.r[2]],
+#             filter(lambda n: n.active, graph),
+#         )
+#         )
+#     )
+#     if labels==0:
+#         labels = {n:n.name for n in graph.nodes()}
+#     elif labels==1:
+#         labels = {n:i for i,n in enumerate(graph.nodes())}
+#     else:
+#         labels = {n:str() for n in graph.nodes()}
+#     nx.draw(
+#         graph,
+#         pos,
+#         node_color="w",
+#         linewidths=3,
+#         edgecolors="k",
+#         node_shape="o",
+#         node_size=250,
+#         with_labels=False,
+#         width=2,
+#     )
+#     #pos_labels = {g:np.array(p) + np.array([-0.2, 0.2])*la.norm(EE_pos)/5 for g, p in pos.items()}
+#     pos_labels = {}
+#     coef = 1000
+#     pos_additions = [np.array([0.2, 0.2])*la.norm(EE_pos)/coef, np.array([0.2, -0.2])*la.norm(EE_pos)/coef, 
+#                      np.array([0.2,-0.2])*la.norm(EE_pos)/coef, np.array([-0.2, -0.2])*la.norm(EE_pos)/coef]
+#     for g,p in pos.items():
+#         pos_flag = False
+#         for pos_addition in pos_additions:
+#             new_pos = np.array(p) + pos_addition
+#             if all([la.norm(new_pos-op)>la.norm(EE_pos)/5 for op in pos_labels.values()]):
+#                 pos_labels[g] = new_pos
+#                 pos_flag = True
+#                 break
+#         if not pos_flag:
+#             pos_labels[g] = np.array(p)
 
+#     nx.draw_networkx_labels(
+#         graph,
+#         pos_labels,
+#         labels,
+#         font_color = "#ff5A00",
+#         font_family = "monospace",
+#         font_size=12
+#     )
+
+#     #"#fe8a18"
+#     if nx.is_weighted(graph):
+#         edge_labels = nx.get_edge_attributes(graph, "weight")
+#         nx.draw_networkx_edge_labels(
+#             graph,
+#             pos,
+#             edge_labels,
+#             font_color = "c",
+#             font_family = "monospace"
+
+#         )
+#     plt.plot(G_pos[:,0], G_pos[:,1], "o", label="Прикреплён к базе", color="silver", ms=10)
+#     plt.axis("equal")
+    
+#     import matplotlib.ticker as ticker
+#     if draw_lines:
+#         ax = plt.gca()
+#         ax.set_axis_on()
+#         # ax.set_title('JP graph')
+#         ax.set_ylabel('z [м]')
+#         ax.set_xlabel('x [м]')
+#         ax.tick_params(left=True, bottom=True, labelleft=True, labelbottom=True)
+#         # ax.set_xticks(np.arange(min_x-0.1,max_x+0.1,0.1))
+#         # ax.set_yticks(np.arange(min_y-0.1,max_y+0.1,0.1))
+#         ax.set_xlim(min_x-0.1, max_x+0.1)
+#         ax.set_ylim(min_y-0.1, max_y+0.1)
+#         pass
+
+
+#     # plt.axis('on')
+#     if EE_pos.size != 0:
+#         plt.plot(EE_pos[:,0], EE_pos[:,1], "o", label="Рабочий инструмент", ms=10, color="lightsteelblue")
+#     plt.plot(active_j_pos[:,0], active_j_pos[:,1], "og",
+#              markersize=22, 
+#              fillstyle="none", label="Актуирован")
+#     if draw_legend: plt.legend()
+
+#     for patch_labels in patches_list:
+#         vertices = []
+#         for i, pos in enumerate(pos_list):
+#             if i in patch_labels[0]: vertices.append(pos)
+#         triangle = patches.Polygon(vertices, closed=True, edgecolor='black', facecolor=patch_labels[1])
+#         plt.gca().add_patch(triangle)
 
 def draw_kinematic_graph(graph: nx.Graph):
     elarge = [(u, v) for (u, v, d) in graph.edges(data=True) if d["joint"].jp.active]
